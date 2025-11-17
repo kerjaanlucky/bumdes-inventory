@@ -1,0 +1,6 @@
+
+[
+  { "id": "BRN01", "name": "Cabang Utama", "location": "New York, NY", "invoiceTemplate": "sequential" },
+  { "id": "BRN02", "name": "Cabang Barat", "location": "Los Angeles, CA", "invoiceTemplate": "date" },
+  { "id": "BRN03", "name": "Cabang Timur", "location": "Miami, FL", "invoiceTemplate": "custom", "invoiceCustomFormat": "EVL-{{YYYY}}-{{MM}}-{{DD}}-{{NNNN}}" }
+]

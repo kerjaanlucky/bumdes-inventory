@@ -10,14 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { Edit, PlusCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +19,7 @@ import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function UsersPage() {
   const router = useRouter();
@@ -84,9 +78,7 @@ export default function UsersPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Peran</TableHead>
                     <TableHead className="hidden md:table-cell">Cabang</TableHead>
-                    <TableHead>
-                    <span className="sr-only">Aksi</span>
-                    </TableHead>                
+                    <TableHead className="text-right">Aksi</TableHead>             
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -97,7 +89,7 @@ export default function UsersPage() {
                       <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                       <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : users.map(user => (
@@ -108,20 +100,33 @@ export default function UsersPage() {
                             <Badge variant={user.role === 'Manajer' ? 'destructive' : 'outline'}>{user.role}</Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">{user.branch}</TableCell>
-                        <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Buka menu</span>
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/edit`)}>Ubah</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(user.id)}>Hapus</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <TableCell className="text-right">
+                          <TooltipProvider>
+                            <div className="flex items-center justify-end gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/users/${user.id}/edit`)}>
+                                    <Edit className="h-4 w-4" />
+                                    <span className="sr-only">Ubah</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Ubah Pengguna</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(user.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Hapus</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Hapus Pengguna</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TooltipProvider>
                         </TableCell>
                     </TableRow>
                 ))}

@@ -1,0 +1,7 @@
+
+[
+  { "id": "USR001", "name": "Alice Johnson", "email": "alice@example.com", "role": "Manajer", "branch": "Cabang Utama", "avatar": "/avatars/01.png" },
+  { "id": "USR002", "name": "Bob Williams", "email": "bob@example.com", "role": "Kasir", "branch": "Cabang Barat", "avatar": "/avatars/02.png" },
+  { "id": "USR003", "name": "Charlie Brown", "email": "charlie@example.com", "role": "Kasir", "branch": "Cabang Timur", "avatar": "/avatars/03.png" },
+  { "id": "USR004", "name": "Diana Miller", "email": "diana@example.com", "role": "Kasir", "branch": "Cabang Utama", "avatar": "/avatars/04.png" }
+]

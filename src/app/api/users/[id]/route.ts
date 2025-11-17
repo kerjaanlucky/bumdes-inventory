@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { users as initialUsers } from '@/lib/data';
+import initialUsers from '@/lib/mock/users.json';
 import { User } from '@/lib/types';
 
 let users: User[] = [...initialUsers];

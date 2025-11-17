@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { branches as initialBranches } from '@/lib/data';
+import initialBranches from '@/lib/mock/branches.json';
 import { Branch } from '@/lib/types';
 
-let branches: Omit<Branch, 'manager'>[] = initialBranches.map(({ manager, ...rest }) => rest);
-
+let branches: Branch[] = [...initialBranches];
 
 export async function GET(
   request: Request,
@@ -20,7 +19,7 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const updatedBranchData: Omit<Branch, 'manager'> = await request.json();
+  const updatedBranchData: Branch = await request.json();
   const index = branches.findIndex((b) => b.id === params.id);
 
   if (index === -1) {
