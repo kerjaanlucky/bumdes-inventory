@@ -12,6 +12,12 @@ export type Branch = {
   name: string;
   location: string;
   manager: string;
+  invoiceTemplate?: string;
+  defaultTax?: number;
+  phone?: string;
+  email?: string;
+  taxType?: 'inclusive' | 'exclusive';
+  invoiceNotes?: string;
 };
 
 export type Item = {
