@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -11,18 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { Edit, PlusCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBranchStore } from '@/store/branch-store';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function BranchesPage() {
   const router = useRouter();
@@ -71,9 +66,7 @@ export default function BranchesPage() {
                     <TableHead>Nama</TableHead>
                     <TableHead>Lokasi</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
-                    <TableHead>
-                    <span className="sr-only">Aksi</span>
-                    </TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -82,20 +75,33 @@ export default function BranchesPage() {
                         <TableCell className="font-medium">{branch.name}</TableCell>
                         <TableCell>{branch.location}</TableCell>
                         <TableCell className="hidden md:table-cell">{branch.email}</TableCell>
-                        <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Buka menu</span>
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/branches/${branch.id}/edit`)}>Ubah</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(branch.id)}>Hapus</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <TableCell className="text-right">
+                          <TooltipProvider>
+                            <div className="flex items-center justify-end gap-2">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/branches/${branch.id}/edit`)}>
+                                            <Edit className="h-4 w-4" />
+                                            <span className="sr-only">Ubah</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Ubah Cabang</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(branch.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">Hapus</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Hapus Cabang</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                           </TooltipProvider>
                         </TableCell>
                     </TableRow>
                 ))}
