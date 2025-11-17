@@ -11,7 +11,6 @@ export type Branch = {
   id: string;
   name: string;
   location: string;
-  manager: string;
   invoiceTemplate?: 'sequential' | 'date' | 'custom';
   invoiceCustomFormat?: string;
   defaultTax?: number;

@@ -14,6 +14,7 @@ import { useBranchStore } from "@/store/branch-store";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const branchSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
@@ -31,7 +32,7 @@ type BranchFormValues = z.infer<typeof branchSchema>;
 
 export default function NewBranchPage() {
   const router = useRouter();
-  const { addBranch } = useBranchStore();
+  const { addBranch, isSubmitting } = useBranchStore();
   const { toast } = useToast();
   const [invoicePreview, setInvoicePreview] = useState("INV-001");
 
@@ -81,8 +82,8 @@ export default function NewBranchPage() {
   }, [customFormat, invoiceTemplate]);
 
 
-  const onSubmit: SubmitHandler<BranchFormValues> = (data) => {
-    addBranch(data);
+  const onSubmit: SubmitHandler<BranchFormValues> = async (data) => {
+    await addBranch(data);
     toast({
       title: "Cabang Ditambahkan",
       description: "Cabang baru telah berhasil ditambahkan.",
@@ -108,7 +109,7 @@ export default function NewBranchPage() {
                     <FormItem>
                       <FormLabel>Nama</FormLabel>
                       <FormControl>
-                        <Input placeholder="Cabang Utama" {...field} />
+                        <Input placeholder="Cabang Utama" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -121,7 +122,7 @@ export default function NewBranchPage() {
                     <FormItem>
                       <FormLabel>Lokasi</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jakarta, Indonesia" {...field} />
+                        <Input placeholder="Jakarta, Indonesia" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -135,7 +136,7 @@ export default function NewBranchPage() {
                     <FormItem>
                       <FormLabel>Nomor Telepon Cabang</FormLabel>
                       <FormControl>
-                        <Input placeholder="0812-3456-7890" {...field} />
+                        <Input placeholder="0812-3456-7890" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -148,7 +149,7 @@ export default function NewBranchPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="cabang@example.com" {...field} />
+                        <Input type="email" placeholder="cabang@example.com" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -161,7 +162,7 @@ export default function NewBranchPage() {
                     <FormItem>
                       <FormLabel>Pajak Default (%)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="11" {...field} />
+                        <Input type="number" placeholder="11" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -173,7 +174,7 @@ export default function NewBranchPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipe Pajak</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih tipe pajak" />
@@ -198,7 +199,7 @@ export default function NewBranchPage() {
                         <Select onValueChange={(value) => {
                             field.onChange(value);
                             handleTemplateChange(value, form.getValues('invoiceCustomFormat'));
-                        }} defaultValue={field.value}>
+                        }} defaultValue={field.value} disabled={isSubmitting}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih template faktur" />
@@ -222,7 +223,7 @@ export default function NewBranchPage() {
                                 <FormItem>
                                 <FormLabel>Format Faktur Kustom</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} />
+                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} disabled={isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -244,17 +245,20 @@ export default function NewBranchPage() {
                     <FormItem>
                       <FormLabel>Catatan Faktur</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} />
+                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">Tambah Cabang</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Tambah Cabang
+                </Button>
               </div>
             </form>
           </Form>

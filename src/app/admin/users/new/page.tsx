@@ -6,13 +6,14 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useUserStore } from "@/store/user-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 const userSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
@@ -25,9 +26,13 @@ type UserFormValues = z.infer<typeof userSchema>;
 
 export default function NewUserPage() {
   const router = useRouter();
-  const { addUser } = useUserStore();
-  const { branches } = useBranchStore();
+  const { addUser, isSubmitting } = useUserStore();
+  const { branches, fetchBranches } = useBranchStore();
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchBranches();
+  }, [fetchBranches]);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -39,8 +44,8 @@ export default function NewUserPage() {
     },
   });
 
-  const onSubmit: SubmitHandler<UserFormValues> = (data) => {
-    addUser(data);
+  const onSubmit: SubmitHandler<UserFormValues> = async (data) => {
+    await addUser(data);
     toast({
       title: "Pengguna Ditambahkan",
       description: "Pengguna baru telah berhasil ditambahkan.",
@@ -65,7 +70,7 @@ export default function NewUserPage() {
                   <FormItem>
                     <FormLabel>Nama</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="John Doe" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -78,7 +83,7 @@ export default function NewUserPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john.doe@example.com" {...field} />
+                      <Input type="email" placeholder="john.doe@example.com" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -90,7 +95,7 @@ export default function NewUserPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Peran</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih peran" />
@@ -111,7 +116,7 @@ export default function NewUserPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cabang</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih cabang" />
@@ -128,10 +133,13 @@ export default function NewUserPage() {
                 )}
               />
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">Tambah Pengguna</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Tambah Pengguna
+                </Button>
               </div>
             </form>
           </Form>

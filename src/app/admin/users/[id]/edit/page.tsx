@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,8 @@ import { useUserStore } from "@/store/user-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
 import { useToast } from "@/hooks/use-toast";
+import { User } from "@/lib/types";
+import { Loader2 } from "lucide-react";
 
 const userSchema = z.object({
   id: z.string(),
@@ -28,24 +30,33 @@ type UserFormValues = z.infer<typeof userSchema>;
 export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
-  const { editUser, getUserById } = useUserStore();
-  const { branches } = useBranchStore();
+  const { editUser, getUserById, isSubmitting, fetchUsers } = useUserStore();
+  const { branches, fetchBranches } = useBranchStore();
   const { toast } = useToast();
   const userId = params.id as string;
-  const user = getUserById(userId);
+  const [user, setUser] = useState<User | undefined>(undefined);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
   });
 
   useEffect(() => {
-    if (user) {
-      form.reset(user);
+    const fetchInitialData = async () => {
+      await fetchUsers();
+      await fetchBranches();
+      const userData = getUserById(userId);
+      if (userData) {
+        setUser(userData);
+        form.reset(userData);
+      }
+    };
+    if (userId) {
+      fetchInitialData();
     }
-  }, [user, form]);
+  }, [userId, fetchUsers, fetchBranches, getUserById, form]);
 
-  const onSubmit: SubmitHandler<UserFormValues> = (data) => {
-    editUser(data);
+  const onSubmit: SubmitHandler<UserFormValues> = async (data) => {
+    await editUser(data);
     toast({
       title: "Pengguna Diperbarui",
       description: "Perubahan pada pengguna telah berhasil disimpan.",
@@ -54,7 +65,7 @@ export default function EditUserPage() {
   };
 
   if (!user) {
-    return <div>Pengguna tidak ditemukan.</div>;
+    return <div>Memuat data pengguna...</div>;
   }
 
   return (
@@ -74,7 +85,7 @@ export default function EditUserPage() {
                   <FormItem>
                     <FormLabel>Nama</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="John Doe" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -87,7 +98,7 @@ export default function EditUserPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john.doe@example.com" {...field} />
+                      <Input type="email" placeholder="john.doe@example.com" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -99,7 +110,7 @@ export default function EditUserPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Peran</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih peran" />
@@ -120,7 +131,7 @@ export default function EditUserPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cabang</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih cabang" />
@@ -137,10 +148,13 @@ export default function EditUserPage() {
                 )}
               />
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">Simpan Perubahan</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Simpan Perubahan
+                </Button>
               </div>
             </form>
           </Form>

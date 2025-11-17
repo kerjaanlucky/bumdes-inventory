@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -18,22 +18,27 @@ import { useBranchStore } from '@/store/branch-store';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BranchesPage() {
   const router = useRouter();
-  const { branches, deleteBranch } = useBranchStore();
+  const { branches, deleteBranch, fetchBranches, isFetching, isDeleting } = useBranchStore();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBranches();
+  }, [fetchBranches]);
 
   const handleDeleteClick = (branchId: string) => {
     setSelectedBranch(branchId);
     setDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedBranch) {
-      deleteBranch(selectedBranch);
+      await deleteBranch(selectedBranch);
       setDialogOpen(false);
       setSelectedBranch(null);
       toast({
@@ -75,7 +80,16 @@ export default function BranchesPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {branches.map(branch => (
+                {isFetching ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : branches.map(branch => (
                     <TableRow key={branch.id}>
                         <TableCell className="font-medium">{branch.name}</TableCell>
                         <TableCell>{branch.location}</TableCell>
@@ -120,6 +134,7 @@ export default function BranchesPage() {
         onConfirm={handleConfirmDelete}
         title="Apakah Anda yakin?"
         description="Tindakan ini tidak bisa dibatalkan. Ini akan menghapus cabang secara permanen."
+        isSubmitting={isDeleting}
       />
     </div>
   )

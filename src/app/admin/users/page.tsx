@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Table,
@@ -25,22 +25,27 @@ import { useUserStore } from '@/store/user-store';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UsersPage() {
   const router = useRouter();
-  const { users, deleteUser } = useUserStore();
+  const { users, deleteUser, fetchUsers, isFetching, isDeleting } = useUserStore();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleDeleteClick = (userId: string) => {
     setSelectedUser(userId);
     setDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedUser) {
-      deleteUser(selectedUser);
+      await deleteUser(selectedUser);
       setDialogOpen(false);
       setSelectedUser(null);
       toast({
@@ -85,7 +90,17 @@ export default function UsersPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {users.map(user => (
+                {isFetching ? (
+                   Array.from({ length: 4 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : users.map(user => (
                     <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
@@ -120,6 +135,7 @@ export default function UsersPage() {
         onConfirm={handleConfirmDelete}
         title="Apakah Anda yakin?"
         description="Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pengguna secara permanen."
+        isSubmitting={isDeleting}
       />
     </div>
   )

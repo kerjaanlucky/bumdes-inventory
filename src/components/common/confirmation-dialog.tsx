@@ -10,6 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "../ui/button";
+import { Loader2 } from "lucide-react";
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   title: string;
   description: string;
+  isSubmitting?: boolean;
 }
 
 export function ConfirmationDialog({
@@ -25,6 +28,7 @@ export function ConfirmationDialog({
   onConfirm,
   title,
   description,
+  isSubmitting = false,
 }: ConfirmationDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -34,8 +38,11 @@ export function ConfirmationDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Batal</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Konfirmasi</AlertDialogAction>
+          <AlertDialogCancel onClick={onClose} disabled={isSubmitting}>Batal</AlertDialogCancel>
+          <Button onClick={onConfirm} disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Konfirmasi
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -15,6 +15,7 @@ import { useBranchStore } from "@/store/branch-store";
 import { Branch } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const branchSchema = z.object({
   id: z.string(),
@@ -34,15 +35,33 @@ type BranchFormValues = Branch;
 export default function EditBranchPage() {
   const router = useRouter();
   const params = useParams();
-  const { editBranch, getBranchById } = useBranchStore();
+  const { editBranch, getBranchById, isSubmitting, fetchBranches } = useBranchStore();
   const { toast } = useToast();
   const branchId = params.id as string;
-  const branch = getBranchById(branchId);
+  const [branch, setBranch] = useState<Branch | undefined>(undefined);
+  
   const [invoicePreview, setInvoicePreview] = useState("INV-001");
 
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),
   });
+
+  useEffect(() => {
+    const fetchAndSetBranch = async () => {
+      // Ensure branches are loaded
+      await fetchBranches(); 
+      const branchData = getBranchById(branchId);
+      if (branchData) {
+        setBranch(branchData);
+        form.reset(branchData);
+        handleTemplateChange(branchData.invoiceTemplate, branchData.invoiceCustomFormat);
+      }
+    };
+
+    if (branchId) {
+      fetchAndSetBranch();
+    }
+  }, [branchId, fetchBranches, getBranchById, form]);
   
   const invoiceTemplate = form.watch("invoiceTemplate");
   const customFormat = form.watch("invoiceCustomFormat");
@@ -69,20 +88,13 @@ export default function EditBranchPage() {
   }
 
   useEffect(() => {
-    if (branch) {
-      form.reset(branch);
-      handleTemplateChange(branch.invoiceTemplate, branch.invoiceCustomFormat);
-    }
-  }, [branch, form]);
-
-  useEffect(() => {
     if (invoiceTemplate === 'custom') {
         handleTemplateChange('custom', customFormat);
     }
   }, [customFormat, invoiceTemplate]);
 
-  const onSubmit: SubmitHandler<BranchFormValues> = (data) => {
-    editBranch(data);
+  const onSubmit: SubmitHandler<BranchFormValues> = async (data) => {
+    await editBranch(data);
     toast({
       title: "Cabang Diperbarui",
       description: "Perubahan pada cabang telah berhasil disimpan.",
@@ -91,7 +103,7 @@ export default function EditBranchPage() {
   };
 
   if (!branch) {
-    return <div>Cabang tidak ditemukan.</div>;
+    return <div>Memuat data cabang...</div>;
   }
 
   return (
@@ -112,7 +124,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Nama</FormLabel>
                       <FormControl>
-                        <Input placeholder="Cabang Utama" {...field} />
+                        <Input placeholder="Cabang Utama" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -125,7 +137,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Lokasi</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jakarta, Indonesia" {...field} />
+                        <Input placeholder="Jakarta, Indonesia" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -138,7 +150,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Nomor Telepon Cabang</FormLabel>
                       <FormControl>
-                        <Input placeholder="0812-3456-7890" {...field} />
+                        <Input placeholder="0812-3456-7890" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -151,7 +163,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="cabang@example.com" {...field} />
+                        <Input type="email" placeholder="cabang@example.com" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -164,7 +176,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Pajak Default (%)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="11" {...field} />
+                        <Input type="number" placeholder="11" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -176,7 +188,7 @@ export default function EditBranchPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipe Pajak</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih tipe pajak" />
@@ -201,7 +213,7 @@ export default function EditBranchPage() {
                         <Select onValueChange={(value) => {
                             field.onChange(value);
                             handleTemplateChange(value, form.getValues('invoiceCustomFormat'));
-                        }} defaultValue={field.value}>
+                        }} defaultValue={field.value} disabled={isSubmitting}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih template faktur" />
@@ -225,7 +237,7 @@ export default function EditBranchPage() {
                                 <FormItem>
                                 <FormLabel>Format Faktur Kustom</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} />
+                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} disabled={isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -247,17 +259,20 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Catatan Faktur</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} />
+                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">Simpan Perubahan</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Simpan Perubahan
+                </Button>
               </div>
             </form>
           </Form>
