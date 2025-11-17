@@ -105,7 +105,7 @@ export default function UsersPage() {
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                            <Badge variant={user.role === 'Admin' ? 'destructive' : 'outline'}>{user.role}</Badge>
+                            <Badge variant={user.role === 'Manajer' ? 'destructive' : 'outline'}>{user.role}</Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">{user.branch}</TableCell>
                         <TableCell>

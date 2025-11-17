@@ -21,7 +21,7 @@ const userSchema = z.object({
   avatar: z.string(),
   name: z.string().min(1, "Nama wajib diisi"),
   email: z.string().email("Alamat email tidak valid"),
-  role: z.enum(["Admin", "User"]),
+  role: z.enum(["Manajer", "Kasir"]),
   branch: z.string().min(1, "Cabang wajib diisi"),
 });
 
@@ -117,8 +117,8 @@ export default function EditUserPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="User">Pengguna</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Kasir">Kasir</SelectItem>
+                        <SelectItem value="Manajer">Manajer</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

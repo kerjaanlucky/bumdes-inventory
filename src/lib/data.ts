@@ -1,16 +1,16 @@
 import { User, Branch, Item, Transaction, Sale, Purchase } from "./types";
 
 export const users: User[] = [
-  { id: 'USR001', name: 'Alice Johnson', email: 'alice@example.com', role: 'Admin', branch: 'Main', avatar: '/avatars/01.png' },
-  { id: 'USR002', name: 'Bob Williams', email: 'bob@example.com', role: 'User', branch: 'West', avatar: '/avatars/02.png' },
-  { id: 'USR003', name: 'Charlie Brown', email: 'charlie@example.com', role: 'User', branch: 'East', avatar: '/avatars/03.png' },
-  { id: 'USR004', name: 'Diana Miller', email: 'diana@example.com', role: 'User', branch: 'Main', avatar: '/avatars/04.png' },
+  { id: 'USR001', name: 'Alice Johnson', email: 'alice@example.com', role: 'Manajer', branch: 'Main', avatar: '/avatars/01.png' },
+  { id: 'USR002', name: 'Bob Williams', email: 'bob@example.com', role: 'Kasir', branch: 'West', avatar: '/avatars/02.png' },
+  { id: 'USR003', name: 'Charlie Brown', email: 'charlie@example.com', role: 'Kasir', branch: 'East', avatar: '/avatars/03.png' },
+  { id: 'USR004', name: 'Diana Miller', email: 'diana@example.com', role: 'Kasir', branch: 'Main', avatar: '/avatars/04.png' },
 ];
 
 export const branches: Branch[] = [
-  { id: 'BRN01', name: 'Cabang Utama', location: 'New York, NY', manager: 'Alice Johnson', invoiceTemplate: 'sequential' },
-  { id: 'BRN02', name: 'Cabang Barat', location: 'Los Angeles, CA', manager: 'Bob Williams', invoiceTemplate: 'date' },
-  { id: 'BRN03', name: 'Cabang Timur', location: 'Miami, FL', manager: 'Charlie Brown', invoiceTemplate: 'custom' },
+  { id: 'BRN01', name: 'Cabang Utama', location: 'New York, NY', invoiceTemplate: 'sequential' },
+  { id: 'BRN02', name: 'Cabang Barat', location: 'Los Angeles, CA', invoiceTemplate: 'date' },
+  { id: 'BRN03', name: 'Cabang Timur', location: 'Miami, FL', invoiceTemplate: 'custom' },
 ];
 
 export const items: Item[] = [
