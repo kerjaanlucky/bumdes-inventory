@@ -24,10 +24,12 @@ import { Badge } from "@/components/ui/badge";
 import { useUserStore } from '@/store/user-store';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export default function UsersPage() {
   const router = useRouter();
   const { users, deleteUser } = useUserStore();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
@@ -39,6 +41,10 @@ export default function UsersPage() {
   const handleConfirmDelete = () => {
     if (selectedUser) {
       deleteUser(selectedUser);
+      toast({
+        title: "Pengguna Dihapus",
+        description: "Pengguna telah berhasil dihapus.",
+      });
       setSelectedUser(null);
       setDialogOpen(false);
     }

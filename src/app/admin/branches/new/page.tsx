@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 const branchSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
@@ -31,6 +32,7 @@ type BranchFormValues = z.infer<typeof branchSchema>;
 export default function NewBranchPage() {
   const router = useRouter();
   const { addBranch } = useBranchStore();
+  const { toast } = useToast();
   const [invoicePreview, setInvoicePreview] = useState("INV-001");
 
   const form = useForm<BranchFormValues>({
@@ -71,9 +73,20 @@ export default function NewBranchPage() {
             setInvoicePreview("INV-001");
     }
   }
+  
+  useEffect(() => {
+    if (invoiceTemplate === 'custom') {
+        handleTemplateChange('custom', customFormat);
+    }
+  }, [customFormat, invoiceTemplate]);
+
 
   const onSubmit: SubmitHandler<BranchFormValues> = (data) => {
     addBranch(data);
+    toast({
+      title: "Cabang Ditambahkan",
+      description: "Cabang baru telah berhasil ditambahkan.",
+    });
     router.push("/admin/branches");
   };
 
@@ -184,7 +197,7 @@ export default function NewBranchPage() {
                         <FormLabel>Template Faktur</FormLabel>
                         <Select onValueChange={(value) => {
                             field.onChange(value);
-                            handleTemplateChange(value, customFormat);
+                            handleTemplateChange(value, form.getValues('invoiceCustomFormat'));
                         }} defaultValue={field.value}>
                             <FormControl>
                             <SelectTrigger>
@@ -209,10 +222,7 @@ export default function NewBranchPage() {
                                 <FormItem>
                                 <FormLabel>Format Faktur Kustom</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} onChange={(e) => {
-                                        field.onChange(e);
-                                        handleTemplateChange('custom', e.target.value);
-                                    }}/>
+                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>

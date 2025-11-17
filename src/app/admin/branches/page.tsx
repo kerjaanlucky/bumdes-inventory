@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -18,10 +17,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useBranchStore } from '@/store/branch-store';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 export default function BranchesPage() {
   const router = useRouter();
   const { branches, deleteBranch } = useBranchStore();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
@@ -33,6 +34,10 @@ export default function BranchesPage() {
   const handleConfirmDelete = () => {
     if (selectedBranch) {
       deleteBranch(selectedBranch);
+      toast({
+        title: "Cabang Dihapus",
+        description: "Cabang telah berhasil dihapus.",
+      });
       setSelectedBranch(null);
       setDialogOpen(false);
     }

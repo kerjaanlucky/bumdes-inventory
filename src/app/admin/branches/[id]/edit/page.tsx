@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBranchStore } from "@/store/branch-store";
 import { Branch } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 const branchSchema = z.object({
   id: z.string(),
@@ -34,6 +35,7 @@ export default function EditBranchPage() {
   const router = useRouter();
   const params = useParams();
   const { editBranch, getBranchById } = useBranchStore();
+  const { toast } = useToast();
   const branchId = params.id as string;
   const branch = getBranchById(branchId);
   const [invoicePreview, setInvoicePreview] = useState("INV-001");
@@ -81,6 +83,10 @@ export default function EditBranchPage() {
 
   const onSubmit: SubmitHandler<BranchFormValues> = (data) => {
     editBranch(data);
+    toast({
+      title: "Cabang Diperbarui",
+      description: "Perubahan pada cabang telah berhasil disimpan.",
+    });
     router.push("/admin/branches");
   };
 
@@ -194,7 +200,7 @@ export default function EditBranchPage() {
                         <FormLabel>Template Faktur</FormLabel>
                         <Select onValueChange={(value) => {
                             field.onChange(value);
-                            handleTemplateChange(value, customFormat);
+                            handleTemplateChange(value, form.getValues('invoiceCustomFormat'));
                         }} defaultValue={field.value}>
                             <FormControl>
                             <SelectTrigger>

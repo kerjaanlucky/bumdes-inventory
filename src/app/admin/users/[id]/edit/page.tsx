@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useUserStore } from "@/store/user-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
+import { useToast } from "@/hooks/use-toast";
 
 const userSchema = z.object({
   id: z.string(),
@@ -29,6 +30,7 @@ export default function EditUserPage() {
   const params = useParams();
   const { editUser, getUserById } = useUserStore();
   const { branches } = useBranchStore();
+  const { toast } = useToast();
   const userId = params.id as string;
   const user = getUserById(userId);
 
@@ -44,6 +46,10 @@ export default function EditUserPage() {
 
   const onSubmit: SubmitHandler<UserFormValues> = (data) => {
     editUser(data);
+    toast({
+      title: "Pengguna Diperbarui",
+      description: "Perubahan pada pengguna telah berhasil disimpan.",
+    });
     router.push("/admin/users");
   };
 

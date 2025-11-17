@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useUserStore } from "@/store/user-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
+import { useToast } from "@/hooks/use-toast";
 
 const userSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
@@ -26,6 +27,7 @@ export default function NewUserPage() {
   const router = useRouter();
   const { addUser } = useUserStore();
   const { branches } = useBranchStore();
+  const { toast } = useToast();
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -39,6 +41,10 @@ export default function NewUserPage() {
 
   const onSubmit: SubmitHandler<UserFormValues> = (data) => {
     addUser(data);
+    toast({
+      title: "Pengguna Ditambahkan",
+      description: "Pengguna baru telah berhasil ditambahkan.",
+    });
     router.push("/admin/users");
   };
 
