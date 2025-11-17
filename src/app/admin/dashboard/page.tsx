@@ -25,7 +25,7 @@ import {
   Activity,
   CreditCard,
   DollarSign,
-  PackageWarning,
+  PackageX,
 } from "lucide-react";
 import { transactions, chartData } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +62,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-            <PackageWarning className="h-4 w-4 text-muted-foreground" />
+            <PackageX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">12</div>
