@@ -70,7 +70,7 @@ export default function BranchesPage() {
                 <TableRow>
                     <TableHead>Nama</TableHead>
                     <TableHead>Lokasi</TableHead>
-                    <TableHead className="hidden md:table-cell">Manajer</TableHead>
+                    <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>
                     <span className="sr-only">Aksi</span>
                     </TableHead>
@@ -81,7 +81,7 @@ export default function BranchesPage() {
                     <TableRow key={branch.id}>
                         <TableCell className="font-medium">{branch.name}</TableCell>
                         <TableCell>{branch.location}</TableCell>
-                        <TableCell className="hidden md:table-cell">{branch.manager}</TableCell>
+                        <TableCell className="hidden md:table-cell">{branch.email}</TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

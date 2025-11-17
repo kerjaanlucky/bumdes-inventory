@@ -11,13 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
-import { useUserStore } from "@/store/user-store";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 const branchSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   location: z.string().min(1, "Lokasi wajib diisi"),
-  manager: z.string().min(1, "Manajer wajib diisi"),
-  invoiceTemplate: z.string().optional(),
+  invoiceTemplate: z.enum(["sequential", "date", "custom"]).optional(),
   defaultTax: z.coerce.number().optional(),
   phone: z.string().optional(),
   email: z.string().email({ message: "Alamat email tidak valid" }).optional().or(z.literal('')),
@@ -30,15 +30,14 @@ type BranchFormValues = z.infer<typeof branchSchema>;
 export default function NewBranchPage() {
   const router = useRouter();
   const { addBranch } = useBranchStore();
-  const { users } = useUserStore();
+  const [invoicePreview, setInvoicePreview] = useState("INV-001");
 
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),
     defaultValues: {
       name: "",
       location: "",
-      manager: "",
-      invoiceTemplate: "",
+      invoiceTemplate: "sequential",
       defaultTax: 0,
       phone: "",
       email: "",
@@ -46,6 +45,27 @@ export default function NewBranchPage() {
       invoiceNotes: "",
     },
   });
+
+  const handleTemplateChange = (value: string) => {
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    switch(value) {
+        case "sequential":
+            setInvoicePreview("INV-001");
+            break;
+        case "date":
+            setInvoicePreview(`INV-${year}${month}${day}-001`);
+            break;
+        case "custom":
+            setInvoicePreview("Format Kustom Anda");
+            break;
+        default:
+            setInvoicePreview("INV-001");
+    }
+  }
 
   const onSubmit: SubmitHandler<BranchFormValues> = (data) => {
     addBranch(data);
@@ -89,28 +109,7 @@ export default function NewBranchPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="manager"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Manajer</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih manajer" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {users.map(user => (
-                            <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                
                 <FormField
                   control={form.control}
                   name="phone"
@@ -171,19 +170,39 @@ export default function NewBranchPage() {
                     </FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name="invoiceTemplate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Template Faktur</FormLabel>
-                       <FormControl>
-                        <Input placeholder="Template Standar" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 <div className="md:col-span-2">
+                    <FormField
+                    control={form.control}
+                    name="invoiceTemplate"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Template Faktur</FormLabel>
+                        <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            handleTemplateChange(value);
+                        }} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih template faktur" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="sequential">Nomor Urut</SelectItem>
+                                <SelectItem value="date">Tanggal Otomatis</SelectItem>
+                                <SelectItem value="custom">Kustom</SelectItem>
+                            </SelectContent>
+                        </Select>
+                         <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <div className="mt-2">
+                        <FormLabel>Pratinjau Nomor Faktur</FormLabel>
+                        <div className="mt-1">
+                            <Badge variant="secondary">{invoicePreview}</Badge>
+                        </div>
+                    </div>
+                </div>
               </div>
               <FormField
                   control={form.control}

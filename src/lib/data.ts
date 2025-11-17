@@ -8,9 +8,9 @@ export const users: User[] = [
 ];
 
 export const branches: Branch[] = [
-  { id: 'BRN01', name: 'Main Branch', location: 'New York, NY', manager: 'Alice Johnson' },
-  { id: 'BRN02', name: 'West Branch', location: 'Los Angeles, CA', manager: 'Bob Williams' },
-  { id: 'BRN03', name: 'East Branch', location: 'Miami, FL', manager: 'Charlie Brown' },
+  { id: 'BRN01', name: 'Cabang Utama', location: 'New York, NY', manager: 'Alice Johnson', invoiceTemplate: 'sequential' },
+  { id: 'BRN02', name: 'Cabang Barat', location: 'Los Angeles, CA', manager: 'Bob Williams', invoiceTemplate: 'date' },
+  { id: 'BRN03', name: 'Cabang Timur', location: 'Miami, FL', manager: 'Charlie Brown', invoiceTemplate: 'custom' },
 ];
 
 export const items: Item[] = [

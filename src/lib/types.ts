@@ -12,7 +12,7 @@ export type Branch = {
   name: string;
   location: string;
   manager: string;
-  invoiceTemplate?: string;
+  invoiceTemplate?: 'sequential' | 'date' | 'custom';
   defaultTax?: number;
   phone?: string;
   email?: string;

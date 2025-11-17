@@ -4,7 +4,7 @@ import { Branch } from '@/lib/types';
 
 type BranchState = {
   branches: Branch[];
-  addBranch: (branch: Omit<Branch, 'id'>) => void;
+  addBranch: (branch: Omit<Branch, 'id' | 'manager'>) => void;
   editBranch: (branch: Branch) => void;
   deleteBranch: (branchId: string) => void;
   getBranchById: (branchId: string) => Branch | undefined;
@@ -16,6 +16,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     const newBranch: Branch = {
       ...branch,
       id: `BRN${String(get().branches.length + 1).padStart(2, '0')}`,
+      manager: 'N/A',
     };
     set((state) => ({
       branches: [...state.branches, newBranch],
@@ -24,7 +25,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
   editBranch: (updatedBranch) => {
     set((state) => ({
       branches: state.branches.map((branch) =>
-        branch.id === updatedBranch.id ? updatedBranch : branch
+        branch.id === updatedBranch.id ? { ...updatedBranch, manager: branch.manager } : branch
       ),
     }));
   },
