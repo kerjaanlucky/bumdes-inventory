@@ -34,12 +34,12 @@ export default function BranchesPage() {
   const handleConfirmDelete = () => {
     if (selectedBranch) {
       deleteBranch(selectedBranch);
+      setDialogOpen(false);
+      setSelectedBranch(null);
       toast({
         title: "Cabang Dihapus",
         description: "Cabang telah berhasil dihapus.",
       });
-      setSelectedBranch(null);
-      setDialogOpen(false);
     }
   };
 

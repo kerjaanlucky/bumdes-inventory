@@ -41,12 +41,12 @@ export default function UsersPage() {
   const handleConfirmDelete = () => {
     if (selectedUser) {
       deleteUser(selectedUser);
+      setDialogOpen(false);
+      setSelectedUser(null);
       toast({
         title: "Pengguna Dihapus",
         description: "Pengguna telah berhasil dihapus.",
       });
-      setSelectedUser(null);
-      setDialogOpen(false);
     }
   };
 
