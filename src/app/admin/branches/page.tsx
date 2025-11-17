@@ -46,13 +46,13 @@ export default function BranchesPage() {
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">Branch Management</h1>
+        <h1 className="text-lg font-semibold md:text-2xl font-headline">Manajemen Cabang</h1>
         <div className="ml-auto flex items-center gap-2">
             <Button size="sm" className="h-8 gap-1" asChild>
               <Link href="/admin/branches/new">
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Branch
+                    Tambah Cabang
                 </span>
               </Link>
             </Button>
@@ -61,18 +61,18 @@ export default function BranchesPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Branches</CardTitle>
-            <CardDescription>Manage your company's branches.</CardDescription>
+            <CardTitle>Cabang</CardTitle>
+            <CardDescription>Kelola cabang perusahaan Anda.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="hidden md:table-cell">Manager</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Lokasi</TableHead>
+                    <TableHead className="hidden md:table-cell">Manajer</TableHead>
                     <TableHead>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">Aksi</span>
                     </TableHead>
                 </TableRow>
                 </TableHeader>
@@ -87,13 +87,13 @@ export default function BranchesPage() {
                             <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Buka menu</span>
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/branches/${branch.id}/edit`)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(branch.id)}>Delete</DropdownMenuItem>
+                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/branches/${branch.id}/edit`)}>Ubah</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClick(branch.id)}>Hapus</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         </TableCell>
@@ -107,8 +107,8 @@ export default function BranchesPage() {
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Are you sure?"
-        description="This action cannot be undone. This will permanently delete the branch."
+        title="Apakah Anda yakin?"
+        description="Tindakan ini tidak bisa dibatalkan. Ini akan menghapus cabang secara permanen."
       />
     </div>
   )

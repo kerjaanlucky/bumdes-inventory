@@ -19,37 +19,37 @@ import {
 
 const userLinks = [
   {
-    label: "Dashboard",
+    label: "Dasbor",
     href: "/user/dashboard",
     icon: LayoutDashboard,
   },
   {
-    label: "Items",
+    label: "Barang",
     href: "/user/items",
     icon: Package,
   },
   {
-    label: "Stock",
+    label: "Stok",
     href: "/user/stock",
     icon: Boxes,
   },
   {
-    label: "Purchases",
+    label: "Pembelian",
     href: "/user/purchases",
     icon: ShoppingCart,
   },
   {
-    label: "Sales",
+    label: "Penjualan",
     href: "/user/sales",
     icon: CreditCard,
   },
   {
-    label: "Reports",
+    label: "Laporan",
     href: "/user/reports",
     icon: BarChart3,
   },
   {
-    label: "Activity Log",
+    label: "Log Aktivitas",
     href: "/user/activity",
     icon: History,
   },

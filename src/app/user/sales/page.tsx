@@ -22,14 +22,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function SalesPage() {
     const getStatusVariant = (status: string) => {
         switch (status) {
-            case "Completed":
+            case "Selesai":
                 return "default"
-            case "Pending":
+            case "Tertunda":
                 return "secondary"
-            case "Canceled":
+            case "Dibatalkan":
                 return "destructive"
             default:
                 return "outline"
+        }
+    }
+
+    const salesStatusIndo = (status: string) => {
+        switch (status) {
+            case "Completed":
+                return "Selesai";
+            case "Pending":
+                return "Tertunda";
+            case "Canceled":
+                return "Dibatalkan";
+            default:
+                return status;
         }
     }
 
@@ -41,7 +54,7 @@ export default function SalesPage() {
             <Button size="sm" className="h-8 gap-1">
                 <PlusCircle className="h-3.5 w-3.so" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    New Sale
+                    Penjualan Baru
                 </span>
             </Button>
         </div>
@@ -49,20 +62,20 @@ export default function SalesPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Sales Transactions</CardTitle>
-            <CardDescription>Record and manage your sales.</CardDescription>
+            <CardTitle>Transaksi Penjualan</CardTitle>
+            <CardDescription>Catat dan kelola penjualan Anda.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Sale ID</TableHead>
-                    <TableHead>Customer</TableHead>
+                    <TableHead>ID Penjualan</TableHead>
+                    <TableHead>Pelanggan</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                    <TableHead className="hidden md:table-cell">Tanggal</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">Aksi</span>
                     </TableHead>
                 </TableRow>
                 </TableHeader>
@@ -72,22 +85,22 @@ export default function SalesPage() {
                         <TableCell className="font-medium">{sale.id}</TableCell>
                         <TableCell>{sale.customer}</TableCell>
                         <TableCell>
-                            <Badge variant={getStatusVariant(sale.status)}>{sale.status}</Badge>
+                            <Badge variant={getStatusVariant(salesStatusIndo(sale.status))}>{salesStatusIndo(sale.status)}</Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">{sale.date}</TableCell>
-                        <TableCell className="text-right">${sale.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">Rp{sale.total.toLocaleString('id-ID')}</TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Buka menu</span>
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Generate Invoice</DropdownMenuItem>
+                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                            <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
+                            <DropdownMenuItem>Buat Faktur</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         </TableCell>

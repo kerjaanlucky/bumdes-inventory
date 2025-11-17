@@ -15,17 +15,17 @@ import {
 
 const adminLinks = [
   {
-    label: "Dashboard",
+    label: "Dasbor",
     href: "/admin/dashboard",
     icon: LayoutDashboard,
   },
   {
-    label: "Branches",
+    label: "Cabang",
     href: "/admin/branches",
     icon: Building2,
   },
   {
-    label: "Users",
+    label: "Pengguna",
     href: "/admin/users",
     icon: Users,
   },

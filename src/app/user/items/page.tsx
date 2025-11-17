@@ -23,14 +23,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function ItemsPage() {
     const getStatusVariant = (status: string) => {
         switch (status) {
-            case "In Stock":
+            case "Tersedia":
                 return "default"
-            case "Low Stock":
+            case "Stok Rendah":
                 return "secondary"
-            case "Out of Stock":
+            case "Habis":
                 return "destructive"
             default:
                 return "outline"
+        }
+    }
+    
+    const itemStatusIndo = (status: string) => {
+        switch (status) {
+            case "In Stock":
+                return "Tersedia"
+            case "Low Stock":
+                return "Stok Rendah"
+            case "Out of Stock":
+                return "Habis"
+            default:
+                return status
         }
     }
 
@@ -42,7 +55,7 @@ export default function ItemsPage() {
             <Button size="sm" className="h-8 gap-1">
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Item
+                    Tambah Barang
                 </span>
             </Button>
         </div>
@@ -50,20 +63,20 @@ export default function ItemsPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Items</CardTitle>
-            <CardDescription>Manage your products and view their inventory status.</CardDescription>
+            <CardTitle>Barang</CardTitle>
+            <CardDescription>Kelola produk Anda dan lihat status inventarisnya.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Nama</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead className="hidden md:table-cell">Stock</TableHead>
-                    <TableHead className="hidden md:table-cell">Category</TableHead>
+                    <TableHead>Harga</TableHead>
+                    <TableHead className="hidden md:table-cell">Stok</TableHead>
+                    <TableHead className="hidden md:table-cell">Kategori</TableHead>
                     <TableHead>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">Aksi</span>
                     </TableHead>
                 </TableRow>
                 </TableHeader>
@@ -72,9 +85,9 @@ export default function ItemsPage() {
                     <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>
-                            <Badge variant={getStatusVariant(item.status)}>{item.status}</Badge>
+                            <Badge variant={getStatusVariant(itemStatusIndo(item.status))}>{itemStatusIndo(item.status)}</Badge>
                         </TableCell>
-                        <TableCell>${item.price.toFixed(2)}</TableCell>
+                        <TableCell>Rp{item.price.toLocaleString('id-ID')}</TableCell>
                         <TableCell className="hidden md:table-cell">{item.stock}</TableCell>
                         <TableCell className="hidden md:table-cell">{item.category}</TableCell>
                         <TableCell>
@@ -82,13 +95,13 @@ export default function ItemsPage() {
                             <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Buka menu</span>
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
+                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                            <DropdownMenuItem>Ubah</DropdownMenuItem>
+                            <DropdownMenuItem>Hapus</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         </TableCell>

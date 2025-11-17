@@ -10,12 +10,12 @@ import { FileText } from "lucide-react"
 export default function ReportsPage() {
   return (
     <div className="flex flex-col gap-4 py-4">
-      <h1 className="text-lg font-semibold md:text-2xl font-headline">Reporting</h1>
+      <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Generate Reports</CardTitle>
+          <CardTitle>Buat Laporan</CardTitle>
           <CardDescription>
-            Generate reports on stock levels, purchase history, and sales data.
+            Buat laporan tentang tingkat stok, riwayat pembelian, dan data penjualan.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -23,10 +23,10 @@ export default function ReportsPage() {
               <div className="flex flex-col items-center gap-1 text-center">
                 <FileText className="h-10 w-10 text-muted-foreground" />
                 <h3 className="text-2xl font-bold tracking-tight">
-                  Reporting engine coming soon
+                  Mesin pelaporan segera hadir
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  You will be able to generate and export reports here.
+                  Anda akan dapat membuat dan mengekspor laporan di sini.
                 </p>
               </div>
             </div>

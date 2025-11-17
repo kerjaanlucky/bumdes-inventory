@@ -17,18 +17,17 @@ import { Branch } from "@/lib/types";
 
 const branchSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "Name is required"),
-  location: z.string().min(1, "Location is required"),
-  manager: z.string().min(1, "Manager is required"),
+  name: z.string().min(1, "Nama wajib diisi"),
+  location: z.string().min(1, "Lokasi wajib diisi"),
+  manager: z.string().min(1, "Manajer wajib diisi"),
   invoiceTemplate: z.string().optional(),
   defaultTax: z.coerce.number().optional(),
   phone: z.string().optional(),
-  email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('')),
+  email: z.string().email({ message: "Alamat email tidak valid" }).optional().or(z.literal('')),
   taxType: z.enum(["inclusive", "exclusive"]).optional(),
   invoiceNotes: z.string().optional(),
 });
 
-// We need to use the full Branch type here for the form submission
 type BranchFormValues = Branch;
 
 export default function EditBranchPage() {
@@ -55,15 +54,15 @@ export default function EditBranchPage() {
   };
 
   if (!branch) {
-    return <div>Branch not found.</div>;
+    return <div>Cabang tidak ditemukan.</div>;
   }
 
   return (
     <div className="flex flex-col gap-4 py-4">
       <Card>
         <CardHeader>
-          <CardTitle>Edit Branch</CardTitle>
-          <CardDescription>Update the branch details below.</CardDescription>
+          <CardTitle>Ubah Cabang</CardTitle>
+          <CardDescription>Perbarui detail cabang di bawah ini.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -74,9 +73,9 @@ export default function EditBranchPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>Nama</FormLabel>
                       <FormControl>
-                        <Input placeholder="Main Branch" {...field} />
+                        <Input placeholder="Cabang Utama" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -87,9 +86,9 @@ export default function EditBranchPage() {
                   name="location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location</FormLabel>
+                      <FormLabel>Lokasi</FormLabel>
                       <FormControl>
-                        <Input placeholder="New York, NY" {...field} />
+                        <Input placeholder="Jakarta, Indonesia" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -100,11 +99,11 @@ export default function EditBranchPage() {
                   name="manager"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Manager</FormLabel>
+                      <FormLabel>Manajer</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a manager" />
+                            <SelectValue placeholder="Pilih manajer" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -122,9 +121,9 @@ export default function EditBranchPage() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Branch Phone Number</FormLabel>
+                      <FormLabel>Nomor Telepon Cabang</FormLabel>
                       <FormControl>
-                        <Input placeholder="123-456-7890" {...field} />
+                        <Input placeholder="0812-3456-7890" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -137,7 +136,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="branch@example.com" {...field} />
+                        <Input type="email" placeholder="cabang@example.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -148,9 +147,9 @@ export default function EditBranchPage() {
                   name="defaultTax"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Default Tax (%)</FormLabel>
+                      <FormLabel>Pajak Default (%)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="5" {...field} />
+                        <Input type="number" placeholder="11" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -161,16 +160,16 @@ export default function EditBranchPage() {
                   name="taxType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tax Type</FormLabel>
+                      <FormLabel>Tipe Pajak</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select tax type" />
+                            <SelectValue placeholder="Pilih tipe pajak" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="exclusive">Exclusive</SelectItem>
-                          <SelectItem value="inclusive">Inclusive</SelectItem>
+                          <SelectItem value="exclusive">Tidak Termasuk</SelectItem>
+                          <SelectItem value="inclusive">Termasuk</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -182,9 +181,9 @@ export default function EditBranchPage() {
                   name="invoiceTemplate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Invoice Template</FormLabel>
+                      <FormLabel>Template Faktur</FormLabel>
                        <FormControl>
-                        <Input placeholder="Default Template" {...field} />
+                        <Input placeholder="Template Standar" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -196,9 +195,9 @@ export default function EditBranchPage() {
                   name="invoiceNotes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Invoice Notes</FormLabel>
+                      <FormLabel>Catatan Faktur</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Thank you for your business!" {...field} />
+                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -206,9 +205,9 @@ export default function EditBranchPage() {
                 />
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => router.back()}>
-                  Cancel
+                  Batal
                 </Button>
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit">Simpan Perubahan</Button>
               </div>
             </form>
           </Form>

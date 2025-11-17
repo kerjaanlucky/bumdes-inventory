@@ -47,13 +47,13 @@ export default function UsersPage() {
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">User Management</h1>
+        <h1 className="text-lg font-semibold md:text-2xl font-headline">Manajemen Pengguna</h1>
         <div className="ml-auto flex items-center gap-2">
             <Button size="sm" className="h-8 gap-1" asChild>
               <Link href="/admin/users/new">
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add User
+                    Tambah Pengguna
                 </span>
               </Link>
             </Button>
@@ -62,19 +62,19 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Users</CardTitle>
-            <CardDescription>Manage users, their roles, and branch assignments.</CardDescription>
+            <CardTitle>Pengguna</CardTitle>
+            <CardDescription>Kelola pengguna, peran, dan penugasan cabang mereka.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Nama</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="hidden md:table-cell">Branch</TableHead>
+                    <TableHead>Peran</TableHead>
+                    <TableHead className="hidden md:table-cell">Cabang</TableHead>
                     <TableHead>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">Aksi</span>
                     </TableHead>                
                 </TableRow>
                 </TableHeader>
@@ -92,13 +92,13 @@ export default function UsersPage() {
                             <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Buka menu</span>
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/edit`)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(user.id)}>Delete</DropdownMenuItem>
+                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/edit`)}>Ubah</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClick(user.id)}>Hapus</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         </TableCell>
@@ -112,8 +112,8 @@ export default function UsersPage() {
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Are you sure?"
-        description="This action cannot be undone. This will permanently delete the user."
+        title="Apakah Anda yakin?"
+        description="Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pengguna secara permanen."
       />
     </div>
   )

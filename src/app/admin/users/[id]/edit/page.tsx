@@ -16,10 +16,10 @@ import { useBranchStore } from "@/store/branch-store";
 const userSchema = z.object({
   id: z.string(),
   avatar: z.string(),
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
+  name: z.string().min(1, "Nama wajib diisi"),
+  email: z.string().email("Alamat email tidak valid"),
   role: z.enum(["Admin", "User"]),
-  branch: z.string().min(1, "Branch is required"),
+  branch: z.string().min(1, "Cabang wajib diisi"),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -48,15 +48,15 @@ export default function EditUserPage() {
   };
 
   if (!user) {
-    return <div>User not found.</div>;
+    return <div>Pengguna tidak ditemukan.</div>;
   }
 
   return (
     <div className="flex flex-col gap-4 py-4">
       <Card>
         <CardHeader>
-          <CardTitle>Edit User</CardTitle>
-          <CardDescription>Update the user's details.</CardDescription>
+          <CardTitle>Ubah Pengguna</CardTitle>
+          <CardDescription>Perbarui detail pengguna.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -66,7 +66,7 @@ export default function EditUserPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Nama</FormLabel>
                     <FormControl>
                       <Input placeholder="John Doe" {...field} />
                     </FormControl>
@@ -92,15 +92,15 @@ export default function EditUserPage() {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Role</FormLabel>
+                    <FormLabel>Peran</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
+                          <SelectValue placeholder="Pilih peran" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="User">User</SelectItem>
+                        <SelectItem value="User">Pengguna</SelectItem>
                         <SelectItem value="Admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
@@ -113,11 +113,11 @@ export default function EditUserPage() {
                 name="branch"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Branch</FormLabel>
+                    <FormLabel>Cabang</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a branch" />
+                          <SelectValue placeholder="Pilih cabang" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -132,9 +132,9 @@ export default function EditUserPage() {
               />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => router.back()}>
-                  Cancel
+                  Batal
                 </Button>
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit">Simpan Perubahan</Button>
               </div>
             </form>
           </Form>

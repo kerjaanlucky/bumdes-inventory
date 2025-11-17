@@ -17,15 +17,15 @@ export default function Home() {
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none font-headline">
-                  Streamline Your Stock Management
+                  Sederhanakan Manajemen Stok Anda
                 </h1>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                  InventoryFlow provides a comprehensive solution to manage items, track stock, and handle purchases and sales across all your branches.
+                  InventoryFlow menyediakan solusi komprehensif untuk mengelola barang, melacak stok, dan menangani pembelian dan penjualan di semua cabang Anda.
                 </p>
               </div>
               <div className="space-x-4">
                 <Button asChild>
-                  <Link href="/login">Get Started</Link>
+                  <Link href="/login">Mulai</Link>
                 </Button>
               </div>
             </div>
@@ -33,13 +33,13 @@ export default function Home() {
         </section>
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 InventoryFlow. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">&copy; 2024 InventoryFlow. Hak cipta dilindungi undang-undang.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Terms of Service
+            Ketentuan Layanan
           </Link>
           <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Privacy
+            Privasi
           </Link>
         </nav>
       </footer>
