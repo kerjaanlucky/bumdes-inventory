@@ -2,11 +2,11 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-export default function AdminPage() {
+export default function UserPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/admin/dashboard');
+    router.replace('/user/dashboard');
   }, [router]);
 
   return null;

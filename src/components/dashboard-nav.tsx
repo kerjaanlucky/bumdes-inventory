@@ -81,6 +81,9 @@ export function DashboardNav() {
   const { state } = useSidebar();
   const isAdminOpen = adminLinks.some((link) => pathname.startsWith(link.href));
 
+  // Determine base path for non-admin links
+  const basePath = pathname.includes('/admin') ? '/admin' : '';
+
   return (
     <>
       <SidebarMenu>
@@ -88,10 +91,10 @@ export function DashboardNav() {
           <SidebarMenuItem key={link.href}>
             <SidebarMenuButton
               asChild
-              isActive={pathname === link.href}
+              isActive={pathname === `${basePath}${link.href}`}
               tooltip={link.label}
             >
-              <Link href={link.href}>
+              <Link href={`${basePath}${link.href}`}>
                 <link.icon />
                 <span>{link.label}</span>
               </Link>
@@ -120,7 +123,7 @@ export function DashboardNav() {
           <SidebarMenuSub>
             {adminLinks.map((link) => (
               <SidebarMenuSubItem key={link.href}>
-                <SidebarMenuSubButton asChild isActive={pathname === link.href}>
+                <SidebarMenuSubButton asChild isActive={pathname.startsWith(link.href)}>
                   <Link href={link.href}>
                     <link.icon />
                     <span>{link.label}</span>

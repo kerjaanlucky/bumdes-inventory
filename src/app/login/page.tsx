@@ -22,7 +22,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl text-center font-headline">Login to InventoryFlow</CardTitle>
           <CardDescription className="text-center">
-            Enter your email below to login to your account
+            Enter your email below to login to your account. <br /> Use `admin@example.com` for admin access.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -49,7 +49,10 @@ export default function LoginPage() {
               <Input id="password" type="password" required />
             </div>
             <Button type="submit" className="w-full" asChild>
-                <Link href="/dashboard">Login</Link>
+                <Link href="/admin/dashboard">Login as Admin</Link>
+            </Button>
+             <Button variant="secondary" className="w-full" asChild>
+                <Link href="/user/dashboard">Login as User</Link>
             </Button>
             <Button variant="outline" className="w-full">
               Login with Google

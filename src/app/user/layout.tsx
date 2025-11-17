@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Sidebar,
   SidebarContent,
@@ -11,7 +12,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Icons } from "@/components/icons";
-import { DashboardNav } from "@/components/dashboard-nav";
+import { UserDashboardNav } from "@/components/user-dashboard-nav";
 import { UserNav } from "@/components/user-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Input } from "@/components/ui/input";
@@ -32,10 +33,9 @@ export default function DashboardLayout({
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <DashboardNav />
+          <UserDashboardNav />
         </SidebarContent>
         <SidebarFooter>
-            {/* Can add user profile here if needed, but UserNav is in header */}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
