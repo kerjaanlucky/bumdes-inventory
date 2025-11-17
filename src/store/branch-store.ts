@@ -25,7 +25,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
   editBranch: (updatedBranch) => {
     set((state) => ({
       branches: state.branches.map((branch) =>
-        branch.id === updatedBranch.id ? { ...updatedBranch, manager: branch.manager } : branch
+        branch.id === updatedBranch.id ? { ...branch, ...updatedBranch } : branch
       ),
     }));
   },

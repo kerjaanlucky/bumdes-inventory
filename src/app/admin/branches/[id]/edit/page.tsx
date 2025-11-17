@@ -20,6 +20,7 @@ const branchSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   location: z.string().min(1, "Lokasi wajib diisi"),
   invoiceTemplate: z.enum(["sequential", "date", "custom"]).optional(),
+  invoiceCustomFormat: z.string().optional(),
   defaultTax: z.coerce.number().optional(),
   phone: z.string().optional(),
   email: z.string().email({ message: "Alamat email tidak valid" }).optional().or(z.literal('')),
@@ -41,7 +42,10 @@ export default function EditBranchPage() {
     resolver: zodResolver(branchSchema),
   });
   
-  const handleTemplateChange = (value: string | undefined) => {
+  const invoiceTemplate = form.watch("invoiceTemplate");
+  const customFormat = form.watch("invoiceCustomFormat");
+  
+  const handleTemplateChange = (value: string | undefined, customFormatValue?: string | null) => {
     const date = new Date();
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -55,7 +59,7 @@ export default function EditBranchPage() {
             setInvoicePreview(`INV-${year}${month}${day}-001`);
             break;
         case "custom":
-            setInvoicePreview("Format Kustom Anda");
+            setInvoicePreview(customFormatValue || "Format Kustom Anda");
             break;
         default:
             setInvoicePreview("INV-001");
@@ -65,9 +69,15 @@ export default function EditBranchPage() {
   useEffect(() => {
     if (branch) {
       form.reset(branch);
-      handleTemplateChange(branch.invoiceTemplate);
+      handleTemplateChange(branch.invoiceTemplate, branch.invoiceCustomFormat);
     }
   }, [branch, form]);
+
+  useEffect(() => {
+    if (invoiceTemplate === 'custom') {
+        handleTemplateChange('custom', customFormat);
+    }
+  }, [customFormat, invoiceTemplate]);
 
   const onSubmit: SubmitHandler<BranchFormValues> = (data) => {
     editBranch(data);
@@ -175,7 +185,7 @@ export default function EditBranchPage() {
                     </FormItem>
                   )}
                 />
-                 <div className="md:col-span-2">
+                 <div className="md:col-span-2 space-y-4">
                     <FormField
                     control={form.control}
                     name="invoiceTemplate"
@@ -184,7 +194,7 @@ export default function EditBranchPage() {
                         <FormLabel>Template Faktur</FormLabel>
                         <Select onValueChange={(value) => {
                             field.onChange(value);
-                            handleTemplateChange(value);
+                            handleTemplateChange(value, customFormat);
                         }} defaultValue={field.value}>
                             <FormControl>
                             <SelectTrigger>
@@ -201,7 +211,22 @@ export default function EditBranchPage() {
                         </FormItem>
                     )}
                     />
-                    <div className="mt-2">
+                    {invoiceTemplate === 'custom' && (
+                         <FormField
+                            control={form.control}
+                            name="invoiceCustomFormat"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Format Faktur Kustom</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+                    <div>
                         <FormLabel>Pratinjau Nomor Faktur</FormLabel>
                         <div className="mt-1">
                             <Badge variant="secondary">{invoicePreview}</Badge>

@@ -18,6 +18,7 @@ const branchSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   location: z.string().min(1, "Lokasi wajib diisi"),
   invoiceTemplate: z.enum(["sequential", "date", "custom"]).optional(),
+  invoiceCustomFormat: z.string().optional(),
   defaultTax: z.coerce.number().optional(),
   phone: z.string().optional(),
   email: z.string().email({ message: "Alamat email tidak valid" }).optional().or(z.literal('')),
@@ -38,6 +39,7 @@ export default function NewBranchPage() {
       name: "",
       location: "",
       invoiceTemplate: "sequential",
+      invoiceCustomFormat: "",
       defaultTax: 0,
       phone: "",
       email: "",
@@ -46,7 +48,10 @@ export default function NewBranchPage() {
     },
   });
 
-  const handleTemplateChange = (value: string) => {
+  const invoiceTemplate = form.watch("invoiceTemplate");
+  const customFormat = form.watch("invoiceCustomFormat");
+
+  const handleTemplateChange = (value: string, customFormatValue?: string) => {
     const date = new Date();
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -60,7 +65,7 @@ export default function NewBranchPage() {
             setInvoicePreview(`INV-${year}${month}${day}-001`);
             break;
         case "custom":
-            setInvoicePreview("Format Kustom Anda");
+            setInvoicePreview(customFormatValue || "Format Kustom Anda");
             break;
         default:
             setInvoicePreview("INV-001");
@@ -170,7 +175,7 @@ export default function NewBranchPage() {
                     </FormItem>
                   )}
                 />
-                 <div className="md:col-span-2">
+                 <div className="md:col-span-2 space-y-4">
                     <FormField
                     control={form.control}
                     name="invoiceTemplate"
@@ -179,7 +184,7 @@ export default function NewBranchPage() {
                         <FormLabel>Template Faktur</FormLabel>
                         <Select onValueChange={(value) => {
                             field.onChange(value);
-                            handleTemplateChange(value);
+                            handleTemplateChange(value, customFormat);
                         }} defaultValue={field.value}>
                             <FormControl>
                             <SelectTrigger>
@@ -196,7 +201,25 @@ export default function NewBranchPage() {
                         </FormItem>
                     )}
                     />
-                    <div className="mt-2">
+                    {invoiceTemplate === 'custom' && (
+                         <FormField
+                            control={form.control}
+                            name="invoiceCustomFormat"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Format Faktur Kustom</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} onChange={(e) => {
+                                        field.onChange(e);
+                                        handleTemplateChange('custom', e.target.value);
+                                    }}/>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+                    <div>
                         <FormLabel>Pratinjau Nomor Faktur</FormLabel>
                         <div className="mt-1">
                             <Badge variant="secondary">{invoicePreview}</Badge>
