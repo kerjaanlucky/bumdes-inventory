@@ -1,3 +1,4 @@
+"use client";
 import { create } from 'zustand';
 import { Customer, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
@@ -50,6 +51,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     } catch (error) {
       console.error("Failed to fetch customers:", error);
       set({ isFetching: false });
+      toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Terjadi kesalahan saat mengambil data pelanggan." });
     }
   },
 
@@ -57,10 +59,12 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     set({ isFetching: true });
     try {
       const response = await fetch(`/api/customers/${customerId}`);
+      if (!response.ok) throw new Error("Customer not found");
       const customer: Customer = await response.json();
       return customer;
     } catch (error) {
       console.error("Failed to fetch customer:", error);
+      toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Pelanggan tidak ditemukan." });
       return undefined;
     } finally {
       set({ isFetching: false });
@@ -79,10 +83,11 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         toast({ title: "Pelanggan Ditambahkan", description: "Pelanggan baru telah berhasil ditambahkan." });
         await get().fetchCustomers();
       } else {
-        toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pelanggan." });
+        throw new Error("Failed to add customer");
       }
     } catch (error) {
       console.error("Failed to add customer:", error);
+      toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pelanggan." });
     } finally {
       set({ isSubmitting: false });
     }
@@ -100,10 +105,11 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
          toast({ title: "Pelanggan Diperbarui", description: "Perubahan pada pelanggan telah berhasil disimpan." });
         await get().fetchCustomers();
       } else {
-         toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pelanggan." });
+        throw new Error("Failed to edit customer");
       }
     } catch (error) {
       console.error("Failed to edit customer:", error);
+       toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pelanggan." });
     } finally {
       set({ isSubmitting: false });
     }
@@ -117,10 +123,11 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         toast({ title: "Pelanggan Dihapus", description: "Pelanggan telah berhasil dihapus." });
         await get().fetchCustomers();
       } else {
-        toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pelanggan." });
+         throw new Error("Failed to delete customer");
       }
     } catch (error) {
       console.error("Failed to delete customer:", error);
+      toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pelanggan." });
     } finally {
       set({ isDeleting: false });
     }

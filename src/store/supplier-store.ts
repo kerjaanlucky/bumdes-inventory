@@ -1,3 +1,4 @@
+"use client";
 import { create } from 'zustand';
 import { Supplier, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
@@ -50,6 +51,7 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     } catch (error) {
       console.error("Failed to fetch suppliers:", error);
       set({ isFetching: false });
+      toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Terjadi kesalahan saat mengambil data pemasok." });
     }
   },
 
@@ -57,10 +59,12 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     set({ isFetching: true });
     try {
       const response = await fetch(`/api/suppliers/${supplierId}`);
+       if (!response.ok) throw new Error("Supplier not found");
       const supplier: Supplier = await response.json();
       return supplier;
     } catch (error) {
       console.error("Failed to fetch supplier:", error);
+      toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Pemasok tidak ditemukan." });
       return undefined;
     } finally {
       set({ isFetching: false });
@@ -79,10 +83,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
         toast({ title: "Pemasok Ditambahkan", description: "Pemasok baru telah berhasil ditambahkan." });
         await get().fetchSuppliers();
       } else {
-        toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pemasok." });
+        throw new Error("Failed to add supplier");
       }
     } catch (error) {
       console.error("Failed to add supplier:", error);
+      toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pemasok." });
     } finally {
       set({ isSubmitting: false });
     }
@@ -100,10 +105,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
          toast({ title: "Pemasok Diperbarui", description: "Perubahan pada pemasok telah berhasil disimpan." });
         await get().fetchSuppliers();
       } else {
-         toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pemasok." });
+         throw new Error("Failed to edit supplier");
       }
     } catch (error) {
       console.error("Failed to edit supplier:", error);
+      toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pemasok." });
     } finally {
       set({ isSubmitting: false });
     }
@@ -117,10 +123,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
         toast({ title: "Pemasok Dihapus", description: "Pemasok telah berhasil dihapus." });
         await get().fetchSuppliers();
       } else {
-        toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pemasok." });
+        throw new Error("Failed to delete supplier");
       }
     } catch (error) {
       console.error("Failed to delete supplier:", error);
+       toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pemasok." });
     } finally {
       set({ isDeleting: false });
     }
