@@ -15,10 +15,6 @@ export async function GET(request: NextRequest) {
     nama_satuan: mockUnits.find(u => u.id === p.satuan_id)?.nama_satuan || 'N/A',
   }));
 
-  if (all) {
-    return NextResponse.json({ data: products });
-  }
-
   let filteredProducts = products;
 
   if (search) {
@@ -26,6 +22,10 @@ export async function GET(request: NextRequest) {
       p.nama_produk.toLowerCase().includes(search.toLowerCase()) ||
       p.kode_produk.toLowerCase().includes(search.toLowerCase())
     );
+  }
+
+  if (all) {
+    return NextResponse.json({ data: filteredProducts });
   }
 
   const total = filteredProducts.length;

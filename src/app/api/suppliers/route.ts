@@ -12,11 +12,6 @@ export async function GET(request: NextRequest) {
 
   let filteredSuppliers = mockSuppliers;
   
-  if (all) {
-    return NextResponse.json(filteredSuppliers);
-  }
-
-
   if (search) {
     filteredSuppliers = filteredSuppliers.filter(s =>
       s.nama_supplier.toLowerCase().includes(search.toLowerCase()) ||
@@ -24,6 +19,11 @@ export async function GET(request: NextRequest) {
       s.telepon?.toLowerCase().includes(search.toLowerCase())
     );
   }
+  
+  if (all) {
+    return NextResponse.json(filteredSuppliers);
+  }
+
 
   const total = filteredSuppliers.length;
   const startIndex = (page - 1) * limit;

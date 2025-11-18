@@ -8,18 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { usePurchaseStore } from "@/store/purchase-store";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle } from "lucide-react";
-import { Supplier, Product } from "@/lib/types";
+import { Supplier, Product, PurchaseItem as PurchaseItemType } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import SearchableSelect, { SearchableSelectOption } from "@/components/ui/searchable-select";
+import { useDebounce } from 'use-debounce';
 
 const purchaseItemSchema = z.object({
   id: z.string(),
@@ -50,19 +51,48 @@ export default function NewPurchasePage() {
   const router = useRouter();
   const { addPurchase, isSubmitting } = usePurchaseStore();
   const { toast } = useToast();
+  
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [isSuppliersLoading, setIsSuppliersLoading] = useState(false);
+  const [isProductsLoading, setIsProductsLoading] = useState(false);
+  
+  const [debouncedSupplierSearch] = useDebounce(supplierSearch, 300);
+  const [debouncedProductSearch] = useDebounce(productSearch, 300);
 
   useEffect(() => {
-    const fetchDropdownData = async () => {
-      const supplierResponse = await fetch('/api/suppliers?all=true');
-      const productResponse = await fetch('/api/products?all=true');
-      setSuppliers(await supplierResponse.json());
-      const productData = await productResponse.json();
-      setProducts(productData.data);
+    const fetchSuppliers = async () => {
+        setIsSuppliersLoading(true);
+        const response = await fetch(`/api/suppliers?all=true&search=${debouncedSupplierSearch}`);
+        setSuppliers(await response.json());
+        setIsSuppliersLoading(false);
     }
-    fetchDropdownData();
-  }, []);
+    fetchSuppliers();
+  }, [debouncedSupplierSearch]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+        setIsProductsLoading(true);
+        const response = await fetch(`/api/products?all=true&search=${debouncedProductSearch}`);
+        const productData = await response.json();
+        setProducts(productData.data);
+        setIsProductsLoading(false);
+    }
+    fetchProducts();
+  }, [debouncedProductSearch]);
+
+  const supplierOptions = useMemo(() => 
+    suppliers.map(s => ({ value: String(s.id), label: s.nama_supplier })), 
+    [suppliers]
+  );
+  
+  const productOptions = useMemo(() => 
+    products.map(p => ({ value: String(p.id), label: `${p.kode_produk} - ${p.nama_produk}` })), 
+    [products]
+  );
+
 
   const form = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema),
@@ -85,26 +115,36 @@ export default function NewPurchasePage() {
   const watchDiskonInvoice = form.watch("diskon_invoice");
   const watchPajak = form.watch("pajak");
 
+  const { subtotal, totalDiscount } = useMemo(() => {
+    const subtotal = watchItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+    const totalDiscount = watchItems.reduce((sum, item) => {
+        const itemDiscount = (item.subtotal || 0) * ((item.diskon || 0) / 100);
+        return sum + itemDiscount;
+    }, 0);
+    return { subtotal, totalDiscount };
+  }, [watchItems]);
+
+  const dpp = subtotal - totalDiscount - (watchDiskonInvoice || 0);
+  const taxAmount = dpp * ((watchPajak || 0) / 100);
+  const grandTotal = dpp + taxAmount + (watchOngkosKirim || 0);
+
   useEffect(() => {
-    const totalSubtotal = watchItems.reduce((sum, item) => item.subtotal || 0, 0);
-    const totalAfterDiscount = totalSubtotal - watchDiskonInvoice;
-    const totalAfterPpn = totalAfterDiscount + (totalAfterDiscount * (watchPajak / 100));
-    const grandTotal = totalAfterPpn + watchOngkosKirim;
     form.setValue("total_harga", grandTotal);
-  }, [watchItems, watchDiskonInvoice, watchPajak, watchOngkosKirim, form]);
+  }, [grandTotal, form]);
   
   const handleProductChange = (index: number, productId: number) => {
     const product = products.find(p => p.id === productId);
     if (product) {
       const currentItem = form.getValues(`items.${index}`);
+      const newSubtotal = 1 * product.harga_modal;
       update(index, {
         ...currentItem,
         produk_id: product.id,
         nama_produk: product.nama_produk,
         nama_satuan: product.nama_satuan || 'N/A',
-        harga_beli_satuan: product.harga_modal, // Use harga_modal as default harga_beli
+        harga_beli_satuan: product.harga_modal,
         jumlah: 1,
-        subtotal: product.harga_modal // Recalculate subtotal
+        subtotal: newSubtotal,
       });
     }
   };
@@ -173,18 +213,17 @@ export default function NewPurchasePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pemasok</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={String(field.value)} disabled={isSubmitting}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih pemasok" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {suppliers.map(sup => (
-                              <SelectItem key={sup.id} value={String(sup.id)}>{sup.nama_supplier}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <SearchableSelect
+                            options={supplierOptions}
+                            value={String(field.value || '')}
+                            onChange={(val) => field.onChange(Number(val))}
+                            onSearchChange={setSupplierSearch}
+                            placeholder="Cari pemasok..."
+                            isLoading={isSuppliersLoading}
+                            disabled={isSubmitting}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -204,6 +243,7 @@ export default function NewPurchasePage() {
                                     "pl-3 text-left font-normal",
                                     !field.value && "text-muted-foreground"
                                 )}
+                                disabled={isSubmitting}
                                 >
                                 {field.value ? (
                                     format(field.value, "PPP")
@@ -237,7 +277,7 @@ export default function NewPurchasePage() {
                     <FormItem>
                       <FormLabel>No Faktur Pemasok (Opsional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Contoh: INV/2024/07/XYZ" {...field} disabled={isSubmitting} />
+                        <Input placeholder="Contoh: INV/2024/07/XYZ" {...field} value={field.value || ''} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -259,6 +299,7 @@ export default function NewPurchasePage() {
                             <TableHead className="w-[30%]">Produk</TableHead>
                             <TableHead>Jumlah</TableHead>
                             <TableHead>Harga Beli</TableHead>
+                            <TableHead>Diskon (%)</TableHead>
                             <TableHead>Subtotal</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                         </TableRow>
@@ -267,37 +308,43 @@ export default function NewPurchasePage() {
                         {fields.map((item, index) => (
                             <TableRow key={item.id}>
                                 <TableCell>
-                                    <FormField
+                                     <FormField
                                         control={form.control}
                                         name={`items.${index}.produk_id`}
                                         render={({ field }) => (
-                                            <Select onValueChange={(value) => handleProductChange(index, Number(value))} defaultValue={String(field.value)}>
-                                                <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Pilih produk" />
-                                                </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                {products.map(p => (
-                                                    <SelectItem key={p.id} value={String(p.id)}>{p.nama_produk}</SelectItem>
-                                                ))}
-                                                </SelectContent>
-                                            </Select>
+                                          <SearchableSelect
+                                              options={productOptions}
+                                              value={String(field.value || '')}
+                                              onChange={(val) => handleProductChange(index, Number(val))}
+                                              onSearchChange={setProductSearch}
+                                              placeholder="Cari produk..."
+                                              isLoading={isProductsLoading}
+                                          />
                                         )}
                                     />
                                 </TableCell>
                                 <TableCell>
-                                     <FormField
-                                        control={form.control}
-                                        name={`items.${index}.jumlah`}
-                                        render={({ field }) => <Input type="number" {...field} />}
-                                    />
+                                     <div className="flex items-center gap-2">
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.jumlah`}
+                                            render={({ field }) => <Input type="number" {...field} className="w-24" />}
+                                        />
+                                        <span className="text-sm text-muted-foreground">{item.nama_satuan}</span>
+                                     </div>
                                 </TableCell>
                                  <TableCell>
                                      <FormField
                                         control={form.control}
                                         name={`items.${index}.harga_beli_satuan`}
                                         render={({ field }) => <Input type="number" {...field} />}
+                                    />
+                                </TableCell>
+                                 <TableCell>
+                                     <FormField
+                                        control={form.control}
+                                        name={`items.${index}.diskon`}
+                                        render={({ field }) => <Input type="number" {...field} className="w-20" />}
                                     />
                                 </TableCell>
                                 <TableCell>
@@ -322,19 +369,18 @@ export default function NewPurchasePage() {
                     <PlusCircle className="mr-2 h-4 w-4" /> Tambah Item
                 </Button>
             </CardContent>
-            <CardFooter className="flex justify-end">
-                <div className="w-full max-w-sm space-y-4">
-                    <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>Rp{watchItems.reduce((sum, item) => sum + (item.subtotal || 0), 0).toLocaleString('id-ID')}</span>
-                    </div>
-                     <Separator />
+          </Card>
+          
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <Card>
+                <CardHeader><CardTitle>Biaya Tambahan & Pajak</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
                      <div className="flex items-center justify-between">
                         <FormLabel>Diskon Invoice (Rp)</FormLabel>
                          <FormField
                             control={form.control}
                             name="diskon_invoice"
-                            render={({ field }) => <Input type="number" {...field} className="w-32" />}
+                            render={({ field }) => <Input type="number" {...field} className="w-48" />}
                         />
                     </div>
                      <div className="flex items-center justify-between">
@@ -342,7 +388,7 @@ export default function NewPurchasePage() {
                          <FormField
                             control={form.control}
                             name="pajak"
-                            render={({ field }) => <Input type="number" {...field} className="w-32" />}
+                            render={({ field }) => <Input type="number" {...field} className="w-48" />}
                         />
                     </div>
                      <div className="flex items-center justify-between">
@@ -350,17 +396,44 @@ export default function NewPurchasePage() {
                         <FormField
                             control={form.control}
                             name="ongkos_kirim"
-                            render={({ field }) => <Input type="number" {...field} className="w-32" />}
+                            render={({ field }) => <Input type="number" {...field} className="w-48" />}
                         />
                     </div>
-                     <Separator />
-                     <div className="flex justify-between font-bold text-lg">
-                        <span>Grand Total</span>
-                        <span>Rp{(form.getValues('total_harga') || 0).toLocaleString('id-ID')}</span>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader><CardTitle>Rincian Total</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                     <div className="flex justify-between text-sm">
+                        <span>Subtotal</span>
+                        <span>Rp{subtotal.toLocaleString('id-ID')}</span>
                     </div>
-                </div>
-            </CardFooter>
-          </Card>
+                    <div className="flex justify-between text-sm">
+                        <span>Total Diskon</span>
+                        <span className="text-red-500">- Rp{totalDiscount.toLocaleString('id-ID')}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-medium">
+                        <span>DPP (Total Setelah Diskon)</span>
+                        <span>Rp{dpp.toLocaleString('id-ID')}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm">
+                        <span>Pajak ({watchPajak || 0}%)</span>
+                        <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
+                    </div>
+                     <div className="flex justify-between text-sm">
+                        <span>Ongkos Kirim</span>
+                         <span>+ Rp{(watchOngkosKirim || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <Separator />
+                     <div className="flex justify-between font-bold text-lg text-primary">
+                        <span>Grand Total</span>
+                        <span>Rp{grandTotal.toLocaleString('id-ID')}</span>
+                    </div>
+                </CardContent>
+            </Card>
+           </div>
         </div>
       </form>
     </Form>
