@@ -1,7 +1,9 @@
+
 "use client"
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { ChevronDown, X, LoaderCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export interface SearchableSelectOption {
   value: string
@@ -41,12 +43,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   )
 
   useEffect(() => {
-    if (selectedOption) {
+    if (selectedOption && !isOpen) {
       setQuery(selectedOption.label)
-    } else {
-      if (!value) setQuery('')
+    } else if (!value) {
+      setQuery('')
     }
-  }, [selectedOption, value])
+  }, [selectedOption, value, isOpen])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,9 +68,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       setHighlightedIndex(-1)
       if (selectedOption) {
         setQuery(selectedOption.label)
+      } else if (!value) {
+        setQuery('')
+        onSearchChange('')
       }
     }
-  }, [isOpen, selectedOption])
+  }, [isOpen, selectedOption, value, onSearchChange])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value
@@ -129,17 +134,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className='block w-full px-3 py-2 bg-background border border-input rounded-md shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-ring focus:border-ring sm:text-sm pr-20'
+          className={cn('flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pr-12')}
         />
         <div className='absolute inset-y-0 right-0 flex items-center pr-2'>
           {isLoading && (
-            <LoaderCircle className='h-5 w-5 text-gray-400 animate-spin mr-1' />
+            <LoaderCircle className='h-5 w-5 text-muted-foreground animate-spin mr-1' />
           )}
           {query && !isLoading && !disabled && (
             <button
               type='button'
               onClick={handleClear}
-              className='p-1 text-gray-400 hover:text-gray-600'
+              className='p-1 text-muted-foreground hover:text-foreground'
             >
               <X size={16} />
             </button>
@@ -147,7 +152,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           <div className='h-full border-l border-border mx-2'></div>
           <button
             type='button'
-            className='p-1 text-gray-400 hover:text-gray-600'
+            className='p-1 text-muted-foreground hover:text-foreground'
             onClick={() => !disabled && setIsOpen(!isOpen)}
             disabled={disabled}
           >
@@ -159,18 +164,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </div>
 
         {isOpen && !disabled && (
-          <ul className='absolute z-10 w-full mt-1 bg-background shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm'>
+          <ul className='absolute z-20 w-full mt-1 bg-background shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm'>
             {options.length > 0 ? (
               options.map((option, index) => (
                 <li
                   key={option.value}
                   onClick={() => handleSelectOption(option)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`cursor-pointer select-none relative py-2 pl-3 pr-9 ${
-                    highlightedIndex === index
-                      ? 'text-white bg-primary'
-                      : 'text-foreground'
-                  }`}
+                  className={cn('cursor-pointer select-none relative py-2 pl-3 pr-9', {
+                    'bg-accent text-accent-foreground': highlightedIndex === index,
+                    'text-foreground': highlightedIndex !== index,
+                  })}
                 >
                   <span className='block truncate'>{option.label}</span>
                 </li>
@@ -195,3 +199,5 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 }
 
 export default SearchableSelect;
+
+    

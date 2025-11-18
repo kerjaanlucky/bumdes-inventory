@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler, Controller } from "react-hook-form";
@@ -14,12 +15,12 @@ import { usePurchaseStore } from "@/store/purchase-store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle } from "lucide-react";
-import { Supplier, Product, PurchaseItem as PurchaseItemType } from "@/lib/types";
+import { Supplier, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import SearchableSelect, { SearchableSelectOption } from "@/components/ui/searchable-select";
+import SearchableSelect from "@/components/ui/searchable-select";
 import { useDebounce } from 'use-debounce';
 
 const purchaseItemSchema = z.object({
@@ -58,6 +59,7 @@ export default function NewPurchasePage() {
   const [productSearch, setProductSearch] = useState('');
   const [isSuppliersLoading, setIsSuppliersLoading] = useState(false);
   const [isProductsLoading, setIsProductsLoading] = useState(false);
+  const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   
   const [debouncedSupplierSearch] = useDebounce(supplierSearch, 300);
   const [debouncedProductSearch] = useDebounce(productSearch, 300);
@@ -93,7 +95,6 @@ export default function NewPurchasePage() {
     [products]
   );
 
-
   const form = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema),
     defaultValues: {
@@ -101,11 +102,12 @@ export default function NewPurchasePage() {
       total_harga: 0,
       diskon_invoice: 0,
       pajak: 0,
-      ongkos_kirim: 0
+      ongkos_kirim: 0,
+      tanggal_pembelian: new Date(),
     },
   });
   
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -132,23 +134,6 @@ export default function NewPurchasePage() {
     form.setValue("total_harga", grandTotal);
   }, [grandTotal, form]);
   
-  const handleProductChange = (index: number, productId: number) => {
-    const product = products.find(p => p.id === productId);
-    if (product) {
-      const currentItem = form.getValues(`items.${index}`);
-      const newSubtotal = 1 * product.harga_modal;
-      update(index, {
-        ...currentItem,
-        produk_id: product.id,
-        nama_produk: product.nama_produk,
-        nama_satuan: product.nama_satuan || 'N/A',
-        harga_beli_satuan: product.harga_modal,
-        jumlah: 1,
-        subtotal: newSubtotal,
-      });
-    }
-  };
-  
   useEffect(() => {
     watchItems.forEach((item, index) => {
         if(item.jumlah && item.harga_beli_satuan) {
@@ -160,19 +145,27 @@ export default function NewPurchasePage() {
     })
   }, [watchItems, form]);
 
-
-  const addNewItem = () => {
-    append({
-      id: `new-${fields.length}`,
-      produk_id: 0,
-      nama_produk: '',
-      nama_satuan: '',
-      jumlah: 1,
-      harga_beli_satuan: 0,
-      diskon: 0,
-      subtotal: 0,
-      jumlah_diterima: 0,
-    });
+  const handleAddProduct = () => {
+    if (!selectedProductToAdd) {
+        toast({ variant: "destructive", title: "Produk belum dipilih", description: "Silakan cari dan pilih produk terlebih dahulu."});
+        return;
+    };
+    const product = products.find(p => p.id === Number(selectedProductToAdd));
+    if (product) {
+      append({
+        id: `new-${fields.length}`,
+        produk_id: product.id,
+        nama_produk: product.nama_produk,
+        nama_satuan: product.nama_satuan || 'N/A',
+        jumlah: 1,
+        harga_beli_satuan: product.harga_modal,
+        diskon: 0,
+        subtotal: product.harga_modal,
+        jumlah_diterima: 0,
+      });
+      setSelectedProductToAdd('');
+      setProductSearch('');
+    }
   };
 
   const onSubmit: SubmitHandler<PurchaseFormValues> = async (data) => {
@@ -292,82 +285,81 @@ export default function NewPurchasePage() {
               <CardTitle>Item Pembelian</CardTitle>
                <CardDescription>Tambahkan produk yang akan dibeli.</CardDescription>
             </CardHeader>
-            <CardContent className="overflow-visible">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[30%]">Produk</TableHead>
-                            <TableHead>Jumlah</TableHead>
-                            <TableHead>Harga Beli</TableHead>
-                            <TableHead>Diskon (%)</TableHead>
-                            <TableHead>Subtotal</TableHead>
-                            <TableHead className="text-right">Aksi</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {fields.map((item, index) => (
-                            <TableRow key={item.id}>
-                                <TableCell>
-                                     <FormField
-                                        control={form.control}
-                                        name={`items.${index}.produk_id`}
-                                        render={({ field }) => (
-                                          <SearchableSelect
-                                              options={productOptions}
-                                              value={String(field.value || '')}
-                                              onChange={(val) => handleProductChange(index, Number(val))}
-                                              onSearchChange={setProductSearch}
-                                              placeholder="Cari produk..."
-                                              isLoading={isProductsLoading}
-                                          />
-                                        )}
-                                    />
-                                </TableCell>
-                                <TableCell>
-                                     <div className="flex items-center gap-2">
+            <CardContent>
+                <div className="flex gap-2 mb-4">
+                    <div className="flex-grow">
+                        <SearchableSelect
+                            options={productOptions}
+                            value={selectedProductToAdd}
+                            onChange={setSelectedProductToAdd}
+                            onSearchChange={setProductSearch}
+                            placeholder="Cari produk untuk ditambahkan..."
+                            isLoading={isProductsLoading}
+                        />
+                    </div>
+                    <Button type="button" variant="outline" onClick={handleAddProduct}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Tambah
+                    </Button>
+                </div>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[30%]">Produk</TableHead>
+                                <TableHead>Jumlah</TableHead>
+                                <TableHead>Harga Beli</TableHead>
+                                <TableHead>Diskon (%)</TableHead>
+                                <TableHead className="text-right">Subtotal</TableHead>
+                                <TableHead className="text-right w-[50px]">Aksi</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {fields.map((item, index) => (
+                                <TableRow key={item.id}>
+                                    <TableCell className="font-medium">{item.nama_produk}</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <FormField
+                                                control={form.control}
+                                                name={`items.${index}.jumlah`}
+                                                render={({ field }) => <Input type="number" {...field} className="w-24" />}
+                                            />
+                                            <span className="text-sm text-muted-foreground">{item.nama_satuan}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
                                         <FormField
                                             control={form.control}
-                                            name={`items.${index}.jumlah`}
-                                            render={({ field }) => <Input type="number" {...field} className="w-24" />}
+                                            name={`items.${index}.harga_beli_satuan`}
+                                            render={({ field }) => <Input type="number" {...field} />}
                                         />
-                                        <span className="text-sm text-muted-foreground">{item.nama_satuan}</span>
-                                     </div>
-                                </TableCell>
-                                 <TableCell>
-                                     <FormField
-                                        control={form.control}
-                                        name={`items.${index}.harga_beli_satuan`}
-                                        render={({ field }) => <Input type="number" {...field} />}
-                                    />
-                                </TableCell>
-                                 <TableCell>
-                                     <FormField
-                                        control={form.control}
-                                        name={`items.${index}.diskon`}
-                                        render={({ field }) => <Input type="number" {...field} className="w-20" />}
-                                    />
-                                </TableCell>
-                                <TableCell>
-                                     <Controller
-                                        control={form.control}
-                                        name={`items.${index}.subtotal`}
-                                        render={({ field }) => (
-                                            <span>Rp{Number(field.value || 0).toLocaleString('id-ID')}</span>
-                                        )}
-                                    />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => remove(index)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-                <Button type="button" variant="outline" size="sm" className="mt-4" onClick={addNewItem}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Tambah Item
-                </Button>
+                                    </TableCell>
+                                    <TableCell>
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.diskon`}
+                                            render={({ field }) => <Input type="number" {...field} className="w-20" />}
+                                        />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Controller
+                                            control={form.control}
+                                            name={`items.${index}.subtotal`}
+                                            render={({ field }) => (
+                                                <span>Rp{Number(field.value || 0).toLocaleString('id-ID')}</span>
+                                            )}
+                                        />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
           </Card>
           
@@ -439,3 +431,5 @@ export default function NewPurchasePage() {
     </Form>
   );
 }
+
+    
