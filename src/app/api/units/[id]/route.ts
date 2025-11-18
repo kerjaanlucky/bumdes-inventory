@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import mockUnits from '@/lib/mock/units.json';
+import { units as mockUnits, setUnits, products as mockProducts } from '@/lib/mock/data';
 import { Unit } from '@/lib/types';
 
-let units: Unit[] = [...mockUnits];
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const unit = units.find((u) => u.id === parseInt(params.id));
+  const unit = mockUnits.find((u) => u.id === parseInt(params.id));
   if (!unit) {
     return new NextResponse('Unit not found', { status: 404 });
   }
@@ -19,6 +18,7 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  let units = mockUnits;
   const updatedUnitData: Unit = await request.json();
   const index = units.findIndex((u) => u.id === parseInt(params.id));
 
@@ -27,6 +27,7 @@ export async function PUT(
   }
 
   units[index] = { ...units[index], ...updatedUnitData };
+  setUnits(units);
   return NextResponse.json(units[index]);
 }
 
@@ -34,10 +35,17 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const index = units.findIndex((u) => u.id === parseInt(params.id));
+  let units = mockUnits;
+  const unitId = parseInt(params.id);
+  const index = units.findIndex((u) => u.id === unitId);
   if (index === -1) {
     return new NextResponse('Unit not found', { status: 404 });
   }
-  units = units.filter((u) => u.id !== parseInt(params.id));
-  return new NextResponse(null, { status: 204 });
+
+  const isOrphan = mockProducts.some(p => p.satuan_id === unitId);
+
+  const newUnits = units.filter((u) => u.id !== unitId);
+  setUnits(newUnits);
+
+  return NextResponse.json({ isOrphan }, { status: 200 });
 }

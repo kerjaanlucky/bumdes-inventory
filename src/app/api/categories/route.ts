@@ -1,8 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
-import mockCategories from '@/lib/mock/categories.json';
+import { categories as mockCategories, setCategories } from '@/lib/mock/data';
 import { Category } from '@/lib/types';
 
-let categories: Category[] = [...mockCategories];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,7 +9,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
 
-  let filteredCategories = categories;
+  let filteredCategories = mockCategories;
 
   if (search) {
     filteredCategories = filteredCategories.filter(c =>
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
   
   const allCategoriesForDropdown = searchParams.get('all');
   if (allCategoriesForDropdown) {
-    return NextResponse.json(categories);
+    return NextResponse.json(mockCategories);
   }
 
   const total = filteredCategories.length;
@@ -37,12 +36,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  let categories = mockCategories;
   const newCategoryData: { nama_kategori: string } = await request.json();
   const newCategory: Category = {
     ...newCategoryData,
     id: categories.length > 0 ? Math.max(...categories.map(c => c.id)) + 1 : 1,
     tenant_id: 1, // Assuming a single tenant
   };
-  categories.push(newCategory);
+  const newCategories = [...categories, newCategory];
+  setCategories(newCategories);
   return NextResponse.json(newCategory, { status: 201 });
 }

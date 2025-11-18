@@ -1,21 +1,28 @@
 import { Transaction, Sale, Purchase, Product, Category, Unit } from "./types";
-import mockProducts from './mock/products.json';
-import mockCategories from './mock/categories.json';
-import mockUnits from './mock/units.json';
+import initialProducts from './mock/products.json';
+import initialCategories from './mock/categories.json';
+import initialUnits from './mock/units.json';
 
-// Gabungkan data mock dengan nama kategori dan satuan
-export const products: Product[] = mockProducts.map(product => {
-  const category = mockCategories.find(c => c.id === product.kategori_id);
-  const unit = mockUnits.find(u => u.id === product.satuan_id);
-  return {
-    ...product,
-    nama_kategori: category ? category.nama_kategori : 'N/A',
-    nama_satuan: unit ? unit.nama_satuan : 'N/A',
-  };
-});
+// This is a temporary in-memory "database" to persist mock data across API requests.
+// In a real application, this would be replaced with a proper database connection.
+let productsDB: Product[] = [...initialProducts];
+let categoriesDB: Category[] = [...initialCategories];
+let unitsDB: Unit[] = [...initialUnits];
 
-export const categories: Category[] = mockCategories;
-export const units: Unit[] = mockUnits;
+export const products = productsDB;
+export const categories = categoriesDB;
+export const units = unitsDB;
+
+export const setProducts = (newProducts: Product[]) => {
+  productsDB = newProducts;
+};
+export const setCategories = (newCategories: Category[]) => {
+  categoriesDB = newCategories;
+};
+export const setUnits = (newUnits: Unit[]) => {
+  unitsDB = newUnits;
+};
+
 
 export const transactions: Transaction[] = [
     { id: 'TRN001', type: 'Sale', date: '2024-05-20', items: 2, amount: 1225.00 },

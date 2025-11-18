@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Unit, PaginatedResponse } from '@/lib/types';
+import { toast } from '@/hooks/use-toast';
 
 type UnitState = {
   units: Unit[];
@@ -92,6 +93,14 @@ export const useUnitStore = create<UnitState>((set, get) => ({
     try {
       const response = await fetch(`/api/units/${unitId}`, { method: 'DELETE' });
       if (response.ok) {
+        const { isOrphan } = await response.json();
+        if (isOrphan) {
+            toast({
+                variant: "destructive",
+                title: "Peringatan: Data Yatim Piatu",
+                description: "Satuan telah dihapus, tetapi beberapa produk yang terkait menjadi yatim piatu. Harap perbarui produk tersebut.",
+            });
+        }
         await get().fetchUnits();
       }
     } catch (error) {

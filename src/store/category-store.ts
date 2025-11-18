@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Category, PaginatedResponse } from '@/lib/types';
+import { toast } from '@/hooks/use-toast';
 
 type CategoryState = {
   categories: Category[];
@@ -92,6 +93,14 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     try {
       const response = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
       if (response.ok) {
+        const { isOrphan } = await response.json();
+        if (isOrphan) {
+            toast({
+                variant: "destructive",
+                title: "Peringatan: Data Yatim Piatu",
+                description: "Kategori telah dihapus, tetapi beberapa produk yang terkait menjadi yatim piatu. Harap perbarui produk tersebut.",
+            });
+        }
         await get().fetchCategories();
       }
     } catch (error) {

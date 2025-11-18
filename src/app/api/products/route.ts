@@ -1,20 +1,18 @@
 import { NextResponse, NextRequest } from 'next/server';
-import mockProducts from '@/lib/mock/products.json';
-import mockCategories from '@/lib/mock/categories.json';
-import mockUnits from '@/lib/mock/units.json';
+import { products as mockProducts, categories as mockCategories, units as mockUnits, setProducts } from '@/lib/mock/data';
 import { Product } from '@/lib/types';
-
-let products: Product[] = mockProducts.map(p => ({
-  ...p,
-  nama_kategori: mockCategories.find(c => c.id === p.kategori_id)?.nama_kategori || 'N/A',
-  nama_satuan: mockUnits.find(u => u.id === p.satuan_id)?.nama_satuan || 'N/A',
-}));
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
+
+  let products = mockProducts.map(p => ({
+    ...p,
+    nama_kategori: mockCategories.find(c => c.id === p.kategori_id)?.nama_kategori || 'N/A',
+    nama_satuan: mockUnits.find(u => u.id === p.satuan_id)?.nama_satuan || 'N/A',
+  }));
 
   let filteredProducts = products;
 
@@ -39,6 +37,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  let products = mockProducts;
   const newProductData: Omit<Product, 'id'> = await request.json();
   const newProduct: Product = {
     ...newProductData,
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
     nama_kategori: mockCategories.find(c => c.id === newProductData.kategori_id)?.nama_kategori,
     nama_satuan: mockUnits.find(u => u.id === newProductData.satuan_id)?.nama_satuan,
   };
-  products.push(newProduct);
-  // In a real app, you would save this to the products.json or a database.
+  const newProducts = [...products, newProduct];
+  setProducts(newProducts);
   return NextResponse.json(newProduct, { status: 201 });
 }

@@ -1,8 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
-import mockUnits from '@/lib/mock/units.json';
+import { units as mockUnits, setUnits } from '@/lib/mock/data';
 import { Unit } from '@/lib/types';
 
-let units: Unit[] = [...mockUnits];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,7 +9,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
 
-  let filteredUnits = units;
+  let filteredUnits = mockUnits;
 
   if (search) {
     filteredUnits = filteredUnits.filter(u =>
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const allUnitsForDropdown = searchParams.get('all');
   if (allUnitsForDropdown) {
-    return NextResponse.json(units);
+    return NextResponse.json(mockUnits);
   }
 
   const total = filteredUnits.length;
@@ -37,12 +36,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  let units = mockUnits;
   const newUnitData: { nama_satuan: string } = await request.json();
   const newUnit: Unit = {
     ...newUnitData,
     id: units.length > 0 ? Math.max(...units.map(u => u.id)) + 1 : 1,
     tenant_id: 1, // Assuming a single tenant
   };
-  units.push(newUnit);
+  const newUnits = [...units, newUnit];
+  setUnits(newUnits);
   return NextResponse.json(newUnit, { status: 201 });
 }
