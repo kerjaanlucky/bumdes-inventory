@@ -1,6 +1,6 @@
 "use client";
 import { create } from 'zustand';
-import { Purchase, PaginatedResponse } from '@/lib/types';
+import { Purchase, PaginatedResponse, PurchaseStatus } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 
 type PurchaseState = {
@@ -20,6 +20,7 @@ type PurchaseState = {
   addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status'>) => Promise<void>;
   editPurchase: (purchase: Purchase) => Promise<void>;
   deletePurchase: (purchaseId: number) => Promise<void>;
+  updatePurchaseStatus: (purchaseId: number, status: PurchaseStatus) => Promise<void>;
 };
 
 export const usePurchaseStore = create<PurchaseState>((set, get) => ({
@@ -104,7 +105,10 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       });
       if (response.ok) {
          toast({ title: "Pembelian Diperbarui", description: "Perubahan pada pembelian telah berhasil disimpan." });
-        await get().fetchPurchases();
+        // Don't refetch all, just update the single item in the list if it exists
+        set(state => ({
+            purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p)
+        }));
       } else {
         throw new Error("Failed to edit purchase");
       }
@@ -131,6 +135,48 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pembelian." });
     } finally {
       set({ isDeleting: false });
+    }
+  },
+  
+  updatePurchaseStatus: async (purchaseId: number, status: PurchaseStatus) => {
+    const currentPurchase = get().purchases.find(p => p.id === purchaseId) 
+      || await get().getPurchaseById(purchaseId);
+
+    if (!currentPurchase) {
+      toast({ variant: "destructive", title: "Gagal", description: "Pembelian tidak ditemukan." });
+      return;
+    }
+
+    set({ isSubmitting: true });
+    try {
+      const updatedPurchase = { 
+        ...currentPurchase, 
+        status,
+        history: [
+            ...(currentPurchase.history || []),
+            { status, tanggal: new Date().toISOString(), oleh: 'System' }
+        ]
+      };
+      
+      const response = await fetch(`/api/purchases/${purchaseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPurchase),
+      });
+
+      if (response.ok) {
+        toast({ title: "Status Diperbarui", description: `Status pembelian diubah menjadi ${status}.` });
+        set(state => ({
+            purchases: state.purchases.map(p => p.id === purchaseId ? updatedPurchase : p)
+        }));
+      } else {
+        throw new Error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      toast({ variant: "destructive", title: "Gagal Memperbarui Status", description: "Terjadi kesalahan." });
+    } finally {
+      set({ isSubmitting: false });
     }
   },
 }));

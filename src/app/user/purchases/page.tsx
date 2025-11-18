@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -12,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Edit, Trash2, Search } from "lucide-react";
+import { PlusCircle, Trash2, Search, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -144,25 +143,25 @@ export default function PurchasesPage() {
                         <TableCell>{format(new Date(purchase.tanggal_pembelian), "dd MMM yyyy")}</TableCell>
                         <TableCell>Rp{purchase.total_harga.toLocaleString('id-ID')}</TableCell>
                         <TableCell>
-                          <Badge variant={getStatusVariant(purchase.status)}>{purchase.status.replace('_', ' ')}</Badge>
+                          <Badge variant={getStatusVariant(purchase.status)}>{purchase.status.replace(/_/g, ' ')}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <TooltipProvider>
                             <div className="flex items-center justify-end gap-2">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => router.push(`/user/purchases/${purchase.id}/edit`)}>
-                                            <Edit className="h-4 w-4" />
-                                            <span className="sr-only">Ubah</span>
+                                        <Button variant="ghost" size="icon" onClick={() => router.push(`/user/purchases/${purchase.id}`)}>
+                                            <Eye className="h-4 w-4" />
+                                            <span className="sr-only">Lihat Detail</span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Ubah Pembelian</p>
+                                        <p>Lihat Detail</p>
                                     </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(purchase.id)}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(purchase.id)} disabled={purchase.status !== 'DRAFT'}>
                                             <Trash2 className="h-4 w-4" />
                                             <span className="sr-only">Hapus</span>
                                         </Button>
