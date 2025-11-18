@@ -17,7 +17,9 @@ import {
   CreditCard,
   BarChart3,
   Boxes,
-  Database
+  Database,
+  Users,
+  Truck
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
@@ -70,13 +72,29 @@ const masterDataLinks = [
     {
         label: "Satuan",
         href: "/user/units",
+    },
+    {
+        label: "Pelanggan",
+        href: "/user/customers",
+    },
+    {
+        label: "Pemasok",
+        href: "/user/suppliers",
     }
 ];
 
 
 export function NavUser() {
   const pathname = usePathname();
-  const [isMasterDataOpen, setIsMasterDataOpen] = React.useState(pathname.startsWith('/user/products') || pathname.startsWith('/user/categories') || pathname.startsWith('/user/units'));
+  const isMasterDataActive = masterDataLinks.some(link => pathname.startsWith(link.href));
+  const [isMasterDataOpen, setIsMasterDataOpen] = React.useState(isMasterDataActive);
+
+  React.useEffect(() => {
+    if (isMasterDataActive) {
+      setIsMasterDataOpen(true);
+    }
+  }, [isMasterDataActive]);
+
 
   return (
     <SidebarMenu>
@@ -100,7 +118,7 @@ export function NavUser() {
                  <SidebarMenuButton
                     variant="ghost"
                     className="w-full justify-start"
-                    isActive={pathname.startsWith('/user/products') || pathname.startsWith('/user/categories') || pathname.startsWith('/user/units')}
+                    isActive={isMasterDataActive}
                     >
                     <Database />
                     <span>Master Data</span>

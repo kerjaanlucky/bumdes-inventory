@@ -46,6 +46,24 @@ export interface Unit {
   tenant_id: number;
 }
 
+export interface Customer {
+  id: number;
+  nama_customer: string;
+  alamat?: string;
+  telepon?: string;
+  email?: string;
+  tenant_id: number;
+}
+
+export interface Supplier {
+  id: number;
+  nama_supplier: string;
+  alamat?: string;
+  telepon?: string;
+  email?: string;
+  tenant_id: number;
+}
+
 
 export type Transaction = {
   id: string;

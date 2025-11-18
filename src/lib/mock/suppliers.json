@@ -1,0 +1,6 @@
+
+[
+  { "id": 1, "nama_supplier": "PT Maju Jaya", "alamat": "Jl. Industri Raya No. 1, Bekasi", "telepon": "021-88889999", "email": "sales@majujaya.com", "tenant_id": 1 },
+  { "id": 2, "nama_supplier": "CV Sumber Rejeki", "alamat": "Jl. Gatot Subroto No. 88, Tangerang", "telepon": "021-77776666", "email": "info@sumberrejeki.com", "tenant_id": 1 },
+  { "id": 3, "nama_supplier": "Toko Grosir Elektronik", "alamat": "Harco Mangga Dua, Jakarta", "telepon": "081512341234", "email": "grosir@elektronik.com", "tenant_id": 1 }
+]

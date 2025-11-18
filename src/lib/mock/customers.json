@@ -1,0 +1,6 @@
+
+[
+  { "id": 1, "nama_customer": "Budi Santoso", "alamat": "Jl. Merdeka No. 10, Jakarta", "telepon": "081234567890", "email": "budi.s@example.com", "tenant_id": 1 },
+  { "id": 2, "nama_customer": "Citra Lestari", "alamat": "Jl. Pahlawan No. 5, Surabaya", "telepon": "081298765432", "email": "citra.l@example.com", "tenant_id": 1 },
+  { "id": 3, "nama_customer": "Dewi Anggraini", "alamat": "Jl. Sudirman No. 123, Bandung", "telepon": "081211223344", "email": "dewi.a@example.com", "tenant_id": 1 }
+]

@@ -1,17 +1,23 @@
-import { Transaction, Sale, Purchase, Product, Category, Unit } from "./types";
+import { Transaction, Sale, Purchase, Product, Category, Unit, Customer, Supplier } from "./types";
 import initialProducts from './mock/products.json';
 import initialCategories from './mock/categories.json';
 import initialUnits from './mock/units.json';
+import initialCustomers from './mock/customers.json';
+import initialSuppliers from './mock/suppliers.json';
 
 // This is a temporary in-memory "database" to persist mock data across API requests.
 // In a real application, this would be replaced with a proper database connection.
 let productsDB: Product[] = [...initialProducts];
 let categoriesDB: Category[] = [...initialCategories];
 let unitsDB: Unit[] = [...initialUnits];
+let customersDB: Customer[] = [...initialCustomers];
+let suppliersDB: Supplier[] = [...initialSuppliers];
 
 export const products = productsDB;
 export const categories = categoriesDB;
 export const units = unitsDB;
+export const customers = customersDB;
+export const suppliers = suppliersDB;
 
 export const setProducts = (newProducts: Product[]) => {
   productsDB = newProducts;
@@ -21,6 +27,12 @@ export const setCategories = (newCategories: Category[]) => {
 };
 export const setUnits = (newUnits: Unit[]) => {
   unitsDB = newUnits;
+};
+export const setCustomers = (newCustomers: Customer[]) => {
+  customersDB = newCustomers;
+};
+export const setSuppliers = (newSuppliers: Supplier[]) => {
+  suppliersDB = newSuppliers;
 };
 
 
