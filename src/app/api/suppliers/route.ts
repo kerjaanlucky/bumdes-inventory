@@ -7,8 +7,15 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
+  const all = searchParams.get('all') === 'true';
+
 
   let filteredSuppliers = mockSuppliers;
+  
+  if (all) {
+    return NextResponse.json(filteredSuppliers);
+  }
+
 
   if (search) {
     filteredSuppliers = filteredSuppliers.filter(s =>

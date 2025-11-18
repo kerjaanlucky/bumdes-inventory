@@ -7,12 +7,17 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
+  const all = searchParams.get('all') === 'true';
 
   let products = mockProducts.map(p => ({
     ...p,
     nama_kategori: mockCategories.find(c => c.id === p.kategori_id)?.nama_kategori || 'N/A',
     nama_satuan: mockUnits.find(u => u.id === p.satuan_id)?.nama_satuan || 'N/A',
   }));
+
+  if (all) {
+    return NextResponse.json({ data: products });
+  }
 
   let filteredProducts = products;
 

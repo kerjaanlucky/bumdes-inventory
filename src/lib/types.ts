@@ -81,13 +81,45 @@ export type Sale = {
     status: 'Completed' | 'Pending' | 'Canceled';
 }
 
-export type Purchase = {
-    id: string;
-    supplier: string;
-    date: string;
-    total: number;
-    status: 'Received' | 'Ordered' | 'Pending';
+export type PurchaseStatus = 'DRAFT' | 'DIPESAN' | 'DITERIMA_SEBAGIAN' | 'DITERIMA_PENUH' | 'DIBATALKAN';
+
+export interface PurchaseItem {
+  id: string | number; // Can be string for form, number from DB
+  produk_id: number;
+  nama_produk: string;
+  nama_satuan: string;
+  jumlah: number;
+  harga_beli_satuan: number;
+  diskon: number;
+  subtotal: number;
+  jumlah_diterima: number;
+  catatan_retur?: string | null;
+  tanggal_diterima?: string | null;
 }
+
+export interface PurchaseStatusHistory {
+    status: PurchaseStatus;
+    tanggal: string;
+    oleh: string; // User name
+}
+
+export interface Purchase {
+  id: number;
+  nomor_pembelian: string;
+  supplier_id: number;
+  nama_supplier?: string;
+  no_faktur_supplier: string;
+  tanggal_pembelian: string;
+  total_harga: number;
+  diskon_invoice: number;
+  pajak: number;
+  ongkos_kirim: number;
+  status: PurchaseStatus;
+  created_at: string;
+  items?: PurchaseItem[];
+  history?: PurchaseStatusHistory[];
+}
+
 
 export type PaginatedResponse<T> = {
   data: T[];

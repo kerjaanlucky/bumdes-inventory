@@ -1,9 +1,11 @@
-import { Transaction, Sale, Purchase, Product, Category, Unit, Customer, Supplier } from "./types";
+import { Transaction, Sale, Product, Category, Unit, Customer, Supplier, Purchase } from "./types";
 import initialProducts from './mock/products.json';
 import initialCategories from './mock/categories.json';
 import initialUnits from './mock/units.json';
 import initialCustomers from './mock/customers.json';
 import initialSuppliers from './mock/suppliers.json';
+import initialPurchases from './mock/purchases.json';
+
 
 // This is a temporary in-memory "database" to persist mock data across API requests.
 // In a real application, this would be replaced with a proper database connection.
@@ -12,12 +14,16 @@ let categoriesDB: Category[] = [...initialCategories];
 let unitsDB: Unit[] = [...initialUnits];
 let customersDB: Customer[] = [...initialCustomers];
 let suppliersDB: Supplier[] = [...initialSuppliers];
+let purchasesDB: Purchase[] = [...initialPurchases];
+
 
 export const products = productsDB;
 export const categories = categoriesDB;
 export const units = unitsDB;
 export const customers = customersDB;
 export const suppliers = suppliersDB;
+export const purchases = purchasesDB;
+
 
 export const setProducts = (newProducts: Product[]) => {
   productsDB = newProducts;
@@ -34,6 +40,10 @@ export const setCustomers = (newCustomers: Customer[]) => {
 export const setSuppliers = (newSuppliers: Supplier[]) => {
   suppliersDB = newSuppliers;
 };
+export const setPurchases = (newPurchases: Purchase[]) => {
+    purchasesDB = newPurchases;
+};
+
 
 
 export const transactions: Transaction[] = [
@@ -50,13 +60,6 @@ export const sales: Sale[] = [
     { id: 'SALE003', customer: 'Peter Jones', date: '2024-05-18', total: 125.00, status: 'Completed' },
     { id: 'SALE004', customer: 'Mary Lee', date: '2024-05-21', total: 80.00, status: 'Pending' },
     { id: 'SALE005', customer: 'Chris Green', date: '2024-05-19', total: 2400.00, status: 'Canceled' },
-];
-
-export const purchases: Purchase[] = [
-    { id: 'PUR001', supplier: 'TechSupplier Inc.', date: '2024-05-19', total: 25000.00, status: 'Received' },
-    { id: 'PUR002', supplier: 'AccessoryWorld', date: '2024-05-15', total: 800.00, status: 'Received' },
-    { id: 'PUR003', supplier: 'Global Electronics', date: '2024-05-22', total: 15000.00, status: 'Ordered' },
-    { id: 'PUR004', supplier: 'MonitorMakers', date: '2024-05-23', total: 7000.00, status: 'Pending' },
 ];
 
 export const chartData = [

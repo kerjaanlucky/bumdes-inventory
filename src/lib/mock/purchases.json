@@ -1,0 +1,108 @@
+
+[
+  {
+    "id": 1,
+    "nomor_pembelian": "PO-202407-001",
+    "supplier_id": 1,
+    "nama_supplier": "PT Maju Jaya",
+    "no_faktur_supplier": "INV-MJ-123",
+    "tanggal_pembelian": "2024-07-20",
+    "total_harga": 10500,
+    "diskon_invoice": 0,
+    "pajak": 1050,
+    "ongkos_kirim": 100,
+    "status": "DIPESAN",
+    "created_at": "2024-07-20T10:00:00Z",
+    "items": [
+      {
+        "id": 1,
+        "produk_id": 1,
+        "nama_produk": "Laptop Pro 15\"",
+        "nama_satuan": "Unit",
+        "jumlah": 10,
+        "harga_beli_satuan": 1000,
+        "diskon": 0,
+        "subtotal": 10000,
+        "jumlah_diterima": 0
+      },
+      {
+        "id": 2,
+        "produk_id": 2,
+        "nama_produk": "Wireless Mouse",
+        "nama_satuan": "Unit",
+        "jumlah": 20,
+        "harga_beli_satuan": 25,
+        "diskon": 0,
+        "subtotal": 500,
+        "jumlah_diterima": 0
+      }
+    ],
+    "history": [
+      { "status": "DRAFT", "tanggal": "2024-07-20T10:00:00Z", "oleh": "Alice Johnson" },
+      { "status": "DIPESAN", "tanggal": "2024-07-20T11:00:00Z", "oleh": "Alice Johnson" }
+    ]
+  },
+  {
+    "id": 2,
+    "nomor_pembelian": "PO-202407-002",
+    "supplier_id": 2,
+    "nama_supplier": "CV Sumber Rejeki",
+    "no_faktur_supplier": "INV-SR-456",
+    "tanggal_pembelian": "2024-07-21",
+    "total_harga": 350,
+    "diskon_invoice": 0,
+    "pajak": 35,
+    "ongkos_kirim": 50,
+    "status": "DITERIMA_PENUH",
+    "created_at": "2024-07-21T09:00:00Z",
+     "items": [
+      {
+        "id": 3,
+        "produk_id": 4,
+        "nama_produk": "4K Monitor 27\"",
+        "nama_satuan": "Unit",
+        "jumlah": 1,
+        "harga_beli_satuan": 350,
+        "diskon": 0,
+        "subtotal": 350,
+        "jumlah_diterima": 1,
+        "tanggal_diterima": "2024-07-22T14:00:00Z"
+      }
+    ],
+    "history": [
+      { "status": "DRAFT", "tanggal": "2024-07-21T09:00:00Z", "oleh": "Bob Williams" },
+      { "status": "DIPESAN", "tanggal": "2024-07-21T09:30:00Z", "oleh": "Bob Williams" },
+      { "status": "DITERIMA_PENUH", "tanggal": "2024-07-22T14:00:00Z", "oleh": "Bob Williams" }
+    ]
+  },
+   {
+    "id": 3,
+    "nomor_pembelian": "PO-202407-003",
+    "supplier_id": 3,
+    "nama_supplier": "Toko Grosir Elektronik",
+    "no_faktur_supplier": "",
+    "tanggal_pembelian": "2024-07-22",
+    "total_harga": 80,
+    "diskon_invoice": 0,
+    "pajak": 0,
+    "ongkos_kirim": 0,
+    "status": "DRAFT",
+    "created_at": "2024-07-22T15:00:00Z",
+    "items": [
+       {
+        "id": 4,
+        "produk_id": 3,
+        "nama_produk": "Mechanical Keyboard",
+        "nama_satuan": "Unit",
+        "jumlah": 1,
+        "harga_beli_satuan": 80,
+        "diskon": 0,
+        "subtotal": 80,
+        "jumlah_diterima": 0
+      }
+    ],
+     "history": [
+      { "status": "DRAFT", "tanggal": "2024-07-22T15:00:00Z", "oleh": "Charlie Brown" }
+    ]
+  }
+]
