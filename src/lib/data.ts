@@ -1,12 +1,21 @@
-import { User, Branch, Item, Transaction, Sale, Purchase } from "./types";
+import { Transaction, Sale, Purchase, Product, Category, Unit } from "./types";
+import mockProducts from './mock/products.json';
+import mockCategories from './mock/categories.json';
+import mockUnits from './mock/units.json';
 
-export const items: Item[] = [
-  { id: 'ITM001', name: 'Laptop Pro 15"', sku: 'LP15-2024', category: 'Electronics', stock: 50, price: 1200, status: 'In Stock' },
-  { id: 'ITM002', name: 'Wireless Mouse', sku: 'WM-BLK-01', category: 'Accessories', stock: 150, price: 25, status: 'In Stock' },
-  { id: 'ITM003', name: 'Mechanical Keyboard', sku: 'MK-RGB-22', category: 'Accessories', stock: 8, price: 80, status: 'Low Stock' },
-  { id: 'ITM004', name: '4K Monitor 27"', sku: '4KM-27-X', category: 'Monitors', stock: 30, price: 350, status: 'In Stock' },
-  { id: 'ITM005', name: 'USB-C Hub', sku: 'USBC-HUB-8', category: 'Accessories', stock: 0, price: 45, status: 'Out of Stock' },
-];
+// Gabungkan data mock dengan nama kategori dan satuan
+export const products: Product[] = mockProducts.map(product => {
+  const category = mockCategories.find(c => c.id === product.kategori_id);
+  const unit = mockUnits.find(u => u.id === product.satuan_id);
+  return {
+    ...product,
+    nama_kategori: category ? category.nama_kategori : 'N/A',
+    nama_satuan: unit ? unit.nama_satuan : 'N/A',
+  };
+});
+
+export const categories: Category[] = mockCategories;
+export const units: Unit[] = mockUnits;
 
 export const transactions: Transaction[] = [
     { id: 'TRN001', type: 'Sale', date: '2024-05-20', items: 2, amount: 1225.00 },

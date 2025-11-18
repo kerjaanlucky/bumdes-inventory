@@ -1,0 +1,8 @@
+
+[
+  { "id": 1, "kode_produk": "LP15-2024", "nama_produk": "Laptop Pro 15\"", "satuan_id": 1, "stok": 50, "harga_modal": 1000, "harga_jual": 1200, "kategori_id": 1, "branch_id": 1 },
+  { "id": 2, "kode_produk": "WM-BLK-01", "nama_produk": "Wireless Mouse", "satuan_id": 1, "stok": 150, "harga_modal": 15, "harga_jual": 25, "kategori_id": 2, "branch_id": 1 },
+  { "id": 3, "kode_produk": "MK-RGB-22", "nama_produk": "Mechanical Keyboard", "satuan_id": 1, "stok": 8, "harga_modal": 60, "harga_jual": 80, "kategori_id": 2, "branch_id": 2 },
+  { "id": 4, "kode_produk": "4KM-27-X", "nama_produk": "4K Monitor 27\"", "satuan_id": 1, "stok": 30, "harga_modal": 300, "harga_jual": 350, "kategori_id": 3, "branch_id": 1 },
+  { "id": 5, "kode_produk": "USBC-HUB-8", "nama_produk": "USB-C Hub", "satuan_id": 1, "stok": 0, "harga_modal": 35, "harga_jual": 45, "kategori_id": 2, "branch_id": 3 }
+]

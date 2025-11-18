@@ -1,0 +1,6 @@
+
+[
+  { "id": 1, "nama_kategori": "Elektronik", "tenant_id": 1 },
+  { "id": 2, "nama_kategori": "Aksesoris", "tenant_id": 1 },
+  { "id": 3, "nama_kategori": "Monitor", "tenant_id": 1 }
+]

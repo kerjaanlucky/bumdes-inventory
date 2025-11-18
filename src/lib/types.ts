@@ -20,15 +20,32 @@ export type Branch = {
   invoiceNotes?: string;
 };
 
-export type Item = {
-  id: string;
-  name:string;
-  sku: string;
-  category: string;
-  stock: number;
-  price: number;
-  status: "In Stock" | "Low Stock" | "Out of Stock";
-};
+export interface Product {
+  id: number;
+  kode_produk: string;
+  nama_produk: string;
+  satuan_id: number;
+  nama_satuan?: string;
+  stok: number;
+  harga_modal: number;
+  harga_jual: number;
+  kategori_id: number;
+  nama_kategori?: string;
+  branch_id: number;
+}
+
+export interface Category {
+  id: number;
+  nama_kategori: string;
+  tenant_id: number;
+}
+
+export interface Unit {
+  id: number;
+  nama_satuan: string;
+  tenant_id: number;
+}
+
 
 export type Transaction = {
   id: string;

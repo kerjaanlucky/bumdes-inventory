@@ -1,0 +1,6 @@
+
+[
+  { "id": 1, "nama_satuan": "Unit", "tenant_id": 1 },
+  { "id": 2, "nama_satuan": "Pcs", "tenant_id": 1 },
+  { "id": 3, "nama_satuan": "Box", "tenant_id": 1 }
+]
