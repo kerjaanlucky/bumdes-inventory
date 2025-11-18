@@ -311,12 +311,12 @@ export default function EditPurchasePage() {
             </CardContent>
           </Card>
           
-           <Card>
+           <Card className="bg-card/50">
             <CardHeader>
               <CardTitle>Item Pembelian</CardTitle>
                <CardDescription>Ubah produk yang akan dibeli.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-visible">
                 <Table>
                     <TableHeader>
                         <TableRow>

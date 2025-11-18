@@ -287,12 +287,12 @@ export default function NewPurchasePage() {
             </CardContent>
           </Card>
           
-           <Card>
+           <Card className="bg-card/50">
             <CardHeader>
               <CardTitle>Item Pembelian</CardTitle>
                <CardDescription>Tambahkan produk yang akan dibeli.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-visible">
                 <Table>
                     <TableHeader>
                         <TableRow>
