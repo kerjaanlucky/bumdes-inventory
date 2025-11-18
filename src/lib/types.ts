@@ -30,7 +30,7 @@ export interface Product {
   harga_modal: number;
   harga_jual: number;
   kategori_id: number;
-  nama_kategori?: string;
+  nama_kategori?: string; // Optional, joined from categories table
   branch_id: number;
 }
 
@@ -70,3 +70,10 @@ export type Purchase = {
     total: number;
     status: 'Received' | 'Ordered' | 'Pending';
 }
+
+export type PaginatedResponse<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
