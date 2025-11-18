@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { categories as mockCategories, setCategories, products as mockProducts } from '@/lib/mock/data';
+import { categories as mockCategories, setCategories, products as mockProducts } from '@/lib/data';
 import { Category } from '@/lib/types';
 
 

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { products as mockProducts, categories as mockCategories, units as mockUnits, setProducts } from '@/lib/mock/data';
+import { products as mockProducts, categories as mockCategories, units as mockUnits, setProducts } from '@/lib/data';
 import { Product } from '@/lib/types';
 
 export async function GET(request: NextRequest) {

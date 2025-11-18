@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { units as mockUnits, setUnits } from '@/lib/mock/data';
+import { units as mockUnits, setUnits } from '@/lib/data';
 import { Unit } from '@/lib/types';
 
 
