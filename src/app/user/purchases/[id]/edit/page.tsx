@@ -137,43 +137,45 @@ export default function EditPurchasePage() {
   const watchDiskonInvoice = form.watch("diskon_invoice");
   const watchPajak = form.watch("pajak");
 
-  const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
+ const [totals, setTotals] = useState({ subtotal: 0, totalDiscount: 0, grandTotal: 0, dpp: 0, taxAmount: 0 });
+
+  useEffect(() => {
     const currentItems = form.getValues('items') || [];
-    const subtotal = currentItems.reduce((sum, item) => {
-        const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
-        return sum + itemSubtotal;
-    }, 0);
-
-    const totalDiscount = currentItems.reduce((sum, item) => {
-        const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
-        const itemDiscount = itemSubtotal * ((item.diskon || 0) / 100);
-        return sum + itemDiscount;
-    }, 0);
-
-    const ongkir = form.getValues('ongkos_kirim') || 0;
-    const diskonInvoice = form.getValues('diskon_invoice') || 0;
-    const pajak = form.getValues('pajak') || 0;
-
-    const dpp = subtotal - totalDiscount - diskonInvoice;
-    const taxAmount = dpp * (pajak / 100);
-    const grandTotal = dpp + taxAmount + ongkir;
-
-    return { subtotal, totalDiscount, grandTotal };
-  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak, form]);
-
-
-  useEffect(() => {
-    form.setValue("total_harga", grandTotal, { shouldValidate: true });
-  }, [grandTotal, form]);
-  
-  useEffect(() => {
-    watchItems.forEach((item, index) => {
+    
+    currentItems.forEach((item, index) => {
         const subtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
         if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
             form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
         }
     });
-  }, [watchItems, form]);
+
+    const newSubtotal = currentItems.reduce((sum, item) => sum + item.subtotal, 0);
+
+    const newTotalDiscount = currentItems.reduce((sum, item) => {
+        const itemSubtotal = item.subtotal;
+        const itemDiscount = itemSubtotal * ((item.diskon || 0) / 100);
+        return sum + itemDiscount;
+    }, 0);
+
+    const ongkir = Number(form.getValues('ongkos_kirim') || 0);
+    const diskonInvoice = Number(form.getValues('diskon_invoice') || 0);
+    const pajak = Number(form.getValues('pajak') || 0);
+
+    const newDpp = newSubtotal - newTotalDiscount - diskonInvoice;
+    const newTaxAmount = newDpp * (pajak / 100);
+    const newGrandTotal = newDpp + newTaxAmount + ongkir;
+
+    setTotals({
+      subtotal: newSubtotal,
+      totalDiscount: newTotalDiscount,
+      grandTotal: newGrandTotal,
+      dpp: newDpp,
+      taxAmount: newTaxAmount,
+    });
+    
+    form.setValue("total_harga", newGrandTotal, { shouldValidate: true });
+
+  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak, form]);
 
   const handleAddProduct = () => {
     if (!selectedProductToAdd) {
@@ -211,9 +213,6 @@ export default function EditPurchasePage() {
   if (isFetching || !form.formState.isDirty) {
     return <div>Memuat data pembelian...</div>;
   }
-
-  const dpp = subtotal - totalDiscount - (watchDiskonInvoice || 0);
-  const taxAmount = dpp * ((watchPajak || 0) / 100);
 
   return (
     <Form {...form}>
@@ -380,7 +379,7 @@ export default function EditPurchasePage() {
                                         />
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        Rp{((form.getValues(`items.${index}.jumlah`) || 0) * (form.getValues(`items.${index}.harga_beli_satuan`) || 0)).toLocaleString('id-ID')}
+                                        Rp{(form.getValues(`items.${index}.subtotal`) || 0).toLocaleString('id-ID')}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => remove(index)}>
@@ -430,21 +429,21 @@ export default function EditPurchasePage() {
                 <CardContent className="space-y-3">
                      <div className="flex justify-between text-sm">
                         <span>Subtotal</span>
-                        <span>Rp{subtotal.toLocaleString('id-ID')}</span>
+                        <span>Rp{totals.subtotal.toLocaleString('id-ID')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                         <span>Total Diskon</span>
-                        <span className="text-red-500">- Rp{totalDiscount.toLocaleString('id-ID')}</span>
+                        <span className="text-red-500">- Rp{totals.totalDiscount.toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-medium">
                         <span>DPP (Total Setelah Diskon)</span>
-                        <span>Rp{dpp.toLocaleString('id-ID')}</span>
+                        <span>Rp{totals.dpp.toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-sm">
                         <span>Pajak ({watchPajak || 0}%)</span>
-                        <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
+                        <span>+ Rp{totals.taxAmount.toLocaleString('id-ID')}</span>
                     </div>
                      <div className="flex justify-between text-sm">
                         <span>Ongkos Kirim</span>
@@ -453,7 +452,7 @@ export default function EditPurchasePage() {
                     <Separator />
                      <div className="flex justify-between font-bold text-lg text-primary">
                         <span>Grand Total</span>
-                        <span>Rp{grandTotal.toLocaleString('id-ID')}</span>
+                        <span>Rp{totals.grandTotal.toLocaleString('id-ID')}</span>
                     </div>
                 </CardContent>
             </Card>
