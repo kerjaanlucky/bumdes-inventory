@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Product, PaginatedResponse } from '@/lib/types';
+import { Product, PaginatedResponse, StockMovement } from '@/lib/types';
+import { useStockStore } from './stock-store';
 
 type ProductState = {
   products: Product[];
@@ -15,7 +16,7 @@ type ProductState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchProducts: () => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
-  editProduct: (product: Product) => Promise<void>;
+  editProduct: (product: Product, isStockUpdate?: boolean) => Promise<void>;
   deleteProduct: (productId: number) => Promise<void>;
   getProductById: (productId: number) => Promise<Product | undefined>;
 };
@@ -74,8 +75,10 @@ export const useProductStore = create<ProductState>((set, get) => ({
     }
   },
 
-  editProduct: async (updatedProduct) => {
-    set({ isSubmitting: true });
+  editProduct: async (updatedProduct, isStockUpdate = false) => {
+    if (!isStockUpdate) {
+        set({ isSubmitting: true });
+    }
     try {
       const response = await fetch(`/api/products/${updatedProduct.id}`, {
         method: 'PUT',
@@ -83,12 +86,22 @@ export const useProductStore = create<ProductState>((set, get) => ({
         body: JSON.stringify(updatedProduct),
       });
        if (response.ok) {
-        await get().fetchProducts(); // Refresh list
+        if (!isStockUpdate) {
+            await get().fetchProducts(); // Refresh list only if it's a manual edit
+        } else {
+             set((state) => ({
+                products: state.products.map((p) =>
+                p.id === updatedProduct.id ? updatedProduct : p
+                ),
+            }));
+        }
       }
     } catch (error) {
       console.error("Failed to edit product:", error);
     } finally {
-      set({ isSubmitting: false });
+       if (!isStockUpdate) {
+        set({ isSubmitting: false });
+       }
     }
   },
 
@@ -107,16 +120,19 @@ export const useProductStore = create<ProductState>((set, get) => ({
   },
   
   getProductById: async (productId: number) => {
-    set({ isFetching: true });
+    // First, try to get from the current state
+    const productInState = get().products.find(p => p.id === productId);
+    if (productInState) return productInState;
+
+    // If not in state, fetch from API
     try {
       const response = await fetch(`/api/products/${productId}`);
+      if (!response.ok) return undefined;
       const product: Product = await response.json();
       return product;
     } catch (error) {
       console.error("Failed to fetch product:", error);
       return undefined;
-    } finally {
-      set({ isFetching: false });
     }
   },
 }));

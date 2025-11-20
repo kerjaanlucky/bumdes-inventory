@@ -120,6 +120,18 @@ export interface Purchase {
   history?: PurchaseStatusHistory[];
 }
 
+export type StockMovement = {
+  id: number;
+  tanggal: string;
+  produk_id: number;
+  nama_produk: string;
+  nama_satuan: string;
+  tipe: 'Pembelian Masuk' | 'Penjualan Keluar' | 'Penyesuaian';
+  jumlah: number;
+  stok_akhir: number;
+  referensi: string;
+};
+
 
 export type PaginatedResponse<T> = {
   data: T[];

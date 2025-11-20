@@ -1,7 +1,9 @@
 "use client";
 import { create } from 'zustand';
-import { Purchase, PaginatedResponse, PurchaseStatus } from '@/lib/types';
+import { Purchase, PaginatedResponse, PurchaseStatus, PurchaseItem } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
+import { useProductStore } from './product-store';
+import { useStockStore } from './stock-store';
 
 type PurchaseState = {
   purchases: Purchase[];
@@ -17,10 +19,11 @@ type PurchaseState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchPurchases: () => Promise<void>;
   getPurchaseById: (purchaseId: number) => Promise<Purchase | undefined>;
-  addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status'>) => Promise<void>;
+  addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status'>) => Promise<Purchase | undefined>;
   editPurchase: (purchase: Purchase) => Promise<void>;
   deletePurchase: (purchaseId: number) => Promise<void>;
   updatePurchaseStatus: (purchaseId: number, status: PurchaseStatus) => Promise<void>;
+  receiveItems: (purchaseId: number, receivedItems: PurchaseItem[]) => Promise<void>;
 };
 
 export const usePurchaseStore = create<PurchaseState>((set, get) => ({
@@ -82,8 +85,9 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       });
       if (response.ok) {
         toast({ title: "Pembelian Ditambahkan", description: "Draft pembelian baru telah berhasil dibuat." });
+        const newPurchase = await response.json();
         await get().fetchPurchases();
-         return await response.json();
+        return newPurchase;
       } else {
         throw new Error("Failed to add purchase");
       }
@@ -105,7 +109,6 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       });
       if (response.ok) {
          toast({ title: "Pembelian Diperbarui", description: "Perubahan pada pembelian telah berhasil disimpan." });
-        // Don't refetch all, just update the single item in the list if it exists
         set(state => ({
             purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p)
         }));
@@ -177,6 +180,57 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       toast({ variant: "destructive", title: "Gagal Memperbarui Status", description: "Terjadi kesalahan." });
     } finally {
       set({ isSubmitting: false });
+    }
+  },
+   receiveItems: async (purchaseId: number, receivedItems: PurchaseItem[]) => {
+    const { getProductById, editProduct } = useProductStore.getState();
+    const { addStockMovement } = useStockStore.getState();
+
+    const purchase = await get().getPurchaseById(purchaseId);
+    if (!purchase) return;
+
+    set({ isSubmitting: true });
+    try {
+        for (const item of receivedItems) {
+            if (item.jumlah_diterima > 0) {
+                const product = await getProductById(item.produk_id);
+                if (product) {
+                    const newStock = product.stok + item.jumlah_diterima;
+                    await editProduct({ ...product, stok: newStock }, true);
+                    await addStockMovement({
+                        tanggal: new Date().toISOString(),
+                        produk_id: product.id,
+                        nama_produk: product.nama_produk,
+                        nama_satuan: product.nama_satuan || 'N/A',
+                        tipe: 'Pembelian Masuk',
+                        jumlah: item.jumlah_diterima,
+                        stok_akhir: newStock,
+                        referensi: purchase.nomor_pembelian,
+                    });
+                }
+            }
+        }
+        
+        const allItemsFullyReceived = receivedItems.every(item => item.jumlah_diterima >= item.jumlah);
+        const newStatus = allItemsFullyReceived ? 'DITERIMA_PENUH' : 'DITERIMA_SEBAGIAN';
+
+        const updatedPurchase = {
+            ...purchase,
+            items: receivedItems,
+            status: newStatus,
+            history: [
+                ...(purchase.history || []),
+                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System' }
+            ]
+        };
+
+        await get().editPurchase(updatedPurchase);
+        toast({ title: "Barang Diterima", description: "Stok telah berhasil diperbarui." });
+    } catch (error) {
+        console.error("Failed to receive items:", error);
+        toast({ variant: "destructive", title: "Gagal Menerima Barang", description: "Terjadi kesalahan." });
+    } finally {
+        set({ isSubmitting: false });
     }
   },
 }));

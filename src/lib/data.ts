@@ -1,10 +1,11 @@
-import { Transaction, Sale, Product, Category, Unit, Customer, Supplier, Purchase } from "./types";
+import { Transaction, Sale, Product, Category, Unit, Customer, Supplier, Purchase, StockMovement } from "./types";
 import initialProducts from './mock/products.json';
 import initialCategories from './mock/categories.json';
 import initialUnits from './mock/units.json';
 import initialCustomers from './mock/customers.json';
 import initialSuppliers from './mock/suppliers.json';
 import initialPurchases from './mock/purchases.json';
+import initialStockMovements from './mock/stock-movements.json';
 
 
 // This is a temporary in-memory "database" to persist mock data across API requests.
@@ -15,6 +16,7 @@ let unitsDB: Unit[] = [...initialUnits];
 let customersDB: Customer[] = [...initialCustomers];
 let suppliersDB: Supplier[] = [...initialSuppliers];
 let purchasesDB: Purchase[] = [...initialPurchases];
+let stockMovementsDB: StockMovement[] = [...initialStockMovements];
 
 
 export const products = productsDB;
@@ -23,6 +25,7 @@ export const units = unitsDB;
 export const customers = customersDB;
 export const suppliers = suppliersDB;
 export const purchases = purchasesDB;
+export const stockMovements = stockMovementsDB;
 
 
 export const setProducts = (newProducts: Product[]) => {
@@ -43,7 +46,9 @@ export const setSuppliers = (newSuppliers: Supplier[]) => {
 export const setPurchases = (newPurchases: Purchase[]) => {
     purchasesDB = newPurchases;
 };
-
+export const setStockMovements = (newStockMovements: StockMovement[]) => {
+  stockMovementsDB = newStockMovements;
+};
 
 
 export const transactions: Transaction[] = [

@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePurchaseStore } from '@/store/purchase-store';
+import { useProductStore } from '@/store/product-store';
 import { Purchase, PurchaseItem, PurchaseStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,8 @@ export default function PurchaseDetailPage() {
     const router = useRouter();
     const params = useParams();
     const purchaseId = Number(params.id);
-    const { getPurchaseById, isFetching, updatePurchaseStatus } = usePurchaseStore();
+    const { getPurchaseById, isFetching, updatePurchaseStatus, editPurchase } = usePurchaseStore();
+    const { getProductById, editProduct } = useProductStore.getState();
     
     const [purchase, setPurchase] = useState<Purchase | null>(null);
     const [isReceiveModalOpen, setReceiveModalOpen] = useState(false);
@@ -56,18 +58,41 @@ export default function PurchaseDetailPage() {
     const handleReceiveSubmit = async (items: PurchaseItem[]) => {
         if (!purchase) return;
         
-        // Logic to determine new status
-        const totalOrdered = purchase.items?.reduce((sum, item) => sum + item.jumlah, 0) || 0;
-        const totalReceived = items.reduce((sum, item) => sum + item.jumlah_diterima, 0);
-        const newStatus = totalReceived >= totalOrdered ? 'DITERIMA_PENUH' : 'DITERIMA_SEBAGIAN';
+        let allItemsFullyReceived = true;
+        let anyItemReceived = false;
 
-        const updatedPurchase = {
+        for (const receivedItem of items) {
+            const originalItem = purchase.items?.find(i => i.id === receivedItem.id);
+            if (!originalItem) continue;
+
+            const quantityReceivedNow = receivedItem.jumlah_diterima;
+            if (quantityReceivedNow > 0) {
+                 anyItemReceived = true;
+                 const product = await getProductById(receivedItem.produk_id);
+                 if (product) {
+                    const newStock = product.stok + quantityReceivedNow;
+                    await editProduct({ ...product, stok: newStock }, true);
+                 }
+            }
+            if (receivedItem.jumlah_diterima < originalItem.jumlah) {
+                allItemsFullyReceived = false;
+            }
+        }
+        
+        const newStatus = allItemsFullyReceived ? 'DITERIMA_PENUH' : (anyItemReceived ? 'DITERIMA_SEBAGIAN' : purchase.status);
+
+        const updatedPurchaseData = {
             ...purchase,
             items,
             status: newStatus,
+            history: [
+                ...(purchase.history || []),
+                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System' }
+            ]
         };
-        await usePurchaseStore.getState().editPurchase(updatedPurchase);
-        setPurchase(updatedPurchase);
+        
+        await editPurchase(updatedPurchaseData);
+        setPurchase(updatedPurchaseData);
         setReceiveModalOpen(false);
     }
 
@@ -108,7 +133,7 @@ export default function PurchaseDetailPage() {
                             <Button size="sm" onClick={() => handleUpdateStatus('DIPESAN')}>Kirim Pesanan</Button>
                         </>
                     )}
-                    {purchase.status === 'DIPESAN' && (
+                    {['DIPESAN', 'DITERIMA_SEBAGIAN'].includes(purchase.status) && (
                         <Button size="sm" onClick={() => setReceiveModalOpen(true)}>
                             <Truck className="mr-2 h-4 w-4" /> Proses Penerimaan Barang
                         </Button>
@@ -131,7 +156,8 @@ export default function PurchaseDetailPage() {
                                 <TableHeader>
                                 <TableRow>
                                     <TableHead>Produk</TableHead>
-                                    <TableHead>Jumlah</TableHead>
+                                    <TableHead>Dipesan</TableHead>
+                                    <TableHead>Diterima</TableHead>
                                     <TableHead className="text-right">Harga Satuan</TableHead>
                                     <TableHead className="text-right">Subtotal</TableHead>
                                 </TableRow>
@@ -141,6 +167,7 @@ export default function PurchaseDetailPage() {
                                         <TableRow key={item.id}>
                                             <TableCell>{item.nama_produk}</TableCell>
                                             <TableCell>{item.jumlah} {item.nama_satuan}</TableCell>
+                                            <TableCell>{item.jumlah_diterima} {item.nama_satuan}</TableCell>
                                             <TableCell className="text-right">Rp{item.harga_beli_satuan.toLocaleString('id-ID')}</TableCell>
                                             <TableCell className="text-right">Rp{item.subtotal.toLocaleString('id-ID')}</TableCell>
                                         </TableRow>
@@ -207,6 +234,7 @@ export default function PurchaseDetailPage() {
                     onClose={() => setReceiveModalOpen(false)}
                     items={purchase.items}
                     onSubmit={handleReceiveSubmit}
+                    purchaseNumber={purchase.nomor_pembelian}
                 />
             )}
         </div>

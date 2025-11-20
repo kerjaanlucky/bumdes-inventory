@@ -1,0 +1,25 @@
+
+[
+  {
+    "id": 1,
+    "tanggal": "2024-07-22T14:00:00Z",
+    "produk_id": 4,
+    "nama_produk": "4K Monitor 27\"",
+    "nama_satuan": "Unit",
+    "tipe": "Pembelian Masuk",
+    "jumlah": 1,
+    "stok_akhir": 31,
+    "referensi": "PO-202407-002"
+  },
+  {
+    "id": 2,
+    "tanggal": "2024-07-21T10:00:00Z",
+    "produk_id": 1,
+    "nama_produk": "Laptop Pro 15\"",
+    "nama_satuan": "Unit",
+    "tipe": "Penjualan Keluar",
+    "jumlah": -2,
+    "stok_akhir": 48,
+    "referensi": "SO-202407-051"
+  }
+]

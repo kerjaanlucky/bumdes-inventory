@@ -7,7 +7,7 @@ import { z } from "zod";
 import { PurchaseItem } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,12 +19,17 @@ const receiveItemSchema = z.object({
   produk_id: z.number(),
   nama_produk: z.string(),
   jumlah: z.number(),
-  jumlah_diterima: z.coerce.number().min(0, "Jumlah tidak boleh negatif"),
+  jumlah_diterima_sebelumnya: z.number(),
+  jumlah_diterima_sekarang: z.coerce.number().min(0, "Jumlah tidak boleh negatif"),
 });
 
 const receiveSchema = z.object({
-  items: z.array(receiveItemSchema),
+  items: z.array(receiveItemSchema).refine(
+    items => items.some(item => item.jumlah_diterima_sekarang > 0),
+    { message: "Minimal harus ada 1 barang yang diterima." }
+  ),
 });
+
 
 type ReceiveFormValues = z.infer<typeof receiveSchema>;
 
@@ -33,9 +38,10 @@ interface ReceiveItemsModalProps {
   onClose: () => void;
   items: PurchaseItem[];
   onSubmit: (items: PurchaseItem[]) => Promise<void>;
+  purchaseNumber: string;
 }
 
-export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveItemsModalProps) {
+export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNumber }: ReceiveItemsModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<ReceiveFormValues>({
@@ -46,7 +52,8 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveI
         produk_id: item.produk_id,
         nama_produk: item.nama_produk,
         jumlah: item.jumlah,
-        jumlah_diterima: item.jumlah, // Default to receiving all
+        jumlah_diterima_sebelumnya: item.jumlah_diterima || 0,
+        jumlah_diterima_sekarang: item.jumlah - (item.jumlah_diterima || 0), // Default to remaining
       })),
     },
   });
@@ -60,10 +67,11 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveI
     setIsSubmitting(true);
     const updatedItems = items.map(originalItem => {
         const receivedItem = data.items.find(i => i.id === originalItem.id);
+        const jumlahDiterimaBaru = receivedItem ? originalItem.jumlah_diterima + receivedItem.jumlah_diterima_sekarang : originalItem.jumlah_diterima;
         return {
             ...originalItem,
-            jumlah_diterima: receivedItem ? receivedItem.jumlah_diterima : originalItem.jumlah_diterima,
-            tanggal_diterima: receivedItem && receivedItem.jumlah_diterima > 0 ? new Date().toISOString() : originalItem.tanggal_diterima,
+            jumlah_diterima: jumlahDiterimaBaru,
+            tanggal_diterima: receivedItem && receivedItem.jumlah_diterima_sekarang > 0 ? new Date().toISOString() : originalItem.tanggal_diterima,
         };
     });
     await onSubmit(updatedItems);
@@ -76,7 +84,7 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveI
         <DialogHeader>
           <DialogTitle>Proses Penerimaan Barang</DialogTitle>
           <DialogDescription>
-            Masukkan jumlah barang yang diterima untuk setiap item.
+            Masukkan jumlah barang yang diterima untuk pesanan <span className="font-mono">{purchaseNumber}</span>.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -86,8 +94,9 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveI
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produk</TableHead>
-                    <TableHead className="w-32">Dipesan</TableHead>
-                    <TableHead className="w-48">Diterima</TableHead>
+                    <TableHead className="w-28">Dipesan</TableHead>
+                    <TableHead className="w-28">Sudah Diterima</TableHead>
+                    <TableHead className="w-48">Diterima Sekarang</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -95,14 +104,15 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveI
                     <TableRow key={item.id}>
                       <TableCell>{item.nama_produk}</TableCell>
                       <TableCell>{item.jumlah}</TableCell>
+                      <TableCell>{item.jumlah_diterima_sebelumnya}</TableCell>
                       <TableCell>
                         <FormField
                           control={form.control}
-                          name={`items.${index}.jumlah_diterima`}
+                          name={`items.${index}.jumlah_diterima_sekarang`}
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input type="number" {...field} max={item.jumlah} />
+                                <Input type="number" {...field} max={item.jumlah - item.jumlah_diterima_sebelumnya} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -114,6 +124,9 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit }: ReceiveI
                 </TableBody>
               </Table>
             </ScrollArea>
+             {form.formState.errors.items && (
+              <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.items.message}</p>
+            )}
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Batal
