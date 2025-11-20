@@ -1,12 +1,16 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { stockMovements as mockStockMovements, setStockMovements } from '@/lib/data';
 import { StockMovement } from '@/lib/types';
+import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
+  const from = searchParams.get('from');
+  const to = searchParams.get('to');
+  const productId = searchParams.get('productId');
 
   let filteredMovements = mockStockMovements;
 
@@ -15,6 +19,20 @@ export async function GET(request: NextRequest) {
       m.nama_produk.toLowerCase().includes(search.toLowerCase()) ||
       m.referensi.toLowerCase().includes(search.toLowerCase())
     );
+  }
+  
+  if (from) {
+    const startDate = startOfDay(parseISO(from));
+    filteredMovements = filteredMovements.filter(m => new Date(m.tanggal) >= startDate);
+  }
+
+  if (to) {
+    const endDate = endOfDay(parseISO(to));
+    filteredMovements = filteredMovements.filter(m => new Date(m.tanggal) <= endDate);
+  }
+  
+  if (productId) {
+    filteredMovements = filteredMovements.filter(m => m.produk_id === parseInt(productId));
   }
 
   // Sort by date descending

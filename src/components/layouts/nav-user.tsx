@@ -19,7 +19,9 @@ import {
   Boxes,
   Database,
   Users,
-  Truck
+  Truck,
+  Warehouse,
+  FileText
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
@@ -32,11 +34,6 @@ const userLinks = [
     label: "Dasbor",
     href: "/user/dashboard",
     icon: LayoutDashboard,
-  },
-  {
-    label: "Stok",
-    href: "/user/stock",
-    icon: Boxes,
   },
   {
     label: "Pembelian",
@@ -59,6 +56,18 @@ const userLinks = [
     icon: History,
   },
 ];
+
+const inventoryLinks = [
+    {
+        label: "Laporan Stok",
+        href: "/user/inventory/stock-report",
+    },
+    {
+        label: "Movement",
+        href: "/user/stock",
+    },
+];
+
 
 const masterDataLinks = [
     {
@@ -87,13 +96,22 @@ const masterDataLinks = [
 export function NavUser() {
   const pathname = usePathname();
   const isMasterDataActive = masterDataLinks.some(link => pathname.startsWith(link.href));
+  const isInventoryActive = inventoryLinks.some(link => pathname.startsWith(link.href));
+  
   const [isMasterDataOpen, setIsMasterDataOpen] = React.useState(isMasterDataActive);
+  const [isInventoryOpen, setIsInventoryOpen] = React.useState(isInventoryActive);
 
   React.useEffect(() => {
     if (isMasterDataActive) {
       setIsMasterDataOpen(true);
     }
   }, [isMasterDataActive]);
+
+  React.useEffect(() => {
+    if (isInventoryActive) {
+      setIsInventoryOpen(true);
+    }
+  }, [isInventoryActive]);
 
 
   return (
@@ -112,6 +130,34 @@ export function NavUser() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
+
+       <Collapsible open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>
+        <SidebarMenuItem>
+            <CollapsibleTrigger asChild>
+                 <SidebarMenuButton
+                    variant="ghost"
+                    className="w-full justify-start"
+                    isActive={isInventoryActive}
+                    >
+                    <Warehouse />
+                    <span>Persediaan</span>
+                    <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform", isInventoryOpen && "rotate-90")} />
+                </SidebarMenuButton>
+            </CollapsibleTrigger>
+        </SidebarMenuItem>
+        <CollapsibleContent>
+            <SidebarMenuSub>
+                {inventoryLinks.map((link) => (
+                    <SidebarMenuItem key={link.href}>
+                        <SidebarMenuSubButton asChild isActive={pathname.startsWith(link.href)}>
+                            <Link href={link.href}>{link.label}</Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenuSub>
+        </CollapsibleContent>
+      </Collapsible>
+
        <Collapsible open={isMasterDataOpen} onOpenChange={setIsMasterDataOpen}>
         <SidebarMenuItem>
             <CollapsibleTrigger asChild>

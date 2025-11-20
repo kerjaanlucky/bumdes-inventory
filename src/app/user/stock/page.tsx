@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, History } from "lucide-react";
+import { Search, History, Calendar as CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { useDebounce } from 'use-debounce';
@@ -19,6 +19,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useStockStore } from '@/store/stock-store';
 import { StockMovement } from '@/lib/types';
 import { format } from 'date-fns';
+import { DateRange } from "react-day-picker"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
+
 
 export default function StockPage() {
     const { 
@@ -27,18 +33,20 @@ export default function StockPage() {
       page, 
       limit, 
       searchTerm,
+      dateRange,
       isFetching,
       fetchMovements,
       setSearchTerm,
       setPage,
       setLimit,
+      setDateRange,
     } = useStockStore();
     
     const [debouncedSearch] = useDebounce(searchTerm, 300);
 
     useEffect(() => {
       fetchMovements();
-    }, [fetchMovements, debouncedSearch, page, limit]);
+    }, [fetchMovements, debouncedSearch, page, limit, dateRange]);
 
     const totalPages = Math.ceil(total / limit);
 
@@ -54,7 +62,7 @@ export default function StockPage() {
             <CardDescription>Lacak semua perubahan pada level inventaris Anda.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-4">
               <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -65,6 +73,42 @@ export default function StockPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-[300px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pilih rentang tanggal</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <Table>
                 <TableHeader>

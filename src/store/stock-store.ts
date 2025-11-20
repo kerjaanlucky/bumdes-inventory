@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { StockMovement, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
+import { DateRange } from 'react-day-picker';
 
 type StockState = {
   movements: StockMovement[];
@@ -8,11 +9,13 @@ type StockState = {
   page: number;
   limit: number;
   searchTerm: string;
+  dateRange?: DateRange;
   isFetching: boolean;
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
-  fetchMovements: () => Promise<void>;
+  setDateRange: (dateRange?: DateRange) => void;
+  fetchMovements: (productId?: number) => Promise<void>;
   addStockMovement: (movement: Omit<StockMovement, 'id'>) => Promise<void>;
 };
 
@@ -22,14 +25,16 @@ export const useStockStore = create<StockState>((set, get) => ({
   page: 1,
   limit: 10,
   searchTerm: '',
+  dateRange: undefined,
   isFetching: false,
 
   setPage: (page) => set({ page, movements: [] }),
   setLimit: (limit) => set({ limit, page: 1, movements: [] }),
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, movements: [] }),
+  setDateRange: (dateRange?: DateRange) => set({ dateRange, page: 1, movements: [] }),
 
-  fetchMovements: async () => {
-    const { page, limit, searchTerm } = get();
+  fetchMovements: async (productId?: number) => {
+    const { page, limit, searchTerm, dateRange } = get();
     set({ isFetching: true });
     try {
       const params = new URLSearchParams({
@@ -37,6 +42,17 @@ export const useStockStore = create<StockState>((set, get) => ({
         limit: String(limit),
         search: searchTerm,
       });
+
+      if (dateRange?.from) {
+        params.append('from', dateRange.from.toISOString());
+      }
+      if (dateRange?.to) {
+        params.append('to', dateRange.to.toISOString());
+      }
+      if (productId) {
+        params.append('productId', String(productId));
+      }
+
       const response = await fetch(`/api/stock?${params.toString()}`);
       const data: PaginatedResponse<StockMovement> = await response.json();
       set({ movements: data.data, total: data.total, page: data.page, isFetching: false });
