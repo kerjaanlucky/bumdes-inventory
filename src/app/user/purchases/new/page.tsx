@@ -111,52 +111,48 @@ export default function NewPurchasePage() {
     control: form.control,
     name: "items",
   });
-
-  const watchItems = form.watch("items");
-  const watchOngkosKirim = form.watch("ongkos_kirim");
-  const watchDiskonInvoice = form.watch("diskon_invoice");
-  const watchPajak = form.watch("pajak");
-
-  const [totals, setTotals] = useState({ subtotal: 0, totalDiscount: 0, grandTotal: 0, dpp: 0, taxAmount: 0 });
-
+  
   useEffect(() => {
-    const currentItems = form.getValues('items') || [];
-    
-    currentItems.forEach((item, index) => {
-        const subtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
-        if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
+    const subscription = form.watch((values, { name, type }) => {
+      if (name && (name.startsWith('items') || ['diskon_invoice', 'pajak', 'ongkos_kirim'].includes(name))) {
+        const items = values.items || [];
+        items.forEach((item, index) => {
+          const subtotal = (item?.jumlah || 0) * (item?.harga_beli_satuan || 0);
+          if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
             form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
+          }
+        });
+
+        const newSubtotal = items.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
+        const newTotalDiscount = items.reduce((sum, item) => {
+            const itemSubtotal = (item?.subtotal || 0);
+            const itemDiscount = itemSubtotal * ((item?.diskon || 0) / 100);
+            return sum + itemDiscount;
+        }, 0);
+        
+        const ongkir = Number(values.ongkos_kirim || 0);
+        const diskonInvoice = Number(values.diskon_invoice || 0);
+        const pajak = Number(values.pajak || 0);
+
+        const newDpp = newSubtotal - newTotalDiscount - diskonInvoice;
+        const newTaxAmount = newDpp * (pajak / 100);
+        const newGrandTotal = newDpp + newTaxAmount + ongkir;
+
+        if (form.getValues('total_harga') !== newGrandTotal) {
+          form.setValue("total_harga", newGrandTotal, { shouldValidate: true });
         }
+      }
     });
-
-    const newSubtotal = currentItems.reduce((sum, item) => sum + item.subtotal, 0);
-
-    const newTotalDiscount = currentItems.reduce((sum, item) => {
-        const itemSubtotal = item.subtotal;
-        const itemDiscount = itemSubtotal * ((item.diskon || 0) / 100);
-        return sum + itemDiscount;
-    }, 0);
-
-    const ongkir = Number(form.getValues('ongkos_kirim') || 0);
-    const diskonInvoice = Number(form.getValues('diskon_invoice') || 0);
-    const pajak = Number(form.getValues('pajak') || 0);
-
-    const newDpp = newSubtotal - newTotalDiscount - diskonInvoice;
-    const newTaxAmount = newDpp * (pajak / 100);
-    const newGrandTotal = newDpp + newTaxAmount + ongkir;
-
-    setTotals({
-      subtotal: newSubtotal,
-      totalDiscount: newTotalDiscount,
-      grandTotal: newGrandTotal,
-      dpp: newDpp,
-      taxAmount: newTaxAmount,
-    });
-    
-    form.setValue("total_harga", newGrandTotal, { shouldValidate: true });
-
-  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak, form]);
-
+    return () => subscription.unsubscribe();
+  }, [form]);
+  
+  const currentFormValues = form.watch();
+  const items = currentFormValues.items || [];
+  const subtotal = items.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
+  const totalDiscount = items.reduce((sum, item) => sum + ((item?.subtotal || 0) * ((item?.diskon || 0) / 100)), 0);
+  const dpp = subtotal - totalDiscount - (currentFormValues.diskon_invoice || 0);
+  const taxAmount = dpp * ((currentFormValues.pajak || 0) / 100);
+  const grandTotal = dpp + taxAmount + (currentFormValues.ongkos_kirim || 0);
 
   const handleAddProduct = () => {
     if (!selectedProductToAdd) {
@@ -405,30 +401,30 @@ export default function NewPurchasePage() {
                 <CardContent className="space-y-3">
                      <div className="flex justify-between text-sm">
                         <span>Subtotal</span>
-                        <span>Rp{totals.subtotal.toLocaleString('id-ID')}</span>
+                        <span>Rp{subtotal.toLocaleString('id-ID')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                         <span>Total Diskon</span>
-                        <span className="text-red-500">- Rp{totals.totalDiscount.toLocaleString('id-ID')}</span>
+                        <span className="text-red-500">- Rp{totalDiscount.toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-medium">
                         <span>DPP (Total Setelah Diskon)</span>
-                        <span>Rp{totals.dpp.toLocaleString('id-ID')}</span>
+                        <span>Rp{dpp.toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-sm">
-                        <span>Pajak ({watchPajak || 0}%)</span>
-                        <span>+ Rp{totals.taxAmount.toLocaleString('id-ID')}</span>
+                        <span>Pajak ({currentFormValues.pajak || 0}%)</span>
+                        <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
                     </div>
                      <div className="flex justify-between text-sm">
                         <span>Ongkos Kirim</span>
-                         <span>+ Rp{(watchOngkosKirim || 0).toLocaleString('id-ID')}</span>
+                         <span>+ Rp{(currentFormValues.ongkos_kirim || 0).toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                      <div className="flex justify-between font-bold text-lg text-primary">
                         <span>Grand Total</span>
-                        <span>Rp{totals.grandTotal.toLocaleString('id-ID')}</span>
+                        <span>Rp{grandTotal.toLocaleString('id-ID')}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -438,5 +434,3 @@ export default function NewPurchasePage() {
     </Form>
   );
 }
-
-    
