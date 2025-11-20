@@ -133,32 +133,31 @@ export default function EditPurchasePage() {
   });
 
   const watchItems = form.watch("items");
-  const watchOngkosKirim = form.watch("ongkos_kirim", 0);
-  const watchDiskonInvoice = form.watch("diskon_invoice", 0);
-  const watchPajak = form.watch("pajak", 0);
+  const watchOngkosKirim = form.watch("ongkos_kirim");
+  const watchDiskonInvoice = form.watch("diskon_invoice");
+  const watchPajak = form.watch("pajak");
 
   const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
-    const currentItems = form.getValues('items') || [];
-    const subtotal = currentItems.reduce((sum, item) => {
+    const subtotal = watchItems.reduce((sum, item) => {
         const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
         return sum + itemSubtotal;
     }, 0);
-    const totalDiscount = currentItems.reduce((sum, item) => {
+    const totalDiscount = watchItems.reduce((sum, item) => {
         const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
         const itemDiscount = itemSubtotal * ((item.diskon || 0) / 100);
         return sum + itemDiscount;
     }, 0);
 
-    const ongkir = form.getValues('ongkos_kirim') || 0;
-    const diskonInvoice = form.getValues('diskon_invoice') || 0;
-    const pajak = form.getValues('pajak') || 0;
+    const ongkir = watchOngkosKirim || 0;
+    const diskonInvoice = watchDiskonInvoice || 0;
+    const pajak = watchPajak || 0;
 
     const dpp = subtotal - totalDiscount - diskonInvoice;
     const taxAmount = dpp * (pajak / 100);
     const grandTotal = dpp + taxAmount + ongkir;
 
     return { subtotal, totalDiscount, grandTotal };
-  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak, form]);
+  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak]);
 
 
   useEffect(() => {
@@ -211,8 +210,8 @@ export default function EditPurchasePage() {
     return <div>Memuat data pembelian...</div>;
   }
 
-  const dpp = subtotal - totalDiscount - watchDiskonInvoice;
-  const taxAmount = dpp * (watchPajak / 100);
+  const dpp = subtotal - totalDiscount - (watchDiskonInvoice || 0);
+  const taxAmount = dpp * ((watchPajak || 0) / 100);
 
   return (
     <Form {...form}>
@@ -322,7 +321,7 @@ export default function EditPurchasePage() {
               <CardTitle>Item Pembelian</CardTitle>
                <CardDescription>Tambahkan produk yang akan dibeli.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-visible">
                 <div className="flex gap-2 mb-4">
                     <div className="flex-grow">
                         <SearchableSelect
@@ -468,3 +467,5 @@ export default function EditPurchasePage() {
     </Form>
   );
 }
+
+    
