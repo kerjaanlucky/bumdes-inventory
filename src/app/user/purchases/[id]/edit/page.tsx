@@ -137,18 +137,29 @@ export default function EditPurchasePage() {
   const watchDiskonInvoice = form.watch("diskon_invoice", 0);
   const watchPajak = form.watch("pajak", 0);
 
-  const { subtotal, totalDiscount } = useMemo(() => {
-    const subtotal = watchItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-    const totalDiscount = watchItems.reduce((sum, item) => {
-        const itemDiscount = (item.jumlah * item.harga_beli_satuan) * ((item.diskon || 0) / 100);
+  const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
+    const currentItems = form.getValues('items') || [];
+    const subtotal = currentItems.reduce((sum, item) => {
+        const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
+        return sum + itemSubtotal;
+    }, 0);
+    const totalDiscount = currentItems.reduce((sum, item) => {
+        const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
+        const itemDiscount = itemSubtotal * ((item.diskon || 0) / 100);
         return sum + itemDiscount;
     }, 0);
-    return { subtotal, totalDiscount };
-  }, [watchItems]);
 
-  const dpp = subtotal - totalDiscount - watchDiskonInvoice;
-  const taxAmount = dpp * (watchPajak / 100);
-  const grandTotal = dpp + taxAmount + watchOngkosKirim;
+    const ongkir = form.getValues('ongkos_kirim') || 0;
+    const diskonInvoice = form.getValues('diskon_invoice') || 0;
+    const pajak = form.getValues('pajak') || 0;
+
+    const dpp = subtotal - totalDiscount - diskonInvoice;
+    const taxAmount = dpp * (pajak / 100);
+    const grandTotal = dpp + taxAmount + ongkir;
+
+    return { subtotal, totalDiscount, grandTotal };
+  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak, form]);
+
 
   useEffect(() => {
     form.setValue("total_harga", grandTotal, { shouldValidate: true });
@@ -156,10 +167,10 @@ export default function EditPurchasePage() {
   
   useEffect(() => {
     watchItems.forEach((item, index) => {
-      const subtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
-      if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
-        form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
-      }
+        const subtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
+        if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
+            form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
+        }
     });
   }, [watchItems, form]);
 
@@ -199,6 +210,9 @@ export default function EditPurchasePage() {
   if (isFetching || !form.formState.isDirty) {
     return <div>Memuat data pembelian...</div>;
   }
+
+  const dpp = subtotal - totalDiscount - watchDiskonInvoice;
+  const taxAmount = dpp * (watchPajak / 100);
 
   return (
     <Form {...form}>
@@ -369,7 +383,7 @@ export default function EditPurchasePage() {
                                             control={form.control}
                                             name={`items.${index}.subtotal`}
                                             render={({ field }) => (
-                                                <span>Rp{Number(field.value || 0).toLocaleString('id-ID')}</span>
+                                                <span>Rp{Number((form.getValues(`items.${index}.jumlah`) || 0) * (form.getValues(`items.${index}.harga_beli_satuan`) || 0)).toLocaleString('id-ID')}</span>
                                             )}
                                         />
                                     </TableCell>
