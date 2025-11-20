@@ -113,22 +113,22 @@ export default function NewPurchasePage() {
   });
 
   const watchItems = form.watch("items");
-  const watchOngkosKirim = form.watch("ongkos_kirim");
-  const watchDiskonInvoice = form.watch("diskon_invoice");
-  const watchPajak = form.watch("pajak");
+  const watchOngkosKirim = form.watch("ongkos_kirim", 0);
+  const watchDiskonInvoice = form.watch("diskon_invoice", 0);
+  const watchPajak = form.watch("pajak", 0);
 
   const { subtotal, totalDiscount } = useMemo(() => {
     const subtotal = watchItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
     const totalDiscount = watchItems.reduce((sum, item) => {
-        const itemDiscount = (item.subtotal || 0) * ((item.diskon || 0) / 100);
+        const itemDiscount = (item.jumlah * item.harga_beli_satuan) * ((item.diskon || 0) / 100);
         return sum + itemDiscount;
     }, 0);
     return { subtotal, totalDiscount };
   }, [watchItems]);
 
-  const dpp = subtotal - totalDiscount - (watchDiskonInvoice || 0);
-  const taxAmount = dpp * ((watchPajak || 0) / 100);
-  const grandTotal = dpp + taxAmount + (watchOngkosKirim || 0);
+  const dpp = subtotal - totalDiscount - watchDiskonInvoice;
+  const taxAmount = dpp * (watchPajak / 100);
+  const grandTotal = dpp + taxAmount + watchOngkosKirim;
 
   useEffect(() => {
     form.setValue("total_harga", grandTotal);
@@ -136,13 +136,11 @@ export default function NewPurchasePage() {
   
   useEffect(() => {
     watchItems.forEach((item, index) => {
-        if(item.jumlah && item.harga_beli_satuan) {
-            const subtotal = item.jumlah * item.harga_beli_satuan;
-            if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
-                 form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
-            }
-        }
-    })
+      const subtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
+      if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
+        form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
+      }
+    });
   }, [watchItems, form]);
 
   const handleAddProduct = () => {
@@ -431,5 +429,3 @@ export default function NewPurchasePage() {
     </Form>
   );
 }
-
-    
