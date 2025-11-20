@@ -118,26 +118,29 @@ export default function NewPurchasePage() {
   const watchPajak = form.watch("pajak");
 
   const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
-    const subtotal = watchItems.reduce((sum, item) => {
+    const currentItems = form.getValues('items') || [];
+    const subtotal = currentItems.reduce((sum, item) => {
         const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
         return sum + itemSubtotal;
     }, 0);
-    const totalDiscount = watchItems.reduce((sum, item) => {
+
+    const totalDiscount = currentItems.reduce((sum, item) => {
         const itemSubtotal = (item.jumlah || 0) * (item.harga_beli_satuan || 0);
         const itemDiscount = itemSubtotal * ((item.diskon || 0) / 100);
         return sum + itemDiscount;
     }, 0);
 
-    const ongkir = watchOngkosKirim || 0;
-    const diskonInvoice = watchDiskonInvoice || 0;
-    const pajak = watchPajak || 0;
+    const ongkir = form.getValues('ongkos_kirim') || 0;
+    const diskonInvoice = form.getValues('diskon_invoice') || 0;
+    const pajak = form.getValues('pajak') || 0;
 
     const dpp = subtotal - totalDiscount - diskonInvoice;
     const taxAmount = dpp * (pajak / 100);
     const grandTotal = dpp + taxAmount + ongkir;
 
     return { subtotal, totalDiscount, grandTotal };
-  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak]);
+  }, [watchItems, watchOngkosKirim, watchDiskonInvoice, watchPajak, form]);
+
 
   useEffect(() => {
     form.setValue("total_harga", grandTotal);
@@ -352,13 +355,7 @@ export default function NewPurchasePage() {
                                         />
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Controller
-                                            control={form.control}
-                                            name={`items.${index}.subtotal`}
-                                            render={({ field }) => (
-                                                <span>Rp{Number((form.getValues(`items.${index}.jumlah`) || 0) * (form.getValues(`items.${index}.harga_beli_satuan`) || 0)).toLocaleString('id-ID')}</span>
-                                            )}
-                                        />
+                                        Rp{((form.getValues(`items.${index}.jumlah`) || 0) * (form.getValues(`items.${index}.harga_beli_satuan`) || 0)).toLocaleString('id-ID')}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => remove(index)}>
