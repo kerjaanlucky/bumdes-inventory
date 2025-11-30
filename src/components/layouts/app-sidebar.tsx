@@ -9,10 +9,9 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { menuData } from "@/components/layouts/menu"
 import { NavAdmin } from "./nav-admin";
 import { NavUser } from "./nav-user";
-import { NavUser as NavUserMenu } from "./nav-user-menu";
+import { NavUserMenu } from "./nav-user-menu";
 import { Icons } from "../icons";
 import Link from "next/link";
 
@@ -33,7 +32,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {isAdmin ? <NavAdmin /> : <NavUser />}
       </SidebarContent>
       <SidebarFooter>
-        <NavUserMenu user={menuData.user} />
+        <NavUserMenu />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
