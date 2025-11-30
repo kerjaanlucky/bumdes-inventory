@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Branch } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useAuthStore } from '@/store/auth-store';
 
 const registerSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
@@ -39,20 +40,25 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, isLoading } = useAuthStore();
   const auth = useAuth();
   const firestore = useFirestore();
   useAuthRedirect();
-  const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
 
   useEffect(() => {
     async function fetchBranches() {
+        // In a real app with Firestore rules, this might need to be an unsecured collection or a Cloud Function
         const response = await fetch('/api/branches');
-        const data = await response.json();
-        setBranches(data);
+        if (response.ok) {
+            const data = await response.json();
+            setBranches(data);
+        } else {
+            // This is temporary, as api/branches will be removed. Branches will be fetched from Firestore directly.
+            console.warn("Could not fetch branches via API route.");
+        }
     }
     fetchBranches();
   }, []);
@@ -73,29 +79,29 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const firebaseUser = userCredential.user;
       
-      if (firebaseUser) {
-        await updateProfile(firebaseUser, {
-          displayName: data.name,
-        });
+      await updateProfile(firebaseUser, {
+        displayName: data.name,
+      });
 
-        // Create user profile document in Firestore
-        const userProfile = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          name: data.name,
-          role: 'user', // Default role for new sign-ups
-          branchId: data.branchId,
-        };
-        
-        const userDocRef = doc(firestore, `branches/${data.branchId}/users`, firebaseUser.uid);
-        setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
-      }
+      const userProfile = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        name: data.name,
+        role: 'user', // Default role for new sign-ups is Kasir
+        branchId: data.branchId,
+      };
+      
+      const userDocRef = doc(firestore, `branches/${data.branchId}/users`, firebaseUser.uid);
+      
+      // Use blocking setDoc here to ensure profile is created before redirect
+      await setDoc(userDocRef, userProfile);
 
       toast({
         title: "Pendaftaran Berhasil",
         description: "Akun Anda telah berhasil dibuat. Anda akan dialihkan...",
       });
       // Redirect is handled by useAuthRedirect hook
+
     } catch (error: any) {
       console.error('Error creating user', error);
       let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
@@ -112,7 +118,7 @@ export default function RegisterPage() {
     }
   };
 
-  if (isUserLoading || user) {
+  if (isLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />

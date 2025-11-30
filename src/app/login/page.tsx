@@ -19,9 +19,11 @@ import { useAuthRedirect } from '@/firebase/auth/use-auth-redirect';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { useAuthStore } from '@/store/auth-store';
+
 
 export default function LoginPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, isLoading } = useAuthStore();
   const auth = useAuth();
   useAuthRedirect();
   const { toast } = useToast();
@@ -67,7 +69,7 @@ export default function LoginPage() {
   }
 
 
-  if (isUserLoading || user) {
+  if (isLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />

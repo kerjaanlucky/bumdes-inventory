@@ -1,45 +1,43 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useUser } from '@/firebase';
 import { useAuthStore } from '@/store/auth-store';
 
 export function useAuthRedirect() {
-  const { user, isUserLoading } = useUser();
-  const { role, isLoading: isProfileLoading } = useAuthStore();
+  const { user, role, isLoading } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const isLoading = isUserLoading || isProfileLoading;
     if (isLoading) return;
 
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
 
     if (user) {
+      // User is logged in
       if (isAuthPage) {
         if (role === 'admin') {
           router.replace('/admin/dashboard');
-        } else {
+        } else if (role === 'user') {
           router.replace('/user/dashboard');
-        }
+        } 
+        // If role is not yet determined, we wait. isLoading should handle this.
       }
     } else {
+      // User is not logged in
       if (!isAuthPage) {
         router.replace('/login');
       }
     }
-  }, [user, isUserLoading, role, isProfileLoading, router, pathname]);
+  }, [user, role, isLoading, router, pathname]);
 }
 
 // Hook to protect a route and ensure user has a specific role
 export function useRoleGuard(requiredRole: 'admin' | 'user') {
-    const { user, isUserLoading } = useUser();
-    const { role, isLoading: isProfileLoading } = useAuthStore();
+    const { user, role, isLoading } = useAuthStore();
     const router = useRouter();
 
     useEffect(() => {
-        const isLoading = isUserLoading || isProfileLoading;
         if (isLoading) return;
 
         if (!user) {
@@ -48,15 +46,14 @@ export function useRoleGuard(requiredRole: 'admin' | 'user') {
         }
 
         if (role && role !== requiredRole) {
-            // If user has a role but it's not the required one, redirect
-             if (role === 'admin') {
+            if (role === 'admin') {
                 router.replace('/admin');
-             } else {
+            } else {
                 router.replace('/user');
-             }
+            }
         }
-    }, [user, isUserLoading, role, isProfileLoading, requiredRole, router]);
+    }, [user, role, isLoading, requiredRole, router]);
 
-    // Return a loading state to prevent rendering child components prematurely
-    return isUserLoading || isProfileLoading || !user || role !== requiredRole;
+    // Return the loading state to prevent rendering child components prematurely
+    return isLoading || !user || !role || role !== requiredRole;
 }

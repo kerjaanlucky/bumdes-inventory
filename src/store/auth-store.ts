@@ -2,10 +2,11 @@
 "use client";
 
 import { create } from 'zustand';
-import { User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { User, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useFirebaseStore } from './firebase-store';
 import { UserProfile } from '@/lib/types';
+import { useEffect } from 'react';
 
 interface AuthState {
   user: User | null;
@@ -13,7 +14,7 @@ interface AuthState {
   branchId: string | null;
   role: 'admin' | 'user' | null;
   isLoading: boolean;
-  setUser: (user: User | null) => void;
+  initializeAuthListener: () => () => void; // Returns the unsubscribe function
   fetchUserProfile: (user: User) => Promise<void>;
   clearAuth: () => void;
 }
@@ -25,54 +26,71 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   role: null,
   isLoading: true,
   
-  setUser: (user) => {
-    set({ user, isLoading: true });
-    if (user) {
-      get().fetchUserProfile(user);
-    } else {
-      get().clearAuth();
+  initializeAuthListener: () => {
+    const { auth } = useFirebaseStore.getState();
+    if (!auth) {
+        console.error("Auth service not initialized in FirebaseStore.");
+        set({ isLoading: false });
+        return () => {};
     }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        set({ user });
+        get().fetchUserProfile(user);
+      } else {
+        get().clearAuth();
+      }
+    });
+    
+    return unsubscribe;
   },
 
   fetchUserProfile: async (user) => {
     const { firestore } = useFirebaseStore.getState();
     if (!firestore) {
+      console.error("Firestore not initialized.");
       set({ isLoading: false });
       return;
     }
 
-    // This is a simplification. In a real multi-branch app, you might need
-    // to query which branch a user belongs to if it's not in their auth claims.
-    // Here we'll have to check common locations. Let's assume we can derive it.
-    // For now, we will have to check all branches. This is inefficient but necessary
-    // without custom claims.
+    set({ isLoading: true });
+    
+    try {
+        const branchesSnapshot = await getDocs(collection(firestore, 'branches'));
+        let foundProfile: UserProfile | null = null;
 
-    const branchesResponse = await fetch('/api/branches');
-    const branches = await branchesResponse.json();
-
-    let foundProfile: UserProfile | null = null;
-    let foundBranchId: string | null = null;
-
-    for (const branch of branches) {
-        const userDocRef = doc(firestore, `branches/${branch.id}/users`, user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-            foundProfile = userDocSnap.data() as UserProfile;
-            foundBranchId = branch.id;
-            break; 
+        for (const branchDoc of branchesSnapshot.docs) {
+            const userDocRef = doc(firestore, `branches/${branchDoc.id}/users`, user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                foundProfile = userDocSnap.data() as UserProfile;
+                break; 
+            }
         }
-    }
 
-    if (foundProfile && foundBranchId) {
-        set({
-            userProfile: foundProfile,
-            branchId: foundBranchId,
-            role: foundProfile.role,
-            isLoading: false,
-        });
-    } else {
-        console.warn(`User profile not found for UID: ${user.uid} in any branch.`);
-        get().clearAuth();
+        if (foundProfile) {
+            set({
+                userProfile: foundProfile,
+                branchId: foundProfile.branchId,
+                role: foundProfile.role,
+                isLoading: false,
+            });
+        } else {
+             // This case is important: user is authenticated but has no profile document.
+             // This might happen during registration race conditions.
+             // We treat them as a non-profiled user.
+            console.warn(`User profile not found for UID: ${user.uid}. The user is authenticated but has no profile document.`);
+            set({
+                userProfile: null,
+                branchId: null,
+                role: null,
+                isLoading: false,
+            });
+        }
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        get().clearAuth(); // Clear on error
     }
   },
   
@@ -86,3 +104,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 }));
+
+// A hook to initialize the auth listener once in the app's lifecycle
+export const useAuthInitializer = () => {
+    const initializeAuthListener = useAuthStore(state => state.initializeAuthListener);
+
+    useEffect(() => {
+        const unsubscribe = initializeAuthListener();
+        return () => unsubscribe(); // Cleanup on unmount
+    }, [initializeAuthListener]);
+}

@@ -65,9 +65,8 @@ export const useUserStore = create<UserState>((set, get) => ({
     try {
         const branchesSnapshot = await getDocs(collection(firestore, 'branches'));
         for (const branchDoc of branchesSnapshot.docs) {
-            const userDocRef = doc(firestore, `branches/${branchDoc.id}/users`, userId);
-            const userDocSnap = await getDocs(collection(firestore, `branches/${branchDoc.id}/users`));
-            const userDoc = userDocSnap.docs.find(d => d.id === userId);
+            const userDocsSnap = await getDocs(collection(firestore, `branches/${branchDoc.id}/users`));
+            const userDoc = userDocsSnap.docs.find(d => d.id === userId);
              if (userDoc?.exists()) {
                 return { uid: userDoc.id, ...userDoc.data() } as UserProfile;
             }
@@ -86,26 +85,26 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     set({ isSubmitting: true });
     try {
-      // Create user in Firebase Auth
-      // This is tricky because we need a separate auth instance to not log in the admin as the new user
-      // For this implementation, we'll assume a simplified flow or a backend function would handle this.
-      // As a workaround, we'll just create the Firestore record. A real app would need a Cloud Function.
+      // In a real app, this should be a Cloud Function.
+      // Creating a user on the client and then their profile has security implications.
+      // For this project, we'll proceed with a client-side implementation.
+      const { password, ...profileData } = user;
       
-      // We can't create user with password without being an admin sdk.
-      // This is a placeholder for what should be a server-side action
-      console.warn("Client-side user creation with password is not secure or scalable. Use a server-side function in production.");
-
+      // IMPORTANT: This part is a placeholder. Secure user creation requires Admin SDK.
+      // We will create the Firestore record, but Auth user creation won't work securely from client.
+      // We'll simulate it by assuming a UID could be created.
+      console.warn("addUser function is for demonstration. Secure user creation requires a backend.");
+      
+      const tempUid = `TEMP_${Date.now()}`;
+      
       const userProfile: Omit<UserProfile, 'uid'> = {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        branchId: user.branchId,
+        name: profileData.name,
+        email: profileData.email,
+        role: profileData.role,
+        branchId: profileData.branchId,
       };
 
-      // This is a placeholder UID. In a real app, this would come from the created Auth user.
-      const tempUid = `NEEDS_AUTH_UID_${Date.now()}`;
       const userDocRef = doc(firestore, `branches/${user.branchId}/users`, tempUid);
-      
       await setDoc(userDocRef, userProfile);
       
       await get().fetchUsers();
@@ -132,7 +131,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       }
       
       // Create or update the document in the new branch
-      await setDocumentNonBlocking(newUserDocRef, updatedUser, { merge: true });
+      await setDoc(newUserDocRef, updatedUser, { merge: true });
       await get().fetchUsers();
 
     } catch (error) {
@@ -150,7 +149,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       const userDocRef = doc(firestore, `branches/${branchId}/users`, userId);
       // Note: This only deletes the Firestore record, not the Firebase Auth user.
       // Deleting the auth user requires the Admin SDK.
-      await deleteDocumentNonBlocking(userDocRef);
+      await deleteDoc(userDocRef);
       set((state) => ({
         users: state.users.filter((user) => user.uid !== userId),
       }));
