@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   name: string;
@@ -29,7 +30,7 @@ export interface Product {
   stok: number;
   harga_modal: number;
   harga_jual: number;
-  kategori_id: string;
+  kategori_id: number;
   nama_kategori?: string; // Optional, joined from categories table
   branch_id: string;
 }
@@ -84,8 +85,8 @@ export type Sale = {
 export type PurchaseStatus = 'DRAFT' | 'DIPESAN' | 'DITERIMA_SEBAGIAN' | 'DITERIMA_PENUH' | 'DIBATALKAN';
 
 export interface PurchaseItem {
-  id: string; // Can be string for form, number from DB
-  produk_id: string;
+  id: any; // Can be string for form, number from DB
+  produk_id: number;
   nama_produk: string;
   nama_satuan: string;
   jumlah: number;
@@ -106,7 +107,7 @@ export interface PurchaseStatusHistory {
 export interface Purchase {
   id: string;
   nomor_pembelian: string;
-  supplier_id: string;
+  supplier_id: number;
   nama_supplier?: string;
   no_faktur_supplier: string;
   tanggal_pembelian: string;

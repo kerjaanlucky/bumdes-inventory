@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -23,7 +24,7 @@ const productSchema = z.object({
   stok: z.coerce.number().min(0, "Stok tidak boleh negatif"),
   harga_modal: z.coerce.number().min(0, "Harga modal tidak boleh negatif"),
   harga_jual: z.coerce.number().min(0, "Harga jual tidak boleh negatif"),
-  branch_id: z.coerce.number().default(1), // Defaulting to 1 for now
+  branch_id: z.string().optional(), // branch_id will be handled by the store
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -37,6 +38,7 @@ export default function NewProductPage() {
 
   useEffect(() => {
     const fetchDropdownData = async () => {
+      // In a real app, you'd fetch this from your backend, filtered by branchId
       const catResponse = await fetch('/api/categories?all=true');
       const unitResponse = await fetch('/api/units?all=true');
       setCategories(await catResponse.json());
@@ -55,6 +57,17 @@ export default function NewProductPage() {
       harga_jual: 0,
     },
   });
+
+  const watchNamaProduk = form.watch("nama_produk");
+
+  useEffect(() => {
+    // Generate product code only once when user starts typing the name
+    if (watchNamaProduk && !form.getValues("kode_produk")) {
+      const randomCode = Math.floor(10000000 + Math.random() * 90000000).toString();
+      form.setValue("kode_produk", randomCode, { shouldValidate: true });
+    }
+  }, [watchNamaProduk, form]);
+
 
   const onSubmit: SubmitHandler<ProductFormValues> = async (data) => {
     await addProduct(data);
@@ -94,9 +107,9 @@ export default function NewProductPage() {
                   name="kode_produk"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Kode Produk</FormLabel>
+                      <FormLabel>Kode Produk (Otomatis)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Contoh: LP-001" {...field} disabled={isSubmitting} />
+                        <Input {...field} disabled />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
