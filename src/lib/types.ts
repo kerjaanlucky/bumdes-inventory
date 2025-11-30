@@ -143,7 +143,7 @@ export type PaginatedResponse<T> = {
 
 export interface UserProfile {
   uid: string;
-  email: string;
+  email: string | null;
   name: string;
   role: 'admin' | 'user';
   branchId: string;
