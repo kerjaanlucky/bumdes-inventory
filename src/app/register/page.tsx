@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,15 +21,19 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { useAuthRedirect } from '@/firebase/auth/use-auth-redirect';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Branch } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const registerSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   email: z.string().email("Alamat email tidak valid"),
   password: z.string().min(6, "Password minimal 6 karakter"),
+  branchId: z.string().min(1, "Cabang wajib dipilih"),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -36,10 +41,21 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   useAuthRedirect();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    async function fetchBranches() {
+        const response = await fetch('/api/branches');
+        const data = await response.json();
+        setBranches(data);
+    }
+    fetchBranches();
+  }, []);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -47,6 +63,7 @@ export default function RegisterPage() {
       name: '',
       email: '',
       password: '',
+      branchId: '',
     },
   });
 
@@ -54,16 +71,31 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      if (userCredential.user) {
-        await updateProfile(userCredential.user, {
+      const firebaseUser = userCredential.user;
+      
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, {
           displayName: data.name,
         });
+
+        // Create user profile document in Firestore
+        const userProfile = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: data.name,
+          role: 'user', // Default role for new sign-ups
+          branchId: data.branchId,
+        };
+        
+        const userDocRef = doc(firestore, `branches/${data.branchId}/users`, firebaseUser.uid);
+        setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
       }
+
       toast({
         title: "Pendaftaran Berhasil",
         description: "Akun Anda telah berhasil dibuat. Anda akan dialihkan...",
       });
-      // Redirect handled by useAuthRedirect
+      // Redirect is handled by useAuthRedirect hook
     } catch (error: any) {
       console.error('Error creating user', error);
       let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
@@ -140,6 +172,28 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input type="password" {...field} disabled={isSubmitting} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="branchId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pilih Cabang</FormLabel>
+                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih cabang Anda" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {branches.map(branch => (
+                              <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     <FormMessage />
                   </FormItem>
                 )}

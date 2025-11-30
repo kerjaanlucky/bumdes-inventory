@@ -139,3 +139,12 @@ export type PaginatedResponse<T> = {
   page: number;
   limit: number;
 };
+
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'user';
+  branchId: string;
+}

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Branch": {
@@ -25,36 +26,36 @@
         "address"
       ]
     },
-    "User": {
+    "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
+      "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user of the system.",
+      "description": "Represents a user's profile information stored in Firestore.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "branchId": {
-          "type": "string",
-          "description": "Reference to Branch. (Relationship: Branch 1:N User). The branch to which the user is assigned."
-        },
-        "role": {
-          "type": "string",
-          "description": "Role of the user (e.g., 'admin', 'user')."
+          "description": "The user's unique ID, matching their Firebase Auth UID."
         },
         "email": {
           "type": "string",
-          "description": "Email address of the user.",
+          "description": "The user's email address.",
           "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "The display name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (e.g., 'admin', 'user'). 'user' corresponds to 'Kasir'.",
+          "enum": ["admin", "user"]
+        },
+        "branchId": {
+          "type": "string",
+          "description": "The ID of the branch the user is assigned to."
         }
       },
-      "required": [
-        "id",
-        "branchId",
-        "role",
-        "email"
-      ]
+      "required": ["uid", "email", "name", "role", "branchId"]
     },
     "Item": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -262,172 +263,53 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/branches/{branchId}",
-        "definition": {
-          "entityName": "Branch",
-          "schema": {
-            "$ref": "#/backend/entities/Branch"
-          },
-          "description": "Stores branch information.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            }
-          ]
-        }
+    "/branches/{branchId}": {
+      "schema": {
+        "$ref": "#/entities/Branch"
       },
-      {
-        "path": "/branches/{branchId}/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user information. Includes denormalized 'branchId' for authorization independence.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "userId",
-              "description": "Unique identifier for the user."
-            }
-          ]
-        }
+      "description": "Stores branch information."
+    },
+    "/branches/{branchId}/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
       },
-      {
-        "path": "/branches/{branchId}/items/{itemId}",
-        "definition": {
-          "entityName": "Item",
-          "schema": {
-            "$ref": "#/backend/entities/Item"
-          },
-          "description": "Stores item master data. Includes denormalized 'branchId' for authorization independence.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "itemId",
-              "description": "Unique identifier for the item."
-            }
-          ]
-        }
+      "description": "Stores user profile information, including their role and assigned branch."
+    },
+    "/branches/{branchId}/items/{itemId}": {
+      "schema": {
+        "$ref": "#/entities/Item"
       },
-      {
-        "path": "/branches/{branchId}/stocks/{stockId}",
-        "definition": {
-          "entityName": "Stock",
-          "schema": {
-            "$ref": "#/backend/entities/Stock"
-          },
-          "description": "Stores stock level information. Includes denormalized 'branchId' for authorization independence.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "stockId",
-              "description": "Unique identifier for the stock entry."
-            }
-          ]
-        }
+      "description": "Stores item master data for a specific branch."
+    },
+    "/branches/{branchId}/stocks/{stockId}": {
+      "schema": {
+        "$ref": "#/entities/Stock"
       },
-      {
-        "path": "/branches/{branchId}/purchases/{purchaseId}",
-        "definition": {
-          "entityName": "Purchase",
-          "schema": {
-            "$ref": "#/backend/entities/Purchase"
-          },
-          "description": "Stores purchase order information. Includes denormalized 'branchId' for authorization independence.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "purchaseId",
-              "description": "Unique identifier for the purchase order."
-            }
-          ]
-        }
+      "description": "Stores stock level information for a specific branch."
+    },
+    "/branches/{branchId}/purchases/{purchaseId}": {
+      "schema": {
+        "$ref": "#/entities/Purchase"
       },
-      {
-        "path": "/branches/{branchId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}",
-        "definition": {
-          "entityName": "PurchaseItem",
-          "schema": {
-            "$ref": "#/backend/entities/PurchaseItem"
-          },
-          "description": "Stores individual items within a purchase order. Inherits authorization from its parent 'purchase'.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "purchaseId",
-              "description": "Unique identifier for the purchase order."
-            },
-            {
-              "name": "purchaseItemId",
-              "description": "Unique identifier for the purchase item."
-            }
-          ]
-        }
+      "description": "Stores purchase order information for a specific branch."
+    },
+    "/branches/{branchId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}": {
+      "schema": {
+        "$ref": "#/entities/PurchaseItem"
       },
-      {
-        "path": "/branches/{branchId}/sales/{saleId}",
-        "definition": {
-          "entityName": "Sale",
-          "schema": {
-            "$ref": "#/backend/entities/Sale"
-          },
-          "description": "Stores sales transaction information. Includes denormalized 'branchId' for authorization independence.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "saleId",
-              "description": "Unique identifier for the sales transaction."
-            }
-          ]
-        }
+      "description": "Stores individual items within a purchase order."
+    },
+    "/branches/{branchId}/sales/{saleId}": {
+      "schema": {
+        "$ref": "#/entities/Sale"
       },
-      {
-        "path": "/branches/{branchId}/sales/{saleId}/saleItems/{saleItemId}",
-        "definition": {
-          "entityName": "SaleItem",
-          "schema": {
-            "$ref": "#/backend/entities/SaleItem"
-          },
-          "description": "Stores individual items within a sales transaction. Inherits authorization from its parent 'sale'.",
-          "params": [
-            {
-              "name": "branchId",
-              "description": "Unique identifier for the branch."
-            },
-            {
-              "name": "saleId",
-              "description": "Unique identifier for the sales transaction."
-            },
-            {
-              "name": "saleItemId",
-              "description": "Unique identifier for the sale item."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the InventoryFlow application's requirements for managing branches, users, items, stock, purchases, and sales. It prioritizes authorization independence and simplifies security rules by denormalizing authorization data. The structure implements path-based ownership for user-related data and membership maps for collaborative data. Segregation is used to keep data with differing access needs in separate collections.\n\nBranches are the top-level entity. Users are stored as subcollections under branches to clearly define their association. Item, Stock, Purchase, Sale are also stored as subcollections under branches. This structure ensures that all data is tied to a specific branch, supporting the application's multi-branch business model.\n\n**Authorization Independence (Denormalization):**\n\n*   Each document in the subcollections (`users`, `items`, `stocks`, `purchases`, `sales`) stores the `branchId` of its parent. This eliminates the need for `get()` calls to the parent branch document to verify authorization. Security rules can directly check `request.resource.data.branchId == resource.data.branchId` without needing to traverse up the document hierarchy.\n\n**QAPs Support (Segregation & Membership Models):**\n\n*   Path-based ownership (`/branches/{branchId}/users/{userId}`) ensures that user data is directly associated with a branch, and security rules can easily enforce that only authenticated users or admins of a branch can access user data.\n\n*   The structure facilitates secure list operations (QAPs) because each collection contains documents with homogeneous security requirements. For example, listing items under a branch is secure because all items in the `/branches/{branchId}/items` collection belong to that branch."
+      "description": "Stores sales transaction information for a specific branch."
+    },
+    "/branches/{branchId}/sales/{saleId}/saleItems/{saleItemId}": {
+      "schema": {
+        "$ref": "#/entities/SaleItem"
+      },
+      "description": "Stores individual items within a sales transaction."
+    }
   }
 }
