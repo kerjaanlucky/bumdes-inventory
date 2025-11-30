@@ -18,8 +18,9 @@ import { Loader2 } from "lucide-react";
 const userSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   email: z.string().email("Alamat email tidak valid"),
-  role: z.enum(["Manajer", "Kasir"]),
-  branch: z.string().min(1, "Cabang wajib diisi"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
+  role: z.enum(["admin", "user"]),
+  branchId: z.string().min(1, "Cabang wajib diisi"),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -39,8 +40,9 @@ export default function NewUserPage() {
     defaultValues: {
       name: "",
       email: "",
-      role: "Kasir",
-      branch: "",
+      password: "",
+      role: "user",
+      branchId: "",
     },
   });
 
@@ -89,21 +91,34 @@ export default function NewUserPage() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="role"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Peran</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih peran" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Kasir">Kasir</SelectItem>
-                        <SelectItem value="Manajer">Manajer</SelectItem>
+                        <SelectItem value="user">Kasir</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -112,11 +127,11 @@ export default function NewUserPage() {
               />
                <FormField
                 control={form.control}
-                name="branch"
+                name="branchId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cabang</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih cabang" />
@@ -124,7 +139,7 @@ export default function NewUserPage() {
                       </FormControl>
                       <SelectContent>
                         {branches.map(branch => (
-                            <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                            <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

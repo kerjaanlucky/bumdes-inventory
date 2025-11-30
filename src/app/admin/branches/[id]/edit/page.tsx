@@ -55,13 +55,17 @@ export default function EditBranchPage() {
         setBranch(branchData);
         form.reset(branchData);
         handleTemplateChange(branchData.invoiceTemplate, branchData.invoiceCustomFormat);
+      } else {
+        // If branch not found after fetching, maybe redirect
+        toast({ variant: "destructive", title: "Cabang tidak ditemukan" });
+        router.push("/admin/branches");
       }
     };
 
     if (branchId) {
       fetchAndSetBranch();
     }
-  }, [branchId, fetchBranches, getBranchById, form]);
+  }, [branchId, fetchBranches, getBranchById, form, router, toast]);
   
   const invoiceTemplate = form.watch("invoiceTemplate");
   const customFormat = form.watch("invoiceCustomFormat");
@@ -103,7 +107,11 @@ export default function EditBranchPage() {
   };
 
   if (!branch) {
-    return <div>Memuat data cabang...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -150,7 +158,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Nomor Telepon Cabang</FormLabel>
                       <FormControl>
-                        <Input placeholder="0812-3456-7890" {...field} disabled={isSubmitting} />
+                        <Input placeholder="0812-3456-7890" {...field} value={field.value || ''} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -163,7 +171,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="cabang@example.com" {...field} disabled={isSubmitting} />
+                        <Input type="email" placeholder="cabang@example.com" {...field} value={field.value || ''} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -176,7 +184,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Pajak Default (%)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="11" {...field} disabled={isSubmitting} />
+                        <Input type="number" placeholder="11" {...field} value={field.value || 0} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -188,7 +196,7 @@ export default function EditBranchPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipe Pajak</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih tipe pajak" />
@@ -213,7 +221,7 @@ export default function EditBranchPage() {
                         <Select onValueChange={(value) => {
                             field.onChange(value);
                             handleTemplateChange(value, form.getValues('invoiceCustomFormat'));
-                        }} defaultValue={field.value} disabled={isSubmitting}>
+                        }} value={field.value} disabled={isSubmitting}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih template faktur" />
@@ -237,7 +245,7 @@ export default function EditBranchPage() {
                                 <FormItem>
                                 <FormLabel>Format Faktur Kustom</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} disabled={isSubmitting} />
+                                    <Input placeholder="Contoh: {kode_cabang}-{tahun}-{bulan}-{nomor_urut}" {...field} value={field.value || ''} disabled={isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -259,7 +267,7 @@ export default function EditBranchPage() {
                     <FormItem>
                       <FormLabel>Catatan Faktur</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} disabled={isSubmitting} />
+                        <Textarea placeholder="Terima kasih atas bisnis Anda!" {...field} value={field.value || ''} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

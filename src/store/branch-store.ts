@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import { Branch } from '@/lib/types';
+import { useFirebaseStore } from './firebase-store';
+import { collection, getDocs, doc, deleteDoc, addDoc, setDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+
 
 type BranchState = {
   branches: Branch[];
@@ -19,10 +23,12 @@ export const useBranchStore = create<BranchState>((set, get) => ({
   isSubmitting: false,
   isDeleting: false,
   fetchBranches: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    if (!firestore) return;
     set({ isFetching: true });
     try {
-      const response = await fetch('/api/branches');
-      const branches = await response.json();
+      const querySnapshot = await getDocs(collection(firestore, 'branches'));
+      const branches = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
       set({ branches, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch branches:", error);
@@ -30,54 +36,53 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     }
   },
   addBranch: async (branch) => {
+    const { firestore } = useFirebaseStore.getState();
+    if (!firestore) return;
     set({ isSubmitting: true });
+    const branchesRef = collection(firestore, 'branches');
     try {
-      const response = await fetch('/api/branches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(branch),
-      });
-      const newBranch = await response.json();
-      set((state) => ({
-        branches: [...state.branches, newBranch],
-        isSubmitting: false,
-      }));
-    } catch (error) {
-      console.error("Failed to add branch:", error);
-      set({ isSubmitting: false });
+        const docRef = await addDoc(branchesRef, branch);
+        set((state) => ({
+            branches: [...state.branches, { id: docRef.id, ...branch }],
+        }));
+    } catch(error) {
+         console.error("Failed to add branch:", error);
+    } finally {
+        set({ isSubmitting: false });
     }
   },
   editBranch: async (updatedBranch) => {
+    const { firestore } = useFirebaseStore.getState();
+    if (!firestore) return;
     set({ isSubmitting: true });
+    const branchRef = doc(firestore, "branches", updatedBranch.id);
     try {
-      const response = await fetch(`/api/branches/${updatedBranch.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedBranch),
-      });
-      const returnedBranch = await response.json();
-      set((state) => ({
-        branches: state.branches.map((branch) =>
-          branch.id === returnedBranch.id ? returnedBranch : branch
-        ),
-        isSubmitting: false,
-      }));
+        await setDoc(branchRef, updatedBranch, { merge: true });
+        set((state) => ({
+            branches: state.branches.map((branch) =>
+            branch.id === updatedBranch.id ? updatedBranch : branch
+            ),
+        }));
     } catch (error) {
-      console.error("Failed to edit branch:", error);
-      set({ isSubmitting: false });
+        console.error("Failed to edit branch:", error);
+    } finally {
+        set({ isSubmitting: false });
     }
   },
   deleteBranch: async (branchId) => {
+    const { firestore } = useFirebaseStore.getState();
+    if (!firestore) return;
     set({ isDeleting: true });
+    const branchRef = doc(firestore, "branches", branchId);
     try {
-      await fetch(`/api/branches/${branchId}`, { method: 'DELETE' });
-      set((state) => ({
-        branches: state.branches.filter((branch) => branch.id !== branchId),
-        isDeleting: false,
-      }));
+        await deleteDoc(branchRef);
+        set((state) => ({
+            branches: state.branches.filter((branch) => branch.id !== branchId),
+        }));
     } catch (error) {
-      console.error("Failed to delete branch:", error);
-      set({ isDeleting: false });
+         console.error("Failed to delete branch:", error);
+    } finally {
+        set({ isDeleting: false });
     }
   },
   getBranchById: (branchId) => {

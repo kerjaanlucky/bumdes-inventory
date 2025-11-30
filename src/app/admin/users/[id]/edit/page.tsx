@@ -13,16 +13,15 @@ import { useUserStore } from "@/store/user-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranchStore } from "@/store/branch-store";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@/lib/types";
+import { UserProfile } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 
 const userSchema = z.object({
-  id: z.string(),
-  avatar: z.string(),
+  uid: z.string(),
   name: z.string().min(1, "Nama wajib diisi"),
   email: z.string().email("Alamat email tidak valid"),
-  role: z.enum(["Manajer", "Kasir"]),
-  branch: z.string().min(1, "Cabang wajib diisi"),
+  role: z.enum(["admin", "user"]),
+  branchId: z.string().min(1, "Cabang wajib diisi"),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -30,11 +29,11 @@ type UserFormValues = z.infer<typeof userSchema>;
 export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
-  const { editUser, getUserById, isSubmitting, fetchUsers } = useUserStore();
+  const { editUser, getUserById, isSubmitting, fetchUsers, users, findUserInAnyBranch } = useUserStore();
   const { branches, fetchBranches } = useBranchStore();
   const { toast } = useToast();
   const userId = params.id as string;
-  const [user, setUser] = useState<User | undefined>(undefined);
+  const [user, setUser] = useState<UserProfile | undefined>(undefined);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -42,9 +41,8 @@ export default function EditUserPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      await fetchUsers();
       await fetchBranches();
-      const userData = getUserById(userId);
+      const userData = await findUserInAnyBranch(userId);
       if (userData) {
         setUser(userData);
         form.reset(userData);
@@ -53,10 +51,11 @@ export default function EditUserPage() {
     if (userId) {
       fetchInitialData();
     }
-  }, [userId, fetchUsers, fetchBranches, getUserById, form]);
+  }, [userId, findUserInAnyBranch, fetchBranches, form]);
 
   const onSubmit: SubmitHandler<UserFormValues> = async (data) => {
-    await editUser(data);
+    if (!user) return;
+    await editUser(user.branchId, data);
     toast({
       title: "Pengguna Diperbarui",
       description: "Perubahan pada pengguna telah berhasil disimpan.",
@@ -98,7 +97,7 @@ export default function EditUserPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john.doe@example.com" {...field} disabled={isSubmitting} />
+                      <Input type="email" placeholder="john.doe@example.com" {...field} disabled />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,15 +109,15 @@ export default function EditUserPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Peran</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih peran" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Kasir">Kasir</SelectItem>
-                        <SelectItem value="Manajer">Manajer</SelectItem>
+                        <SelectItem value="user">Kasir</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -127,11 +126,11 @@ export default function EditUserPage() {
               />
                <FormField
                 control={form.control}
-                name="branch"
+                name="branchId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cabang</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih cabang" />
@@ -139,7 +138,7 @@ export default function EditUserPage() {
                       </FormControl>
                       <SelectContent>
                         {branches.map(branch => (
-                            <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                            <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

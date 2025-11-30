@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useUserStore } from '@/store/user-store';
+import { useBranchStore } from '@/store/branch-store';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -24,22 +25,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 export default function UsersPage() {
   const router = useRouter();
   const { users, deleteUser, fetchUsers, isFetching, isDeleting } = useUserStore();
+  const { branches, fetchBranches, getBranchById } = useBranchStore();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ userId: string, branchId: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchBranches();
+  }, [fetchUsers, fetchBranches]);
 
-  const handleDeleteClick = (userId: string) => {
-    setSelectedUser(userId);
+  const handleDeleteClick = (userId: string, branchId: string) => {
+    setSelectedUser({ userId, branchId });
     setDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
     if (selectedUser) {
-      await deleteUser(selectedUser);
+      await deleteUser(selectedUser.branchId, selectedUser.userId);
       setDialogOpen(false);
       setSelectedUser(null);
       toast({
@@ -92,44 +95,49 @@ export default function UsersPage() {
                       <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : users.map(user => (
-                    <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                            <Badge variant={user.role === 'Manajer' ? 'destructive' : 'outline'}>{user.role}</Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{user.branch}</TableCell>
-                        <TableCell className="text-right">
-                          <TooltipProvider>
-                            <div className="flex items-center justify-end gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/users/${user.id}/edit`)}>
-                                    <Edit className="h-4 w-4" />
-                                    <span className="sr-only">Ubah</span>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Ubah Pengguna</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(user.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Hapus</span>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Hapus Pengguna</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </TooltipProvider>
-                        </TableCell>
-                    </TableRow>
-                ))}
+                ) : users.map(user => {
+                    const branchName = getBranchById(user.branchId)?.name || user.branchId;
+                    return (
+                        <TableRow key={user.uid}>
+                            <TableCell className="font-medium">{user.name}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                                <Badge variant={user.role === 'admin' ? 'destructive' : 'outline'}>
+                                    {user.role === 'admin' ? 'Admin' : 'Kasir'}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{branchName}</TableCell>
+                            <TableCell className="text-right">
+                              <TooltipProvider>
+                                <div className="flex items-center justify-end gap-2">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/users/${user.uid}/edit`)}>
+                                        <Edit className="h-4 w-4" />
+                                        <span className="sr-only">Ubah</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Ubah Pengguna</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(user.uid, user.branchId)}>
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">Hapus</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Hapus Pengguna</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TooltipProvider>
+                            </TableCell>
+                        </TableRow>
+                    )
+                })}
                 </TableBody>
             </Table>
         </CardContent>
