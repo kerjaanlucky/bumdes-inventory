@@ -23,8 +23,8 @@ const productSchema = z.object({
   id: z.string(),
   kode_produk: z.string().min(1, "Kode produk wajib diisi"),
   nama_produk: z.string().min(1, "Nama produk wajib diisi"),
-  kategori_id: z.coerce.number().min(1, "Kategori wajib dipilih"),
-  satuan_id: z.coerce.number().min(1, "Satuan wajib dipilih"),
+  kategori_id: z.string().min(1, "Kategori wajib dipilih"),
+  satuan_id: z.string().min(1, "Satuan wajib dipilih"),
   stok: z.coerce.number().min(0, "Stok tidak boleh negatif"),
   harga_modal: z.coerce.number().min(0, "Harga modal tidak boleh negatif"),
   harga_jual: z.coerce.number().min(0, "Harga jual tidak boleh negatif"),
@@ -62,8 +62,8 @@ export default function EditProductPage() {
         if (productData) {
           form.reset({
             ...productData,
-            kategori_id: Number(productData.kategori_id),
-            satuan_id: Number(productData.satuan_id),
+            kategori_id: String(productData.kategori_id),
+            satuan_id: String(productData.satuan_id),
           });
         } else {
           router.push("/user/products"); // Redirect if not found
@@ -135,7 +135,7 @@ export default function EditProductPage() {
                     <FormItem>
                       <FormLabel>Kategori</FormLabel>
                        <div className="flex items-center gap-2">
-                        <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} disabled={isSubmitting}>
+                        <Select onValueChange={(value) => field.onChange(String(value))} value={String(field.value)} disabled={isSubmitting}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih kategori" />
@@ -162,7 +162,7 @@ export default function EditProductPage() {
                     <FormItem>
                       <FormLabel>Satuan</FormLabel>
                        <div className="flex items-center gap-2">
-                        <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} disabled={isSubmitting}>
+                        <Select onValueChange={(value) => field.onChange(String(value))} value={String(field.value)} disabled={isSubmitting}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih satuan" />

@@ -1,31 +1,33 @@
 
 "use client";
 
-import { useForm, useFieldArray, SubmitHandler, Controller } from "react-hook-form";
+import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePurchaseStore } from "@/store/purchase-store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle } from "lucide-react";
-import { Supplier, Product, PurchaseItem as PurchaseItemType } from "@/lib/types";
+import { Supplier, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import SearchableSelect, { SearchableSelectOption } from "@/components/ui/searchable-select";
+import SearchableSelect from "@/components/ui/searchable-select";
 import { useDebounce } from 'use-debounce';
+import { useSupplierStore } from "@/store/supplier-store";
+import { useProductStore } from "@/store/product-store";
 
 const purchaseItemSchema = z.object({
   id: z.any(),
-  produk_id: z.coerce.number().min(1, "Produk harus dipilih"),
+  produk_id: z.string().min(1, "Produk harus dipilih"),
   nama_produk: z.string(),
   nama_satuan: z.string(),
   jumlah: z.coerce.number().min(1, "Jumlah minimal 1"),
@@ -36,8 +38,8 @@ const purchaseItemSchema = z.object({
 });
 
 const purchaseSchema = z.object({
-  id: z.number(),
-  supplier_id: z.coerce.number().min(1, "Pemasok wajib dipilih"),
+  id: z.string(),
+  supplier_id: z.string().min(1, "Pemasok wajib dipilih"),
   no_faktur_supplier: z.string().optional(),
   tanggal_pembelian: z.date({ required_error: "Tanggal pembelian wajib diisi" }),
   items: z.array(purchaseItemSchema).min(1, "Minimal harus ada 1 barang dalam pembelian"),
@@ -52,16 +54,15 @@ type PurchaseFormValues = z.infer<typeof purchaseSchema>;
 export default function EditPurchasePage() {
   const router = useRouter();
   const params = useParams();
-  const purchaseId = Number(params.id);
+  const purchaseId = params.id as string;
   const { editPurchase, getPurchaseById, isSubmitting, isFetching } = usePurchaseStore();
   const { toast } = useToast();
   
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const { suppliers, fetchSuppliers, isFetching: isSuppliersLoading } = useSupplierStore();
+  const { products, fetchProducts, isFetching: isProductsLoading } = useProductStore();
+
   const [supplierSearch, setSupplierSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
-  const [isSuppliersLoading, setIsSuppliersLoading] = useState(false);
-  const [isProductsLoading, setIsProductsLoading] = useState(false);
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   
   const [debouncedSupplierSearch] = useDebounce(supplierSearch, 300);
@@ -97,76 +98,58 @@ export default function EditPurchasePage() {
   }, [purchaseId, getPurchaseById, form, router, toast]);
 
   useEffect(() => {
-    const fetchSuppliers = async () => {
-        setIsSuppliersLoading(true);
-        const response = await fetch(`/api/suppliers?all=true&search=${debouncedSupplierSearch}`);
-        setSuppliers(await response.json());
-        setIsSuppliersLoading(false);
-    }
     fetchSuppliers();
-  }, [debouncedSupplierSearch]);
+  }, [fetchSuppliers, debouncedSupplierSearch]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-        setIsProductsLoading(true);
-        const response = await fetch(`/api/products?all=true&search=${debouncedProductSearch}`);
-        const productData = await response.json();
-        setProducts(productData.data);
-        setIsProductsLoading(false);
-    }
     fetchProducts();
-  }, [debouncedProductSearch]);
+  }, [fetchProducts, debouncedProductSearch]);
 
   const supplierOptions = useMemo(() => 
-    suppliers.map(s => ({ value: String(s.id), label: s.nama_supplier })), 
+    suppliers.map(s => ({ value: s.id, label: s.nama_supplier })), 
     [suppliers]
   );
   
   const productOptions = useMemo(() => 
-    products.map(p => ({ value: String(p.id), label: `${p.kode_produk} - ${p.nama_produk}` })), 
+    products.map(p => ({ value: p.id, label: `${p.kode_produk} - ${p.nama_produk}` })), 
     [products]
   );
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
+  const watchAllFields = form.watch();
   useEffect(() => {
-    const subscription = form.watch((values, { name, type }) => {
-      if (name && (name.startsWith('items') || ['diskon_invoice', 'pajak', 'ongkos_kirim'].includes(name))) {
-        const items = values.items || [];
-        items.forEach((item, index) => {
-          const subtotal = (item?.jumlah || 0) * (item?.harga_beli_satuan || 0);
-          if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
-            form.setValue(`items.${index}.subtotal`, subtotal, { shouldValidate: true });
-          }
-        });
+      const { items, diskon_invoice, pajak, ongkos_kirim } = watchAllFields;
+      let newSubtotal = 0;
+      let newTotalDiscount = 0;
 
-        const newSubtotal = items.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
-        const newTotalDiscount = items.reduce((sum, item) => {
-            const itemSubtotal = (item?.subtotal || 0);
-            const itemDiscount = itemSubtotal * ((item?.diskon || 0) / 100);
-            return sum + itemDiscount;
-        }, 0);
-        
-        const ongkir = Number(values.ongkos_kirim || 0);
-        const diskonInvoice = Number(values.diskon_invoice || 0);
-        const pajak = Number(values.pajak || 0);
-
-        const newDpp = newSubtotal - newTotalDiscount - diskonInvoice;
-        const newTaxAmount = newDpp * (pajak / 100);
-        const newGrandTotal = newDpp + newTaxAmount + ongkir;
-
-        if (form.getValues('total_harga') !== newGrandTotal) {
-          form.setValue("total_harga", newGrandTotal, { shouldValidate: true });
+      items?.forEach((item, index) => {
+        const subtotal = (item?.jumlah || 0) * (item?.harga_beli_satuan || 0);
+        newSubtotal += subtotal;
+        if (form.getValues(`items.${index}.subtotal`) !== subtotal) {
+          form.setValue(`items.${index}.subtotal`, subtotal);
         }
+        const itemDiscount = subtotal * ((item?.diskon || 0) / 100);
+        newTotalDiscount += itemDiscount;
+      });
+      
+      const ongkir = Number(ongkos_kirim || 0);
+      const invDiscount = Number(diskon_invoice || 0);
+      const taxPercent = Number(pajak || 0);
+
+      const newDpp = newSubtotal - newTotalDiscount - invDiscount;
+      const newTaxAmount = newDpp * (taxPercent / 100);
+      const newGrandTotal = newDpp + newTaxAmount + ongkir;
+
+      if (form.getValues('total_harga') !== newGrandTotal) {
+        form.setValue("total_harga", newGrandTotal);
       }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+  }, [watchAllFields, form]);
   
-  const currentFormValues = form.watch();
+  const currentFormValues = form.getValues();
   const items = currentFormValues.items || [];
   const subtotal = items.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
   const totalDiscount = items.reduce((sum, item) => sum + ((item?.subtotal || 0) * ((item?.diskon || 0) / 100)), 0);
@@ -174,13 +157,12 @@ export default function EditPurchasePage() {
   const taxAmount = dpp * ((currentFormValues.pajak || 0) / 100);
   const grandTotal = dpp + taxAmount + (currentFormValues.ongkos_kirim || 0);
 
-
   const handleAddProduct = () => {
     if (!selectedProductToAdd) {
         toast({ variant: "destructive", title: "Produk belum dipilih", description: "Silakan cari dan pilih produk terlebih dahulu."});
         return;
     };
-    const product = products.find(p => p.id === Number(selectedProductToAdd));
+    const product = products.find(p => p.id === selectedProductToAdd);
     if (product) {
       append({
         id: `new-${fields.length}`,
@@ -244,8 +226,8 @@ export default function EditPurchasePage() {
                       <FormControl>
                         <SearchableSelect
                             options={supplierOptions}
-                            value={String(field.value || '')}
-                            onChange={(val) => field.onChange(Number(val))}
+                            value={field.value || ''}
+                            onChange={(val) => field.onChange(val)}
                             onSearchChange={setSupplierSearch}
                             placeholder="Cari pemasok..."
                             isLoading={isSuppliersLoading}
@@ -389,6 +371,9 @@ export default function EditPurchasePage() {
                         </TableBody>
                     </Table>
                  </div>
+                  {form.formState.errors.items && (
+                    <p className="text-sm font-medium text-destructive mt-4">{form.formState.errors.items.message}</p>
+                 )}
             </CardContent>
           </Card>
           

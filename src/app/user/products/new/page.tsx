@@ -23,8 +23,8 @@ import { useUnitStore } from "@/store/unit-store";
 const productSchema = z.object({
   kode_produk: z.string().min(1, "Kode produk wajib diisi"),
   nama_produk: z.string().min(1, "Nama produk wajib diisi"),
-  kategori_id: z.coerce.number().min(1, "Kategori wajib dipilih"),
-  satuan_id: z.coerce.number().min(1, "Satuan wajib dipilih"),
+  kategori_id: z.string().min(1, "Kategori wajib dipilih"),
+  satuan_id: z.string().min(1, "Satuan wajib dipilih"),
   stok: z.coerce.number().min(0, "Stok tidak boleh negatif"),
   harga_modal: z.coerce.number().min(0, "Harga modal tidak boleh negatif"),
   harga_jual: z.coerce.number().min(0, "Harga jual tidak boleh negatif"),

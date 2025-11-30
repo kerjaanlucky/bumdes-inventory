@@ -18,7 +18,7 @@ import { ReceiveItemsModal } from '../receive-items-modal';
 export default function PurchaseDetailPage() {
     const router = useRouter();
     const params = useParams();
-    const purchaseId = Number(params.id);
+    const purchaseId = params.id as string;
     const { getPurchaseById, isFetching, updatePurchaseStatus, editPurchase } = usePurchaseStore();
     const { getProductById, editProduct } = useProductStore.getState();
     
@@ -65,7 +65,7 @@ export default function PurchaseDetailPage() {
             const originalItem = purchase.items?.find(i => i.id === receivedItem.id);
             if (!originalItem) continue;
 
-            const quantityReceivedNow = receivedItem.jumlah_diterima;
+            const quantityReceivedNow = receivedItem.jumlah_diterima - originalItem.jumlah_diterima;
             if (quantityReceivedNow > 0) {
                  anyItemReceived = true;
                  const product = await getProductById(receivedItem.produk_id);

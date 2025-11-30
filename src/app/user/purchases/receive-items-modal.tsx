@@ -16,9 +16,10 @@ import { Loader2 } from "lucide-react";
 
 const receiveItemSchema = z.object({
   id: z.any(),
-  produk_id: z.number(),
+  produk_id: z.string(),
   nama_produk: z.string(),
   jumlah: z.number(),
+  jumlah_diterima: z.number(), // This is the total received amount INCLUDING the new amount
   jumlah_diterima_sebelumnya: z.number(),
   jumlah_diterima_sekarang: z.coerce.number().min(0, "Jumlah tidak boleh negatif"),
 });
@@ -28,6 +29,9 @@ const receiveSchema = z.object({
     items => items.some(item => item.jumlah_diterima_sekarang > 0),
     { message: "Minimal harus ada 1 barang yang diterima." }
   ),
+}).refine(items => items.items.every(item => item.jumlah_diterima_sekarang <= (item.jumlah - item.jumlah_diterima_sebelumnya)), {
+  message: "Jumlah diterima tidak boleh melebihi sisa pesanan.",
+  path: ["items"]
 });
 
 
@@ -53,7 +57,9 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
         nama_produk: item.nama_produk,
         jumlah: item.jumlah,
         jumlah_diterima_sebelumnya: item.jumlah_diterima || 0,
-        jumlah_diterima_sekarang: item.jumlah - (item.jumlah_diterima || 0), // Default to remaining
+        // Default to the remaining amount
+        jumlah_diterima_sekarang: item.jumlah - (item.jumlah_diterima || 0), 
+        jumlah_diterima: item.jumlah_diterima || 0
       })),
     },
   });
@@ -67,7 +73,7 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
     setIsSubmitting(true);
     const updatedItems = items.map(originalItem => {
         const receivedItem = data.items.find(i => i.id === originalItem.id);
-        const jumlahDiterimaBaru = receivedItem ? originalItem.jumlah_diterima + receivedItem.jumlah_diterima_sekarang : originalItem.jumlah_diterima;
+        const jumlahDiterimaBaru = (originalItem.jumlah_diterima || 0) + (receivedItem ? receivedItem.jumlah_diterima_sekarang : 0);
         return {
             ...originalItem,
             jumlah_diterima: jumlahDiterimaBaru,
@@ -77,7 +83,7 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
     await onSubmit(updatedItems);
     setIsSubmitting(false);
   };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl">
@@ -124,8 +130,8 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
                 </TableBody>
               </Table>
             </ScrollArea>
-             {form.formState.errors.items && (
-              <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.items.message}</p>
+             {form.formState.errors.items?.root && (
+              <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.items.root.message}</p>
             )}
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>

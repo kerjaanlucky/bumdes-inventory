@@ -30,7 +30,7 @@ export interface Product {
   stok: number;
   harga_modal: number;
   harga_jual: number;
-  kategori_id: number;
+  kategori_id: string;
   nama_kategori?: string; // Optional, joined from categories table
   branch_id: string;
 }
@@ -86,7 +86,7 @@ export type PurchaseStatus = 'DRAFT' | 'DIPESAN' | 'DITERIMA_SEBAGIAN' | 'DITERI
 
 export interface PurchaseItem {
   id: any; // Can be string for form, number from DB
-  produk_id: number;
+  produk_id: string;
   nama_produk: string;
   nama_satuan: string;
   jumlah: number;
@@ -107,7 +107,7 @@ export interface PurchaseStatusHistory {
 export interface Purchase {
   id: string;
   nomor_pembelian: string;
-  supplier_id: number;
+  supplier_id: string;
   nama_supplier?: string;
   no_faktur_supplier: string;
   tanggal_pembelian: string;

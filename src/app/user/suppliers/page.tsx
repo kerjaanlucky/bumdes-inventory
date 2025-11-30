@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -43,13 +44,13 @@ export default function SuppliersPage() {
     
     const [debouncedSearch] = useDebounce(searchTerm, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedSupplier, setSelectedSupplier] = useState<number | null>(null);
+    const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
 
     useEffect(() => {
       fetchSuppliers();
     }, [fetchSuppliers, debouncedSearch, page, limit]);
 
-    const handleDeleteClick = (supplierId: number) => {
+    const handleDeleteClick = (supplierId: string) => {
       setSelectedSupplier(supplierId);
       setDialogOpen(true);
     };

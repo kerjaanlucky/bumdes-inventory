@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -43,13 +44,13 @@ export default function CustomersPage() {
     
     const [debouncedSearch] = useDebounce(searchTerm, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
 
     useEffect(() => {
       fetchCustomers();
     }, [fetchCustomers, debouncedSearch, page, limit]);
 
-    const handleDeleteClick = (customerId: number) => {
+    const handleDeleteClick = (customerId: string) => {
       setSelectedCustomer(customerId);
       setDialogOpen(true);
     };

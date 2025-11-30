@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -17,38 +18,36 @@ import { Product, StockMovement } from '@/lib/types';
 import { format } from 'date-fns';
 import { useDebounce } from 'use-debounce';
 import SearchableSelect from '@/components/ui/searchable-select';
+import { useProductStore } from '@/store/product-store';
 
 export default function StockReportPage() {
     const { 
       movements, 
-      isFetching,
+      isFetching: isMovementsFetching,
       fetchMovements,
     } = useStockStore();
     
-    const [products, setProducts] = useState<Product[]>([]);
+    const { 
+        products, 
+        fetchProducts,
+        isFetching: isProductsFetching,
+    } = useProductStore();
+
     const [productSearch, setProductSearch] = useState('');
-    const [isProductsLoading, setIsProductsLoading] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<string>('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     const [debouncedProductSearch] = useDebounce(productSearch, 300);
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            setIsProductsLoading(true);
-            const response = await fetch(`/api/products?all=true&search=${debouncedProductSearch}`);
-            const productData = await response.json();
-            setProducts(productData.data);
-            setIsProductsLoading(false);
-        }
         fetchProducts();
-    }, [debouncedProductSearch]);
+    }, [fetchProducts, debouncedProductSearch]);
 
     useEffect(() => {
         if (selectedProductId) {
-            const product = products.find(p => p.id === Number(selectedProductId));
+            const product = products.find(p => p.id === selectedProductId);
             setSelectedProduct(product || null);
-            fetchMovements(Number(selectedProductId));
+            fetchMovements(selectedProductId);
         } else {
             setSelectedProduct(null);
             useStockStore.setState({ movements: [], total: 0 });
@@ -56,7 +55,7 @@ export default function StockReportPage() {
     }, [selectedProductId, products, fetchMovements]);
 
     const productOptions = useMemo(() => 
-        products.map(p => ({ value: String(p.id), label: `${p.kode_produk} - ${p.nama_produk}` })), 
+        products.map(p => ({ value: p.id, label: `${p.kode_produk} - ${p.nama_produk}` })), 
         [products]
     );
 
@@ -79,7 +78,7 @@ export default function StockReportPage() {
                     onChange={setSelectedProductId}
                     onSearchChange={setProductSearch}
                     placeholder="Cari produk..."
-                    isLoading={isProductsLoading}
+                    isLoading={isProductsFetching}
                 />
             </div>
         </CardContent>
@@ -128,7 +127,7 @@ export default function StockReportPage() {
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {isFetching ? (
+                        {isMovementsFetching ? (
                         Array.from({ length: 5 }).map((_, index) => (
                             <TableRow key={index}>
                                 <TableCell><Skeleton className="h-5 w-24" /></TableCell>

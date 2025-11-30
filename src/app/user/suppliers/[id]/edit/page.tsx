@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -14,7 +15,7 @@ import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const supplierSchema = z.object({
-  id: z.number(),
+  id: z.string(),
   nama_supplier: z.string().min(1, "Nama pemasok wajib diisi"),
   alamat: z.string().optional(),
   telepon: z.string().optional(),
@@ -26,7 +27,7 @@ type SupplierFormValues = z.infer<typeof supplierSchema>;
 export default function EditSupplierPage() {
   const router = useRouter();
   const params = useParams();
-  const supplierId = Number(params.id);
+  const supplierId = params.id as string;
   const { editSupplier, getSupplierById, isSubmitting } = useSupplierStore();
 
   const form = useForm<SupplierFormValues>({
@@ -48,7 +49,7 @@ export default function EditSupplierPage() {
   }, [supplierId, getSupplierById, form, router]);
 
   const onSubmit: SubmitHandler<SupplierFormValues> = async (data) => {
-    await editSupplier(data);
+    await editSupplier(data as any);
     router.push("/user/suppliers");
   };
   

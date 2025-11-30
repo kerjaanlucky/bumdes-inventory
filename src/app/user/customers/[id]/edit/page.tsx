@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -14,7 +15,7 @@ import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const customerSchema = z.object({
-  id: z.number(),
+  id: z.string(),
   nama_customer: z.string().min(1, "Nama pelanggan wajib diisi"),
   alamat: z.string().optional(),
   telepon: z.string().optional(),
@@ -26,7 +27,7 @@ type CustomerFormValues = z.infer<typeof customerSchema>;
 export default function EditCustomerPage() {
   const router = useRouter();
   const params = useParams();
-  const customerId = Number(params.id);
+  const customerId = params.id as string;
   const { editCustomer, getCustomerById, isSubmitting } = useCustomerStore();
 
   const form = useForm<CustomerFormValues>({
@@ -48,7 +49,7 @@ export default function EditCustomerPage() {
   }, [customerId, getCustomerById, form, router]);
 
   const onSubmit: SubmitHandler<CustomerFormValues> = async (data) => {
-    await editCustomer(data);
+    await editCustomer(data as any);
     router.push("/user/customers");
   };
   
