@@ -1,0 +1,432 @@
+{
+  "entities": {
+    "Branch": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Branch",
+      "type": "object",
+      "description": "Represents a branch of the business, each holding its own inventory.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Branch entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the branch."
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the branch."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "Reference to Branch. (Relationship: Branch 1:N User). The branch to which the user is assigned."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user (e.g., 'admin', 'user')."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "branchId",
+        "role",
+        "email"
+      ]
+    },
+    "Item": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Item",
+      "type": "object",
+      "description": "Represents a master item in the inventory.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Item entity."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "Reference to Branch. (Relationship: Branch 1:N Item). The branch that owns this item."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the item."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the item."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measure for the item (e.g., 'kg', 'piece')."
+        }
+      },
+      "required": [
+        "id",
+        "branchId",
+        "name",
+        "description",
+        "unit"
+      ]
+    },
+    "Stock": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Stock",
+      "type": "object",
+      "description": "Represents the stock level of an item at a specific branch.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Stock entity."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "Reference to Branch. (Relationship: Branch 1:N Stock). The branch where the stock is located."
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N Stock). The item for which stock is being tracked."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Current quantity of the item in stock."
+        }
+      },
+      "required": [
+        "id",
+        "branchId",
+        "itemId",
+        "quantity"
+      ]
+    },
+    "Purchase": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Purchase",
+      "type": "object",
+      "description": "Represents a purchase order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Purchase entity."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "Reference to Branch. (Relationship: Branch 1:N Purchase). The branch that made the purchase."
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "Date of the purchase order.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount of the purchase."
+        }
+      },
+      "required": [
+        "id",
+        "branchId",
+        "purchaseDate",
+        "totalAmount"
+      ]
+    },
+    "PurchaseItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PurchaseItem",
+      "type": "object",
+      "description": "Represents an item within a purchase order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PurchaseItem entity."
+        },
+        "purchaseId": {
+          "type": "string",
+          "description": "Reference to Purchase. (Relationship: Purchase 1:N PurchaseItem). The purchase order to which this item belongs."
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N PurchaseItem). The item being purchased."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the item purchased."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit price of the item at the time of purchase."
+        }
+      },
+      "required": [
+        "id",
+        "purchaseId",
+        "itemId",
+        "quantity",
+        "unitPrice"
+      ]
+    },
+    "Sale": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Sale",
+      "type": "object",
+      "description": "Represents a sales transaction.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Sale entity."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "Reference to Branch. (Relationship: Branch 1:N Sale). The branch where the sale occurred."
+        },
+        "saleDate": {
+          "type": "string",
+          "description": "Date of the sale.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount of the sale."
+        }
+      },
+      "required": [
+        "id",
+        "branchId",
+        "saleDate",
+        "totalAmount"
+      ]
+    },
+    "SaleItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SaleItem",
+      "type": "object",
+      "description": "Represents an item within a sales transaction.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SaleItem entity."
+        },
+        "saleId": {
+          "type": "string",
+          "description": "Reference to Sale. (Relationship: Sale 1:N SaleItem). The sales transaction to which this item belongs."
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N SaleItem). The item being sold."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the item sold."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit price of the item at the time of sale."
+        }
+      },
+      "required": [
+        "id",
+        "saleId",
+        "itemId",
+        "quantity",
+        "unitPrice"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/branches/{branchId}",
+        "definition": {
+          "entityName": "Branch",
+          "schema": {
+            "$ref": "#/backend/entities/Branch"
+          },
+          "description": "Stores branch information.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user information. Includes denormalized 'branchId' for authorization independence.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/items/{itemId}",
+        "definition": {
+          "entityName": "Item",
+          "schema": {
+            "$ref": "#/backend/entities/Item"
+          },
+          "description": "Stores item master data. Includes denormalized 'branchId' for authorization independence.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "itemId",
+              "description": "Unique identifier for the item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/stocks/{stockId}",
+        "definition": {
+          "entityName": "Stock",
+          "schema": {
+            "$ref": "#/backend/entities/Stock"
+          },
+          "description": "Stores stock level information. Includes denormalized 'branchId' for authorization independence.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "stockId",
+              "description": "Unique identifier for the stock entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/purchases/{purchaseId}",
+        "definition": {
+          "entityName": "Purchase",
+          "schema": {
+            "$ref": "#/backend/entities/Purchase"
+          },
+          "description": "Stores purchase order information. Includes denormalized 'branchId' for authorization independence.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "purchaseId",
+              "description": "Unique identifier for the purchase order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}",
+        "definition": {
+          "entityName": "PurchaseItem",
+          "schema": {
+            "$ref": "#/backend/entities/PurchaseItem"
+          },
+          "description": "Stores individual items within a purchase order. Inherits authorization from its parent 'purchase'.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "purchaseId",
+              "description": "Unique identifier for the purchase order."
+            },
+            {
+              "name": "purchaseItemId",
+              "description": "Unique identifier for the purchase item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/sales/{saleId}",
+        "definition": {
+          "entityName": "Sale",
+          "schema": {
+            "$ref": "#/backend/entities/Sale"
+          },
+          "description": "Stores sales transaction information. Includes denormalized 'branchId' for authorization independence.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "saleId",
+              "description": "Unique identifier for the sales transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/branches/{branchId}/sales/{saleId}/saleItems/{saleItemId}",
+        "definition": {
+          "entityName": "SaleItem",
+          "schema": {
+            "$ref": "#/backend/entities/SaleItem"
+          },
+          "description": "Stores individual items within a sales transaction. Inherits authorization from its parent 'sale'.",
+          "params": [
+            {
+              "name": "branchId",
+              "description": "Unique identifier for the branch."
+            },
+            {
+              "name": "saleId",
+              "description": "Unique identifier for the sales transaction."
+            },
+            {
+              "name": "saleItemId",
+              "description": "Unique identifier for the sale item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the InventoryFlow application's requirements for managing branches, users, items, stock, purchases, and sales. It prioritizes authorization independence and simplifies security rules by denormalizing authorization data. The structure implements path-based ownership for user-related data and membership maps for collaborative data. Segregation is used to keep data with differing access needs in separate collections.\n\nBranches are the top-level entity. Users are stored as subcollections under branches to clearly define their association. Item, Stock, Purchase, Sale are also stored as subcollections under branches. This structure ensures that all data is tied to a specific branch, supporting the application's multi-branch business model.\n\n**Authorization Independence (Denormalization):**\n\n*   Each document in the subcollections (`users`, `items`, `stocks`, `purchases`, `sales`) stores the `branchId` of its parent. This eliminates the need for `get()` calls to the parent branch document to verify authorization. Security rules can directly check `request.resource.data.branchId == resource.data.branchId` without needing to traverse up the document hierarchy.\n\n**QAPs Support (Segregation & Membership Models):**\n\n*   Path-based ownership (`/branches/{branchId}/users/{userId}`) ensures that user data is directly associated with a branch, and security rules can easily enforce that only authenticated users or admins of a branch can access user data.\n\n*   The structure facilitates secure list operations (QAPs) because each collection contains documents with homogeneous security requirements. For example, listing items under a branch is secure because all items in the `/branches/{branchId}/items` collection belong to that branch."
+  }
+}

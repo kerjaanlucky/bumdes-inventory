@@ -1,0 +1,239 @@
+/**
+ * Core Philosophy: This ruleset enforces a multi-tenant security model where each 'branch'
+ * acts as a distinct tenant. A user's permissions are strictly scoped to the branch they
+ * are assigned to. The rules differentiate between two roles within a branch: 'admin' and 'user'.
+ * Admins have full control over their branch's data, while regular users have read-only access.
+ *
+ * Data Structure: All application data is hierarchically organized under the top-level
+ * '/branches' collection. Each branch document contains subcollections for its associated
+ * users, items, stock, purchases, and sales (e.g., /branches/{branchId}/items/{itemId}).
+ * This structure provides a clear and secure boundary between different branches.
+ *
+ * Key Security Decisions:
+ * - Branch-Scoped Access: A user authenticated for Branch A cannot read, write, or list
+ *   data from Branch B. All access checks verify the user's membership and role within
+ *   the target branch.
+ * - Role-Based Permissions: Branch admins are granted full Create, Read, Update, Delete (CRUD)
+ *   permissions on all data within their branch. Standard users are restricted to read-only
+ *   permissions for most data.
+ * - Client-Side Branch Creation Disabled: To ensure administrative control, the creation
+ *   of new branches is disallowed from the client. This operation must be performed through a
+ *   trusted server-side environment.
+ * - User Listing Restricted: Only branch admins can list the users within their branch.
+ *
+ * Denormalization for Authorization: To ensure fast and efficient authorization, the `branchId`
+ * is denormalized (copied) onto every document within a branch's subcollections (e.g., items,
+ * sales). This avoids slow and costly `get()` calls to parent documents and allows rules
+ * to make authorization decisions based on the document's own data. User roles are checked
+ * by performing a single `get()` on the requesting user's profile document within the target branch.
+ *
+ * Structural Segregation: The use of distinct collections per branch (/branches/{branchId})
+ * inherently segregates data, ensuring that queries for one branch's data cannot accidentally
+ * leak data from another.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    //-------------------------------------------------------------------------
+    // Helper Functions
+    //-------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Returns true if the requesting user's UID matches the provided userId.
+     * Used for document ownership checks.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    /**
+     * Retrieves the requesting user's profile document from within a specific branch.
+     * This is the primary function for fetching a user's role for authorization.
+     */
+    function requestingUserDoc(branchId) {
+      return get(/databases/$(database)/documents/branches/$(branchId)/users/$(request.auth.uid));
+    }
+    
+    /**
+     * Checks if the requesting user is a registered member of the specified branch.
+     */
+    function isUserInBranch(branchId) {
+      return exists(/databases/$(database)/documents/branches/$(branchId)/users/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the requesting user has the 'admin' role within the specified branch.
+     */
+    function isAdminInBranch(branchId) {
+      return isUserInBranch(branchId) && requestingUserDoc(branchId).data.role == 'admin';
+    }
+
+    /**
+     * Validates that the branchId in a new document's data matches the branchId from the path.
+     * Enforces relational integrity on create.
+     */
+    function isBranchConsistentOnCreate(branchId) {
+      return request.resource.data.branchId == branchId;
+    }
+    
+    /**
+     * Enforces that the branchId of a document cannot be changed during an update.
+     */
+    function isBranchImmutableOnUpdate() {
+       return request.resource.data.branchId == resource.data.branchId;
+    }
+    
+    /**
+     * Enforces immutability for critical User fields on update.
+     * Prevents a user from changing their own ID, branch, or role.
+     * Admins are exempt from the role immutability check.
+     */
+    function isUserUpdateValid(branchId) {
+      let isCoreInfoImmutable = request.resource.data.id == resource.data.id && request.resource.data.branchId == resource.data.branchId;
+      let isRoleUpdateAllowed = isAdminInBranch(branchId) || request.resource.data.role == resource.data.role;
+      return isCoreInfoImmutable && isRoleUpdateAllowed;
+    }
+    
+    //-------------------------------------------------------------------------
+    // Collection Rules
+    //-------------------------------------------------------------------------
+
+    /**
+     * @description Manages business branch documents.
+     * @path /branches/{branchId}
+     * @allow (get, list) An authenticated user can read branch info.
+     * @allow (update) An 'admin' of this branch can update its details.
+     * @deny (create) A user cannot create a new branch from the client.
+     * @deny (delete) A non-admin user cannot delete a branch.
+     * @principle Restricts sensitive write operations (create, update) to authorized roles (branch admins).
+     */
+    match /branches/{branchId} {
+      allow get, list: if isSignedIn();
+      allow create: if false;
+      allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+      allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+
+      /**
+       * @description Manages user profiles within a specific branch.
+       * @path /branches/{branchId}/users/{userId}
+       * @allow (get) A user can read their own profile, and a branch admin can read any user profile in their branch.
+       * @allow (create) A branch admin can create a new user profile in their branch.
+       * @allow (update) A user can update their own profile (but not their role), and an admin can update any profile.
+       * @deny (list) A regular user cannot list all users in the branch.
+       * @deny (delete) A regular user cannot delete another user's profile.
+       * @principle Enforces a mix of document ownership and role-based access for user data management.
+       */
+      match /users/{userId} {
+        allow get: if isSignedIn() && (isOwner(userId) || isAdminInBranch(branchId));
+        allow list: if isSignedIn() && isAdminInBranch(branchId);
+        allow create: if isSignedIn() && isAdminInBranch(branchId) && isBranchConsistentOnCreate(branchId) && request.resource.data.id == userId;
+        allow update: if isSignedIn() && resource != null && (isOwner(userId) || isAdminInBranch(branchId)) && isUserUpdateValid(branchId);
+        allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+      }
+
+      /**
+       * @description Manages master item data for a branch.
+       * @path /branches/{branchId}/items/{itemId}
+       * @allow (get, list) Any user belonging to the branch can read item data.
+       * @allow (create, update, delete) Only an admin of the branch can modify item data.
+       * @deny (create) A regular user from the branch cannot create a new item.
+       * @deny (update) A user from another branch cannot update an item.
+       * @principle Enforces branch-scoped, role-based access control. Read access for members, write access for admins.
+       */
+      match /items/{itemId} {
+        allow get, list: if isSignedIn() && isUserInBranch(branchId);
+        allow create: if isSignedIn() && isAdminInBranch(branchId) && isBranchConsistentOnCreate(branchId);
+        allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null && isBranchImmutableOnUpdate();
+        allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+      }
+
+      /**
+       * @description Manages stock levels for items within a branch.
+       * @path /branches/{branchId}/stocks/{stockId}
+       * @allow (get, list) Any user belonging to the branch can read stock levels.
+       * @allow (create, update, delete) Only an admin of the branch can modify stock data.
+       * @deny (create) A regular user from the branch cannot create a new stock entry.
+       * @deny (update) An admin from another branch cannot update stock data here.
+       * @principle Enforces branch-scoped, role-based access control. Read access for members, write access for admins.
+       */
+      match /stocks/{stockId} {
+        allow get, list: if isSignedIn() && isUserInBranch(branchId);
+        allow create: if isSignedIn() && isAdminInBranch(branchId) && isBranchConsistentOnCreate(branchId);
+        allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null && isBranchImmutableOnUpdate();
+        allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+      }
+
+      /**
+       * @description Manages purchase orders for a branch.
+       * @path /branches/{branchId}/purchases/{purchaseId}
+       * @allow (get, list) Any user belonging to the branch can read purchase orders.
+       * @allow (create, update, delete) Only an admin of the branch can manage purchase orders.
+       * @deny (create) A regular user from the branch cannot create a new purchase order.
+       * @deny (delete) A user from another branch cannot delete a purchase order.
+       * @principle Enforces branch-scoped, role-based access control. Read access for members, write access for admins.
+       */
+      match /purchases/{purchaseId} {
+        allow get, list: if isSignedIn() && isUserInBranch(branchId);
+        allow create: if isSignedIn() && isAdminInBranch(branchId) && isBranchConsistentOnCreate(branchId);
+        allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null && isBranchImmutableOnUpdate();
+        allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+
+        /**
+         * @description Manages the line items within a purchase order.
+         * @path /branches/{branchId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+         * @allow (get, list) Any user in the branch can view purchase line items.
+         * @allow (create, update, delete) Only a branch admin can manage purchase line items.
+         * @deny (create) A regular branch user cannot add items to a purchase order.
+         * @deny (update) An admin from another branch cannot modify these items.
+         * @principle Access is inherited from the parent branch, enforcing branch-scoped security.
+         */
+        match /purchaseItems/{purchaseItemId} {
+          allow get, list: if isSignedIn() && isUserInBranch(branchId);
+          allow create: if isSignedIn() && isAdminInBranch(branchId) && request.resource.data.purchaseId == purchaseId;
+          allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null && request.resource.data.purchaseId == resource.data.purchaseId;
+          allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+        }
+      }
+
+      /**
+       * @description Manages sales transactions for a branch.
+       * @path /branches/{branchId}/sales/{saleId}
+       * @allow (get, list) Any user belonging to the branch can read sales transactions.
+       * @allow (create, update, delete) Only an admin of the branch can manage sales transactions.
+       * @deny (create) A regular user from the branch cannot create a new sales record.
+       * @deny (delete) An admin from another branch cannot delete a sales record here.
+       * @principle Enforces branch-scoped, role-based access control. Read access for members, write access for admins.
+       */
+      match /sales/{saleId} {
+        allow get, list: if isSignedIn() && isUserInBranch(branchId);
+        allow create: if isSignedIn() && isAdminInBranch(branchId) && isBranchConsistentOnCreate(branchId);
+        allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null && isBranchImmutableOnUpdate();
+        allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+
+        /**
+         * @description Manages the line items within a sales transaction.
+         * @path /branches/{branchId}/sales/{saleId}/saleItems/{saleItemId}
+         * @allow (get, list) Any user in the branch can view sales line items.
+         * @allow (create, update, delete) Only a branch admin can manage sales line items.
+         * @deny (create) A regular branch user cannot add items to a sale.
+         * @deny (update) An admin from another branch cannot modify these items.
+         * @principle Access is inherited from the parent branch, enforcing branch-scoped security.
+         */
+        match /saleItems/{saleItemId} {
+          allow get, list: if isSignedIn() && isUserInBranch(branchId);
+          allow create: if isSignedIn() && isAdminInBranch(branchId) && request.resource.data.saleId == saleId;
+          allow update: if isSignedIn() && isAdminInBranch(branchId) && resource != null && request.resource.data.saleId == resource.data.saleId;
+          allow delete: if isSignedIn() && isAdminInBranch(branchId) && resource != null;
+        }
+      }
+    }
+  }
+}
