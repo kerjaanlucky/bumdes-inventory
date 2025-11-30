@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import { StockMovement, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { DateRange } from 'react-day-picker';
+import {
+  collection,
+  query,
+  getDocs,
+  addDoc,
+  where,
+  orderBy,
+} from 'firebase/firestore';
+import { useAuthStore } from './auth-store';
+import { useFirebaseStore } from './firebase-store';
+import { addDocumentNonBlocking } from '@/firebase';
 
 type StockState = {
   movements: StockMovement[];
@@ -15,7 +26,7 @@ type StockState = {
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   setDateRange: (dateRange?: DateRange) => void;
-  fetchMovements: (productId?: number) => Promise<void>;
+  fetchMovements: (productId?: string) => Promise<void>;
   addStockMovement: (movement: Omit<StockMovement, 'id'>) => Promise<void>;
 };
 
@@ -33,29 +44,44 @@ export const useStockStore = create<StockState>((set, get) => ({
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, movements: [] }),
   setDateRange: (dateRange?: DateRange) => set({ dateRange, page: 1, movements: [] }),
 
-  fetchMovements: async (productId?: number) => {
+  fetchMovements: async (productId?: string) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     const { page, limit, searchTerm, dateRange } = get();
     set({ isFetching: true });
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-        search: searchTerm,
-      });
 
+    try {
+      const movementsRef = collection(firestore, `branches/${branchId}/stocks`);
+      let queries = [orderBy('tanggal', 'desc')];
+
+      if (productId) {
+        queries.push(where('produk_id', '==', productId));
+      }
       if (dateRange?.from) {
-        params.append('from', dateRange.from.toISOString());
+        queries.push(where('tanggal', '>=', dateRange.from.toISOString()));
       }
       if (dateRange?.to) {
-        params.append('to', dateRange.to.toISOString());
+        queries.push(where('tanggal', '<=', dateRange.to.toISOString()));
       }
-      if (productId) {
-        params.append('productId', String(productId));
-      }
+      
+      const q = query(movementsRef, ...queries);
+      const querySnapshot = await getDocs(q);
+      let movements: StockMovement[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockMovement));
 
-      const response = await fetch(`/api/stock?${params.toString()}`);
-      const data: PaginatedResponse<StockMovement> = await response.json();
-      set({ movements: data.data, total: data.total, page: data.page, isFetching: false });
+      if (searchTerm) {
+        movements = movements.filter(m =>
+          m.nama_produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.referensi.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      const total = movements.length;
+      const paginatedMovements = movements.slice((page - 1) * limit, page * limit);
+      
+      set({ movements: paginatedMovements, total: total, isFetching: false });
+
     } catch (error) {
       console.error("Failed to fetch stock movements:", error);
       set({ isFetching: false });
@@ -64,14 +90,13 @@ export const useStockStore = create<StockState>((set, get) => ({
   },
 
   addStockMovement: async (movement) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     try {
-      await fetch('/api/stock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(movement),
-      });
-      // Optionally re-fetch movements if the page is currently visible
-      // For now, we assume the user will navigate to the page to see the update
+      const stocksRef = collection(firestore, `branches/${branchId}/stocks`);
+      await addDocumentNonBlocking(stocksRef, movement);
     } catch (error) {
       console.error("Failed to add stock movement:", error);
       toast({ variant: "destructive", title: "Gagal Mencatat Stok", description: "Terjadi kesalahan saat mencatat pergerakan stok." });

@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { Category, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useAuthStore } from './auth-store';
+import { useFirebaseStore } from './firebase-store';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 
 type CategoryState = {
   categories: Category[];
@@ -17,7 +21,7 @@ type CategoryState = {
   fetchCategories: () => Promise<void>;
   addCategory: (category: { nama_kategori: string }) => Promise<void>;
   editCategory: (category: Category) => Promise<void>;
-  deleteCategory: (categoryId: number) => Promise<void>;
+  deleteCategory: (categoryId: string) => Promise<void>;
 };
 
 export const useCategoryStore = create<CategoryState>((set, get) => ({
@@ -35,17 +39,26 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
 
   fetchCategories: async () => {
-    const { page, limit, searchTerm } = get();
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isFetching: true });
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-        search: searchTerm,
-      });
-      const response = await fetch(`/api/categories?${params.toString()}`);
-      const data: PaginatedResponse<Category> = await response.json();
-      set({ categories: data.data, total: data.total, page: data.page, isFetching: false });
+      const categoriesRef = collection(firestore, `branches/${branchId}/categories`);
+      const q = query(categoriesRef);
+      const querySnapshot = await getDocs(q);
+      let categories: Category[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+      
+      const { searchTerm, page, limit } = get();
+      if (searchTerm) {
+        categories = categories.filter(c => c.nama_kategori.toLowerCase().includes(searchTerm.toLowerCase()));
+      }
+      
+      const total = categories.length;
+      const paginatedCategories = categories.slice((page - 1) * limit, page * limit);
+      
+      set({ categories: paginatedCategories, total: total, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       set({ isFetching: false });
@@ -53,60 +66,50 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   },
 
   addCategory: async (category) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isSubmitting: true });
-    try {
-      const response = await fetch('/api/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(category),
-      });
-      if (response.ok) {
-        await get().fetchCategories();
-      }
-    } catch (error) {
-      console.error("Failed to add category:", error);
-    } finally {
-      set({ isSubmitting: false });
-    }
+    const categoriesRef = collection(firestore, `branches/${branchId}/categories`);
+    addDocumentNonBlocking(categoriesRef, { ...category, branchId })
+        .then(() => get().fetchCategories())
+        .catch(err => console.error("Failed to add category:", err))
+        .finally(() => set({ isSubmitting: false }));
   },
 
   editCategory: async (updatedCategory) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isSubmitting: true });
-    try {
-      const response = await fetch(`/api/categories/${updatedCategory.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedCategory),
-      });
-      if (response.ok) {
-        await get().fetchCategories();
-      }
-    } catch (error) {
-      console.error("Failed to edit category:", error);
-    } finally {
-      set({ isSubmitting: false });
-    }
+    const categoryRef = doc(firestore, `branches/${branchId}/categories`, updatedCategory.id);
+    setDocumentNonBlocking(categoryRef, updatedCategory, { merge: true })
+      .then(() => get().fetchCategories())
+      .catch(err => console.error("Failed to edit category:", err))
+      .finally(() => set({ isSubmitting: false }));
   },
 
-  deleteCategory: async (categoryId) => {
+  deleteCategory: async (categoryId: string) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isDeleting: true });
-    try {
-      const response = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
-      if (response.ok) {
-        const { isOrphan } = await response.json();
-        if (isOrphan) {
-            toast({
-                variant: "destructive",
-                title: "Peringatan: Data Yatim Piatu",
-                description: "Kategori telah dihapus, tetapi beberapa produk yang terkait menjadi yatim piatu. Harap perbarui produk tersebut.",
-            });
-        }
-        await get().fetchCategories();
-      }
-    } catch (error) {
-      console.error("Failed to delete category:", error);
-    } finally {
-      set({ isDeleting: false });
-    }
+    const categoryRef = doc(firestore, `branches/${branchId}/categories`, categoryId);
+    // Note: Checking for orphan products client-side before deleting can be complex.
+    // This example proceeds with deletion. A more robust solution might use a Cloud Function
+    // to check for references before deleting.
+    deleteDocumentNonBlocking(categoryRef)
+      .then(() => {
+        toast({
+            title: "Kategori Dihapus",
+            description: "Kategori telah berhasil dihapus.",
+        });
+        get().fetchCategories();
+      })
+      .catch(err => console.error("Failed to delete category:", err))
+      .finally(() => set({ isDeleting: false }));
   },
 }));

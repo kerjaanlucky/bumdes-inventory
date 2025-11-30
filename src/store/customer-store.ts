@@ -2,6 +2,10 @@
 import { create } from 'zustand';
 import { Customer, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { useAuthStore } from './auth-store';
+import { useFirebaseStore } from './firebase-store';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 
 type CustomerState = {
   customers: Customer[];
@@ -16,10 +20,10 @@ type CustomerState = {
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   fetchCustomers: () => Promise<void>;
-  getCustomerById: (customerId: number) => Promise<Customer | undefined>;
-  addCustomer: (customer: Omit<Customer, 'id' | 'tenant_id'>) => Promise<void>;
+  getCustomerById: (customerId: string) => Promise<Customer | undefined>;
+  addCustomer: (customer: Omit<Customer, 'id' | 'branch_id'>) => Promise<void>;
   editCustomer: (customer: Customer) => Promise<void>;
-  deleteCustomer: (customerId: number) => Promise<void>;
+  deleteCustomer: (customerId: string) => Promise<void>;
 };
 
 export const useCustomerStore = create<CustomerState>((set, get) => ({
@@ -37,17 +41,30 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, customers: [] }),
 
   fetchCustomers: async () => {
-    const { page, limit, searchTerm } = get();
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isFetching: true });
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-        search: searchTerm,
-      });
-      const response = await fetch(`/api/customers?${params.toString()}`);
-      const data: PaginatedResponse<Customer> = await response.json();
-      set({ customers: data.data, total: data.total, page: data.page, isFetching: false });
+      const customersRef = collection(firestore, `branches/${branchId}/customers`);
+      const q = query(customersRef);
+      const querySnapshot = await getDocs(q);
+      let customers: Customer[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+
+      const { page, limit, searchTerm } = get();
+      if (searchTerm) {
+        customers = customers.filter(c =>
+          c.nama_customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.telepon?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      const total = customers.length;
+      const paginatedCustomers = customers.slice((page - 1) * limit, page * limit);
+
+      set({ customers: paginatedCustomers, total: total, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch customers:", error);
       set({ isFetching: false });
@@ -55,13 +72,19 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     }
   },
 
-  getCustomerById: async (customerId: number) => {
+  getCustomerById: async (customerId: string) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isFetching: true });
     try {
-      const response = await fetch(`/api/customers/${customerId}`);
-      if (!response.ok) throw new Error("Customer not found");
-      const customer: Customer = await response.json();
-      return customer;
+      const customerRef = doc(firestore, `branches/${branchId}/customers`, customerId);
+      const docSnap = await getDoc(customerRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Customer;
+      }
+      return undefined;
     } catch (error) {
       console.error("Failed to fetch customer:", error);
       toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Pelanggan tidak ditemukan." });
@@ -72,64 +95,59 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   },
 
   addCustomer: async (customer) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
     set({ isSubmitting: true });
-    try {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(customer),
-      });
-      if (response.ok) {
+    const customersRef = collection(firestore, `branches/${branchId}/customers`);
+    addDocumentNonBlocking(customersRef, { ...customer, branchId })
+      .then(() => {
         toast({ title: "Pelanggan Ditambahkan", description: "Pelanggan baru telah berhasil ditambahkan." });
-        await get().fetchCustomers();
-      } else {
-        throw new Error("Failed to add customer");
-      }
-    } catch (error) {
-      console.error("Failed to add customer:", error);
-      toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pelanggan." });
-    } finally {
-      set({ isSubmitting: false });
-    }
+        get().fetchCustomers();
+      })
+      .catch(err => {
+        console.error("Failed to add customer:", err)
+        toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pelanggan." });
+      })
+      .finally(() => set({ isSubmitting: false }));
   },
 
   editCustomer: async (updatedCustomer) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
     set({ isSubmitting: true });
-    try {
-      const response = await fetch(`/api/customers/${updatedCustomer.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedCustomer),
-      });
-      if (response.ok) {
+    const customerRef = doc(firestore, `branches/${branchId}/customers`, updatedCustomer.id);
+    setDocumentNonBlocking(customerRef, updatedCustomer, { merge: true })
+      .then(() => {
          toast({ title: "Pelanggan Diperbarui", description: "Perubahan pada pelanggan telah berhasil disimpan." });
-        await get().fetchCustomers();
-      } else {
-        throw new Error("Failed to edit customer");
-      }
-    } catch (error) {
-      console.error("Failed to edit customer:", error);
-       toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pelanggan." });
-    } finally {
-      set({ isSubmitting: false });
-    }
+         get().fetchCustomers();
+      })
+       .catch(err => {
+         console.error("Failed to edit customer:", err);
+         toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pelanggan." });
+       })
+      .finally(() => set({ isSubmitting: false }));
   },
 
-  deleteCustomer: async (customerId) => {
+  deleteCustomer: async (customerId: string) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isDeleting: true });
-    try {
-      const response = await fetch(`/api/customers/${customerId}`, { method: 'DELETE' });
-      if (response.ok) {
+    const customerRef = doc(firestore, `branches/${branchId}/customers`, customerId);
+    deleteDocumentNonBlocking(customerRef)
+      .then(() => {
         toast({ title: "Pelanggan Dihapus", description: "Pelanggan telah berhasil dihapus." });
-        await get().fetchCustomers();
-      } else {
-         throw new Error("Failed to delete customer");
-      }
-    } catch (error) {
-      console.error("Failed to delete customer:", error);
-      toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pelanggan." });
-    } finally {
-      set({ isDeleting: false });
-    }
+        get().fetchCustomers();
+      })
+      .catch(err => {
+         console.error("Failed to delete customer:", err);
+         toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pelanggan." });
+      })
+      .finally(() => set({ isDeleting: false }));
   },
 }));

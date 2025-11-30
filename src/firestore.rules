@@ -149,12 +149,44 @@ service cloud.firestore {
 
       /**
        * @description Manages master item data for a branch.
-       * @path /branches/{branchId}/items/{itemId}
+       * @path /branches/{branchId}/products/{productId}
        * @allow (read) Any user belonging to the branch can read item data.
        * @allow (write) Only an admin of the branch can modify item data.
        * @principle Enforces branch-scoped, role-based access control. Read access for members, write access for admins.
        */
-      match /items/{itemId} {
+      match /products/{productId} {
+        allow read: if isSignedIn() && isUserInBranch(branchId);
+        allow write: if isSignedIn() && isAdminInBranch(branchId);
+      }
+
+      /**
+       * @description Manages master category data for a branch.
+       */
+      match /categories/{categoryId} {
+        allow read: if isSignedIn() && isUserInBranch(branchId);
+        allow write: if isSignedIn() && isAdminInBranch(branchId);
+      }
+
+       /**
+       * @description Manages master unit data for a branch.
+       */
+      match /units/{unitId} {
+        allow read: if isSignedIn() && isUserInBranch(branchId);
+        allow write: if isSignedIn() && isAdminInBranch(branchId);
+      }
+
+       /**
+       * @description Manages master customer data for a branch.
+       */
+      match /customers/{customerId} {
+        allow read: if isSignedIn() && isUserInBranch(branchId);
+        allow write: if isSignedIn() && isAdminInBranch(branchId);
+      }
+
+       /**
+       * @description Manages master supplier data for a branch.
+       */
+      match /suppliers/{supplierId} {
         allow read: if isSignedIn() && isUserInBranch(branchId);
         allow write: if isSignedIn() && isAdminInBranch(branchId);
       }

@@ -21,47 +21,47 @@ export type Branch = {
 };
 
 export interface Product {
-  id: number;
+  id: string;
   kode_produk: string;
   nama_produk: string;
-  satuan_id: number;
+  satuan_id: string;
   nama_satuan?: string;
   stok: number;
   harga_modal: number;
   harga_jual: number;
-  kategori_id: number;
+  kategori_id: string;
   nama_kategori?: string; // Optional, joined from categories table
-  branch_id: number;
+  branch_id: string;
 }
 
 export interface Category {
-  id: number;
+  id: string;
   nama_kategori: string;
-  tenant_id: number;
+  branch_id: string;
 }
 
 export interface Unit {
-  id: number;
+  id: string;
   nama_satuan: string;
-  tenant_id: number;
+  branch_id: string;
 }
 
 export interface Customer {
-  id: number;
+  id: string;
   nama_customer: string;
   alamat?: string;
   telepon?: string;
   email?: string;
-  tenant_id: number;
+  branch_id: string;
 }
 
 export interface Supplier {
-  id: number;
+  id: string;
   nama_supplier: string;
   alamat?: string;
   telepon?: string;
   email?: string;
-  tenant_id: number;
+  branch_id: string;
 }
 
 
@@ -84,8 +84,8 @@ export type Sale = {
 export type PurchaseStatus = 'DRAFT' | 'DIPESAN' | 'DITERIMA_SEBAGIAN' | 'DITERIMA_PENUH' | 'DIBATALKAN';
 
 export interface PurchaseItem {
-  id: string | number; // Can be string for form, number from DB
-  produk_id: number;
+  id: string; // Can be string for form, number from DB
+  produk_id: string;
   nama_produk: string;
   nama_satuan: string;
   jumlah: number;
@@ -104,9 +104,9 @@ export interface PurchaseStatusHistory {
 }
 
 export interface Purchase {
-  id: number;
+  id: string;
   nomor_pembelian: string;
-  supplier_id: number;
+  supplier_id: string;
   nama_supplier?: string;
   no_faktur_supplier: string;
   tanggal_pembelian: string;
@@ -118,18 +118,20 @@ export interface Purchase {
   created_at: string;
   items?: PurchaseItem[];
   history?: PurchaseStatusHistory[];
+  branch_id: string;
 }
 
 export type StockMovement = {
-  id: number;
+  id: string;
   tanggal: string;
-  produk_id: number;
+  produk_id: string;
   nama_produk: string;
   nama_satuan: string;
   tipe: 'Pembelian Masuk' | 'Penjualan Keluar' | 'Penyesuaian';
   jumlah: number;
   stok_akhir: number;
   referensi: string;
+  branch_id: string;
 };
 
 

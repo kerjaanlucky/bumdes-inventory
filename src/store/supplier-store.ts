@@ -2,6 +2,10 @@
 import { create } from 'zustand';
 import { Supplier, PaginatedResponse } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { useAuthStore } from './auth-store';
+import { useFirebaseStore } from './firebase-store';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 
 type SupplierState = {
   suppliers: Supplier[];
@@ -16,10 +20,10 @@ type SupplierState = {
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   fetchSuppliers: () => Promise<void>;
-  getSupplierById: (supplierId: number) => Promise<Supplier | undefined>;
-  addSupplier: (supplier: Omit<Supplier, 'id' | 'tenant_id'>) => Promise<void>;
+  getSupplierById: (supplierId: string) => Promise<Supplier | undefined>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'branch_id'>) => Promise<void>;
   editSupplier: (supplier: Supplier) => Promise<void>;
-  deleteSupplier: (supplierId: number) => Promise<void>;
+  deleteSupplier: (supplierId: string) => Promise<void>;
 };
 
 export const useSupplierStore = create<SupplierState>((set, get) => ({
@@ -37,17 +41,30 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, suppliers: [] }),
 
   fetchSuppliers: async () => {
-    const { page, limit, searchTerm } = get();
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isFetching: true });
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-        search: searchTerm,
-      });
-      const response = await fetch(`/api/suppliers?${params.toString()}`);
-      const data: PaginatedResponse<Supplier> = await response.json();
-      set({ suppliers: data.data, total: data.total, page: data.page, isFetching: false });
+      const suppliersRef = collection(firestore, `branches/${branchId}/suppliers`);
+      const q = query(suppliersRef);
+      const querySnapshot = await getDocs(q);
+      let suppliers: Supplier[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
+
+      const { page, limit, searchTerm } = get();
+       if (searchTerm) {
+        suppliers = suppliers.filter(s =>
+          s.nama_supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.telepon?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      const total = suppliers.length;
+      const paginatedSuppliers = suppliers.slice((page - 1) * limit, page * limit);
+
+      set({ suppliers: paginatedSuppliers, total: total, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch suppliers:", error);
       set({ isFetching: false });
@@ -55,13 +72,19 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     }
   },
 
-  getSupplierById: async (supplierId: number) => {
+  getSupplierById: async (supplierId: string) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isFetching: true });
     try {
-      const response = await fetch(`/api/suppliers/${supplierId}`);
-       if (!response.ok) throw new Error("Supplier not found");
-      const supplier: Supplier = await response.json();
-      return supplier;
+      const supplierRef = doc(firestore, `branches/${branchId}/suppliers`, supplierId);
+      const docSnap = await getDoc(supplierRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Supplier;
+      }
+      return undefined;
     } catch (error) {
       console.error("Failed to fetch supplier:", error);
       toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Pemasok tidak ditemukan." });
@@ -72,64 +95,59 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
   },
 
   addSupplier: async (supplier) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isSubmitting: true });
-    try {
-      const response = await fetch('/api/suppliers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(supplier),
-      });
-      if (response.ok) {
+    const suppliersRef = collection(firestore, `branches/${branchId}/suppliers`);
+    addDocumentNonBlocking(suppliersRef, { ...supplier, branchId })
+      .then(() => {
         toast({ title: "Pemasok Ditambahkan", description: "Pemasok baru telah berhasil ditambahkan." });
-        await get().fetchSuppliers();
-      } else {
-        throw new Error("Failed to add supplier");
-      }
-    } catch (error) {
-      console.error("Failed to add supplier:", error);
-      toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pemasok." });
-    } finally {
-      set({ isSubmitting: false });
-    }
+        get().fetchSuppliers();
+      })
+      .catch(err => {
+        console.error("Failed to add supplier:", err);
+        toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pemasok." });
+      })
+      .finally(() => set({ isSubmitting: false }));
   },
 
   editSupplier: async (updatedSupplier) => {
+     const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isSubmitting: true });
-    try {
-      const response = await fetch(`/api/suppliers/${updatedSupplier.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedSupplier),
-      });
-      if (response.ok) {
+    const supplierRef = doc(firestore, `branches/${branchId}/suppliers`, updatedSupplier.id);
+    setDocumentNonBlocking(supplierRef, updatedSupplier, { merge: true })
+      .then(() => {
          toast({ title: "Pemasok Diperbarui", description: "Perubahan pada pemasok telah berhasil disimpan." });
-        await get().fetchSuppliers();
-      } else {
-         throw new Error("Failed to edit supplier");
-      }
-    } catch (error) {
-      console.error("Failed to edit supplier:", error);
-      toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pemasok." });
-    } finally {
-      set({ isSubmitting: false });
-    }
+        get().fetchSuppliers();
+      })
+      .catch(err => {
+         console.error("Failed to edit supplier:", err);
+         toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pemasok." });
+      })
+      .finally(() => set({ isSubmitting: false }));
   },
 
-  deleteSupplier: async (supplierId) => {
+  deleteSupplier: async (supplierId: string) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
     set({ isDeleting: true });
-    try {
-      const response = await fetch(`/api/suppliers/${supplierId}`, { method: 'DELETE' });
-      if (response.ok) {
+    const supplierRef = doc(firestore, `branches/${branchId}/suppliers`, supplierId);
+    deleteDocumentNonBlocking(supplierRef)
+      .then(() => {
         toast({ title: "Pemasok Dihapus", description: "Pemasok telah berhasil dihapus." });
-        await get().fetchSuppliers();
-      } else {
-        throw new Error("Failed to delete supplier");
-      }
-    } catch (error) {
-      console.error("Failed to delete supplier:", error);
-       toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pemasok." });
-    } finally {
-      set({ isDeleting: false });
-    }
+        get().fetchSuppliers();
+      })
+      .catch(err => {
+        console.error("Failed to delete supplier:", err);
+        toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pemasok." });
+      })
+      .finally(() => set({ isDeleting: false }));
   },
 }));
