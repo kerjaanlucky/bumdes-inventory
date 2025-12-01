@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { Supplier } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where, or } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -19,7 +19,7 @@ type SupplierState = {
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
-  fetchSuppliers: () => Promise<void>;
+  fetchSuppliers: (options?: { all?: boolean }) => Promise<void>;
   getSupplierById: (supplierId: string) => Promise<Supplier | undefined>;
   addSupplier: (supplier: Omit<Supplier, 'id' | 'branchId'>) => Promise<void>;
   editSupplier: (supplier: Supplier) => Promise<void>;
@@ -38,9 +38,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
   setPage: (page) => set({ page, suppliers: [] }),
   setLimit: (limit) => set({ limit, page: 1, suppliers: [] }),
-  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, suppliers: [] }),
+  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
 
-  fetchSuppliers: async () => {
+  fetchSuppliers: async (options = { all: false }) => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
@@ -48,22 +48,26 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     set({ isFetching: true });
     try {
       const suppliersRef = collection(firestore, 'suppliers');
-      const q = query(suppliersRef, where("branchId", "==", branchId));
-      const querySnapshot = await getDocs(q);
-      let suppliers: Supplier[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
+      const { searchTerm, page, limit } = get();
+      
+      const queryConstraints = [where("branchId", "==", branchId)];
 
-      const { page, limit, searchTerm } = get();
-       if (searchTerm) {
-        const lowercasedTerm = searchTerm.toLowerCase();
-        suppliers = suppliers.filter(s =>
-          s.nama_supplier.toLowerCase().includes(lowercasedTerm) ||
-          s.email?.toLowerCase().includes(lowercasedTerm) ||
-          s.telepon?.toLowerCase().includes(lowercasedTerm)
-        );
+      if (searchTerm) {
+         queryConstraints.push(
+            or(
+              where('nama_supplier_lowercase', '>=', searchTerm.toLowerCase()),
+              where('nama_supplier_lowercase', '<=', searchTerm.toLowerCase() + '\uf8ff')
+            )
+          );
       }
       
+      const q = query(suppliersRef, ...queryConstraints);
+      const querySnapshot = await getDocs(q);
+
+      let suppliers: Supplier[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
+
       const total = suppliers.length;
-      const paginatedSuppliers = suppliers.slice((page - 1) * limit, page * limit);
+      const paginatedSuppliers = options.all ? suppliers : suppliers.slice((page - 1) * limit, page * limit);
 
       set({ suppliers: paginatedSuppliers, total: total, isFetching: false });
     } catch (error) {
@@ -78,7 +82,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
-    set({ isFetching: true });
+    // First check if the supplier is already in the local state
+    const supplierInState = get().suppliers.find(s => s.id === supplierId);
+    if(supplierInState) return supplierInState;
+
+    // If not, fetch from Firestore
     try {
       const supplierRef = doc(firestore, 'suppliers', supplierId);
       const docSnap = await getDoc(supplierRef);
@@ -88,10 +96,7 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
       return undefined;
     } catch (error) {
       console.error("Failed to fetch supplier:", error);
-      toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Pemasok tidak ditemukan." });
       return undefined;
-    } finally {
-      set({ isFetching: false });
     }
   },
 
@@ -102,7 +107,13 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
     set({ isSubmitting: true });
     const suppliersRef = collection(firestore, 'suppliers');
-    addDocumentNonBlocking(suppliersRef, { ...supplier, branchId })
+    const dataToSave = { 
+      ...supplier, 
+      branchId,
+      nama_supplier_lowercase: supplier.nama_supplier.toLowerCase() 
+    };
+    
+    addDocumentNonBlocking(suppliersRef, dataToSave)
       .then(() => {
         toast({ title: "Pemasok Ditambahkan", description: "Pemasok baru telah berhasil ditambahkan." });
         get().fetchSuppliers();
@@ -120,7 +131,12 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
     set({ isSubmitting: true });
     const supplierRef = doc(firestore, 'suppliers', updatedSupplier.id);
-    setDocumentNonBlocking(supplierRef, updatedSupplier, { merge: true })
+    const dataToSave = { 
+      ...updatedSupplier,
+      nama_supplier_lowercase: updatedSupplier.nama_supplier.toLowerCase() 
+    };
+
+    setDocumentNonBlocking(supplierRef, dataToSave, { merge: true })
       .then(() => {
          toast({ title: "Pemasok Diperbarui", description: "Perubahan pada pemasok telah berhasil disimpan." });
         get().fetchSuppliers();

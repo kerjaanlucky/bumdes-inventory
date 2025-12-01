@@ -15,6 +15,7 @@ interface SearchableSelectProps {
   value: string
   onChange: (value: string) => void
   onSearchChange: (query: string) => void
+  currentSearchQuery?: string;
   placeholder?: string
   label?: string
   isLoading?: boolean
@@ -26,13 +27,14 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   value,
   onChange,
   onSearchChange,
+  currentSearchQuery = '',
   placeholder,
   label,
   isLoading = false,
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(currentSearchQuery);
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -43,12 +45,22 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   )
 
   useEffect(() => {
+    // Sync internal query with external search query prop
+    setQuery(currentSearchQuery);
+  }, [currentSearchQuery]);
+
+
+  useEffect(() => {
     if (selectedOption && !isOpen) {
       setQuery(selectedOption.label)
     } else if (!value) {
-      setQuery('')
+      // Don't clear query if there's an external search term
+      if(!currentSearchQuery) {
+        setQuery('')
+      }
     }
-  }, [selectedOption, value, isOpen])
+  }, [selectedOption, value, isOpen, currentSearchQuery])
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,12 +80,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       setHighlightedIndex(-1)
       if (selectedOption) {
         setQuery(selectedOption.label)
-      } else if (!value) {
+      } else if (!value && !currentSearchQuery) {
         setQuery('')
         onSearchChange('')
       }
     }
-  }, [isOpen, selectedOption, value, onSearchChange])
+  }, [isOpen, selectedOption, value, onSearchChange, currentSearchQuery])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value
@@ -165,7 +177,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
         {isOpen && !disabled && (
           <ul className='absolute z-20 w-full mt-1 bg-background shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm'>
-            {options.length > 0 ? (
+            {isLoading ? (
+                 <li className='px-3 py-2 text-muted-foreground'>
+                    Memuat...
+                </li>
+            ) : options.length > 0 ? (
               options.map((option, index) => (
                 <li
                   key={option.value}
@@ -179,18 +195,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <span className='block truncate'>{option.label}</span>
                 </li>
               ))
-            ) : !isLoading ? (
+            ) : (
               <li className='px-3 py-2 text-muted-foreground'>
                 {query
                   ? 'Tidak ada hasil ditemukan.'
                   : 'Mulai ketik untuk mencari...'}
               </li>
-            ) : null}
-             {isLoading && (
-                <li className='px-3 py-2 text-muted-foreground'>
-                    Memuat...
-                </li>
-             )}
+            ) }
           </ul>
         )}
       </div>
@@ -199,5 +210,3 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 }
 
 export default SearchableSelect;
-
-    

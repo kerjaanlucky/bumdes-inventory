@@ -1,26 +1,26 @@
 
 "use client";
 
-import { useForm, useFieldArray, SubmitHandler, Controller } from "react-hook-form";
+import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { usePurchaseStore } from "@/store/purchase-store";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle, Building, Phone } from "lucide-react";
 import { Supplier, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import SearchableSelect, { SearchableSelectOption } from "@/components/ui/searchable-select";
+import SearchableSelect from "@/components/ui/searchable-select";
 import { useDebounce } from 'use-debounce';
 import { useSupplierStore } from "@/store/supplier-store";
 import { useProductStore } from "@/store/product-store";
@@ -55,23 +55,26 @@ export default function NewPurchasePage() {
   const { addPurchase, isSubmitting } = usePurchaseStore();
   const { toast } = useToast();
   
-  const { suppliers, fetchSuppliers, isFetching: isSuppliersLoading, setSearchTerm: setSupplierSearchTerm } = useSupplierStore();
+  const { suppliers, fetchSuppliers, isFetching: isSuppliersLoading, setSearchTerm: setSupplierSearchTerm, getSupplierById } = useSupplierStore();
   const { products, fetchProducts, isFetching: isProductsLoading, setSearchTerm: setProductSearchTerm } = useProductStore();
   
-  const [productSearch, setProductSearch] = useState('');
+  const [productQuery, setProductQuery] = useState('');
+  const [supplierQuery, setSupplierQuery] = useState('');
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
+  const [selectedSupplierDetails, setSelectedSupplierDetails] = useState<Supplier | null>(null);
   
-  const [debouncedSupplierSearch] = useDebounce(setSupplierSearchTerm, 300);
-  const [debouncedProductSearch] = useDebounce(productSearch, 300);
+  const [debouncedSupplierSearch] = useDebounce(supplierQuery, 300);
+  const [debouncedProductSearch] = useDebounce(productQuery, 300);
 
   useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
+    setSupplierSearchTerm(debouncedSupplierSearch);
+    fetchSuppliers({all: true});
+  }, [debouncedSupplierSearch, fetchSuppliers, setSupplierSearchTerm]);
 
   useEffect(() => {
     setProductSearchTerm(debouncedProductSearch);
     fetchProducts();
-  }, [fetchProducts, debouncedProductSearch, setProductSearchTerm]);
+  }, [debouncedProductSearch, fetchProducts, setProductSearchTerm]);
 
   const supplierOptions = useMemo(() => 
     suppliers.map(s => ({ value: s.id, label: s.nama_supplier })), 
@@ -94,6 +97,20 @@ export default function NewPurchasePage() {
       tanggal_pembelian: new Date(),
     },
   });
+
+  const watchSupplierId = form.watch("supplier_id");
+
+  useEffect(() => {
+    const fetchSupplierDetails = async () => {
+      if (watchSupplierId) {
+        const details = await getSupplierById(watchSupplierId);
+        setSelectedSupplierDetails(details || null);
+      } else {
+        setSelectedSupplierDetails(null);
+      }
+    };
+    fetchSupplierDetails();
+  }, [watchSupplierId, getSupplierById]);
   
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -157,7 +174,7 @@ export default function NewPurchasePage() {
         jumlah_diterima: 0,
       });
       setSelectedProductToAdd('');
-      setProductSearch('');
+      // Do not reset productQuery here to keep search state
     }
   };
 
@@ -197,14 +214,14 @@ export default function NewPurchasePage() {
                   control={form.control}
                   name="supplier_id"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="md:col-span-1">
                       <FormLabel>Pemasok</FormLabel>
                       <FormControl>
                         <SearchableSelect
                             options={supplierOptions}
                             value={field.value || ''}
                             onChange={(val) => field.onChange(val)}
-                            onSearchChange={debouncedSupplierSearch}
+                            onSearchChange={setSupplierQuery}
                             placeholder="Cari pemasok..."
                             isLoading={isSuppliersLoading}
                             disabled={isSubmitting}
@@ -269,6 +286,21 @@ export default function NewPurchasePage() {
                     </FormItem>
                   )}
                 />
+                {selectedSupplierDetails && (
+                    <div className="md:col-span-3 -mt-4 p-3 bg-muted/50 rounded-lg border">
+                        <p className="text-sm font-medium text-muted-foreground">Detail Pemasok</p>
+                        <div className="flex items-center gap-4 mt-2 text-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <Phone className="h-4 w-4" />
+                                <span>{selectedSupplierDetails.telepon || 'No phone'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <Building className="h-4 w-4" />
+                                <span>{selectedSupplierDetails.alamat || 'No address'}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -285,7 +317,8 @@ export default function NewPurchasePage() {
                             options={productOptions}
                             value={selectedProductToAdd}
                             onChange={setSelectedProductToAdd}
-                            onSearchChange={setProductSearch}
+                            onSearchChange={setProductQuery}
+                            currentSearchQuery={productQuery}
                             placeholder="Cari produk untuk ditambahkan..."
                             isLoading={isProductsLoading}
                         />
@@ -348,7 +381,7 @@ export default function NewPurchasePage() {
                     </Table>
                 </div>
                  {form.formState.errors.items && (
-                    <p className="text-sm font-medium text-destructive mt-4">{form.formState.errors.items.message}</p>
+                    <p className="text-sm font-medium text-destructive mt-4">{form.formState.errors.items.root?.message || form.formState.errors.items.message}</p>
                  )}
             </CardContent>
           </Card>
