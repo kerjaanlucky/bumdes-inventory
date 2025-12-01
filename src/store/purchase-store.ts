@@ -1,6 +1,6 @@
 "use client";
 import { create } from 'zustand';
-import { Purchase, PaginatedResponse, PurchaseStatus, PurchaseItem } from '@/lib/types';
+import { Purchase, PaginatedResponse, PurchaseStatus, PurchaseItem, Supplier } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { useProductStore } from './product-store';
 import { useStockStore } from './stock-store';
@@ -22,6 +22,7 @@ import {
   deleteDocumentNonBlocking,
   setDocumentNonBlocking,
 } from '@/firebase';
+import { useSupplierStore } from './supplier-store';
 
 type PurchaseState = {
   purchases: Purchase[];
@@ -66,10 +67,25 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     const { page, limit, searchTerm } = get();
     set({ isFetching: true });
     try {
+      // Fetch suppliers first to map their names
+      const suppliersRef = collection(firestore, 'suppliers');
+      const supplierQuery = query(suppliersRef, where("branchId", "==", branchId));
+      const suppliersSnapshot = await getDocs(supplierQuery);
+      const suppliersMap = new Map(suppliersSnapshot.docs.map(doc => [doc.id, doc.data().nama_supplier]));
+
+      // Fetch purchases
       const purchasesRef = collection(firestore, 'purchases');
       const q = query(purchasesRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
-      let purchases: Purchase[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Purchase));
+
+      let purchases: Purchase[] = querySnapshot.docs.map(doc => {
+        const data = doc.data() as Purchase;
+        return { 
+          id: doc.id, 
+          ...data,
+          nama_supplier: suppliersMap.get(data.supplier_id) || 'N/A'
+        };
+      });
 
        if (searchTerm) {
         purchases = purchases.filter(p =>
@@ -100,7 +116,16 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       const purchaseRef = doc(firestore, 'purchases', purchaseId);
       const docSnap = await getDoc(purchaseRef);
       if (docSnap.exists() && docSnap.data().branchId === branchId) {
-        return { id: docSnap.id, ...docSnap.data() } as Purchase;
+        const purchaseData = { id: docSnap.id, ...docSnap.data() } as Purchase;
+        
+        // Fetch supplier name
+        const supplierRef = doc(firestore, 'suppliers', purchaseData.supplier_id);
+        const supplierSnap = await getDoc(supplierRef);
+        if(supplierSnap.exists()){
+            purchaseData.nama_supplier = supplierSnap.data().nama_supplier;
+        }
+
+        return purchaseData;
       }
       return undefined;
     } catch (error) {
@@ -133,8 +158,16 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
       const docRef = await addDocumentNonBlocking(purchasesRef, newPurchaseData);
       toast({ title: "Pembelian Ditambahkan", description: "Draft pembelian baru telah berhasil dibuat." });
-      get().fetchPurchases();
-      return { id: docRef.id, ...newPurchaseData };
+      
+      const supplierName = useSupplierStore.getState().suppliers.find(s => s.id === purchase.supplier_id)?.nama_supplier || 'N/A';
+      const purchaseWithSupplierName = { id: docRef.id, ...newPurchaseData, nama_supplier: supplierName };
+
+      set(state => ({
+        purchases: [purchaseWithSupplierName, ...state.purchases],
+        total: state.total + 1
+      }));
+
+      return purchaseWithSupplierName;
 
     } catch (error) {
       console.error("Failed to add purchase:", error);
@@ -150,7 +183,10 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
     set({ isSubmitting: true });
     const purchaseRef = doc(firestore, 'purchases', updatedPurchase.id);
-    setDocumentNonBlocking(purchaseRef, updatedPurchase, { merge: true })
+    // nama_supplier is a joined field, so we don't save it back to the purchase document
+    const { nama_supplier, ...purchaseToSave } = updatedPurchase;
+
+    setDocumentNonBlocking(purchaseRef, purchaseToSave, { merge: true })
       .then(() => {
         toast({ title: "Pembelian Diperbarui", description: "Perubahan pada pembelian telah berhasil disimpan." });
         set(state => ({
