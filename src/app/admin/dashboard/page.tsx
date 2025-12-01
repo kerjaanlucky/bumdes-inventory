@@ -36,45 +36,8 @@ import { transactions, chartData } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
-import { seedProducts } from "@/lib/seeder";
-import { useFirebaseStore } from "@/store/firebase-store";
-import { useAuthStore } from "@/store/auth-store";
-import { toast } from "@/hooks/use-toast";
-import { useState } from "react";
 
 export default function DashboardPage() {
-  const { firestore } = useFirebaseStore();
-  const { userProfile } = useAuthStore();
-  const [isSeeding, setIsSeeding] = useState(false);
-
-  const handleSeedData = async () => {
-    if (!firestore || !userProfile?.branchId) {
-      toast({
-        variant: "destructive",
-        title: "Gagal Seed Data",
-        description: "Tidak dapat terhubung ke database atau branch ID tidak ditemukan.",
-      });
-      return;
-    }
-    setIsSeeding(true);
-    try {
-      await seedProducts(firestore, userProfile.branchId);
-      toast({
-        title: "Seeding Berhasil",
-        description: "50 produk contoh telah berhasil ditambahkan ke database.",
-      });
-    } catch (error) {
-      console.error("Seeding failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Seeding Gagal",
-        description: "Terjadi kesalahan saat menambahkan data contoh.",
-      });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
 
   return (
     <div className="flex flex-col gap-4 py-4">
@@ -189,27 +152,6 @@ export default function DashboardPage() {
                       <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
               </ChartContainer>
-            </CardContent>
-          </Card>
-           <Card>
-            <CardHeader>
-              <CardTitle>Aksi Development</CardTitle>
-              <CardDescription>Gunakan tombol di bawah ini untuk mengisi data contoh.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleSeedData} disabled={isSeeding}>
-                {isSeeding ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    Seed 50 Produk
-                  </>
-                )}
-              </Button>
             </CardContent>
           </Card>
         </div>
