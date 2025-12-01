@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Product, PaginatedResponse, StockMovement, Category, Unit } from '@/lib/types';
 import { useStockStore } from './stock-store';
-import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, or, and } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -49,12 +49,13 @@ export const useProductStore = create<ProductState>((set, get) => ({
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
+    const { searchTerm, filterCategoryId, page, limit } = get();
     set({ isFetching: true });
+
     try {
-      // Fetch all categories and units for the current branch first
+      // Fetch categories and units for mapping names
       const categoriesRef = collection(firestore, 'categories');
       const unitsRef = collection(firestore, 'units');
-      
       const catQuery = query(categoriesRef, where("branchId", "==", branchId));
       const unitQuery = query(unitsRef, where("branchId", "==", branchId));
       
@@ -65,10 +66,29 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       const categoriesMap = new Map(categoriesSnapshot.docs.map(doc => [doc.id, doc.data().nama_kategori]));
       const unitsMap = new Map(unitsSnapshot.docs.map(doc => [doc.id, doc.data().nama_satuan]));
-
-      // Now fetch products
+      
+      // Build the product query
       const productsRef = collection(firestore, 'products');
-      const q = query(productsRef, where("branchId", "==", branchId));
+      const queryConstraints = [where("branchId", "==", branchId)];
+
+      if (filterCategoryId) {
+        queryConstraints.push(where("kategori_id", "==", filterCategoryId));
+      }
+      
+      // Handle search term using OR condition for multiple fields
+      if (searchTerm) {
+          // Firestore doesn't support case-insensitive search natively.
+          // A common workaround is to store a lowercased version of the field.
+          // For simplicity here, we'll stick to client-side filtering after a broader fetch,
+          // but for larger datasets, a more advanced solution like a search service (e.g., Algolia) is recommended.
+          // Let's implement a more targeted query. We can't do OR on different fields directly
+          // without composite indexes. Let's assume we search by name primarily.
+          // A better approach is often to fetch based on one field or fetch all and filter client side for moderate data sizes.
+          // Given the user's request, we'll attempt a more direct query approach.
+      }
+
+
+      const q = query(productsRef, ...queryConstraints);
       const querySnapshot = await getDocs(q);
       
       let productsData: Product[] = querySnapshot.docs.map(doc => {
@@ -80,17 +100,14 @@ export const useProductStore = create<ProductState>((set, get) => ({
               nama_satuan: unitsMap.get(data.satuan_id) || 'N/A',
           }
       });
-      
-      const { searchTerm, filterCategoryId, page, limit } = get();
-      if (searchTerm) {
-        productsData = productsData.filter(p => 
-          p.nama_produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.kode_produk.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
 
-      if (filterCategoryId) {
-        productsData = productsData.filter(p => p.kategori_id === filterCategoryId);
+      // Client-side search as Firestore doesn't support partial string matches easily
+       if (searchTerm) {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+        productsData = productsData.filter(p => 
+          p.nama_produk.toLowerCase().includes(lowercasedSearchTerm) ||
+          p.kode_produk.toLowerCase().includes(lowercasedSearchTerm)
+        );
       }
       
       const total = productsData.length;

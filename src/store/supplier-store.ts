@@ -54,10 +54,11 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
       const { page, limit, searchTerm } = get();
        if (searchTerm) {
+        const lowercasedTerm = searchTerm.toLowerCase();
         suppliers = suppliers.filter(s =>
-          s.nama_supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.telepon?.toLowerCase().includes(searchTerm.toLowerCase())
+          s.nama_supplier.toLowerCase().includes(lowercasedTerm) ||
+          s.email?.toLowerCase().includes(lowercasedTerm) ||
+          s.telepon?.toLowerCase().includes(lowercasedTerm)
         );
       }
       

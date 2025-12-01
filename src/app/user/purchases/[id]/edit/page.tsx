@@ -58,14 +58,13 @@ export default function EditPurchasePage() {
   const { editPurchase, getPurchaseById, isSubmitting, isFetching } = usePurchaseStore();
   const { toast } = useToast();
   
-  const { suppliers, fetchSuppliers, isFetching: isSuppliersLoading } = useSupplierStore();
-  const { products, fetchProducts, isFetching: isProductsLoading } = useProductStore();
+  const { suppliers, fetchSuppliers, isFetching: isSuppliersLoading, setSearchTerm: setSupplierSearchTerm } = useSupplierStore();
+  const { products, fetchProducts, isFetching: isProductsLoading, setSearchTerm: setProductSearchTerm } = useProductStore();
 
-  const [supplierSearch, setSupplierSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   
-  const [debouncedSupplierSearch] = useDebounce(supplierSearch, 300);
+  const [debouncedSupplierSearch] = useDebounce(setSupplierSearchTerm, 300);
   const [debouncedProductSearch] = useDebounce(productSearch, 300);
 
   const form = useForm<PurchaseFormValues>({
@@ -99,11 +98,12 @@ export default function EditPurchasePage() {
 
   useEffect(() => {
     fetchSuppliers();
-  }, [fetchSuppliers, debouncedSupplierSearch]);
+  }, [fetchSuppliers]);
 
   useEffect(() => {
+    setProductSearchTerm(debouncedProductSearch);
     fetchProducts();
-  }, [fetchProducts, debouncedProductSearch]);
+  }, [fetchProducts, debouncedProductSearch, setProductSearchTerm]);
 
   const supplierOptions = useMemo(() => 
     suppliers.map(s => ({ value: s.id, label: s.nama_supplier })), 
@@ -228,7 +228,7 @@ export default function EditPurchasePage() {
                             options={supplierOptions}
                             value={field.value || ''}
                             onChange={(val) => field.onChange(val)}
-                            onSearchChange={setSupplierSearch}
+                            onSearchChange={debouncedSupplierSearch}
                             placeholder="Cari pemasok..."
                             isLoading={isSuppliersLoading}
                             disabled={isSubmitting}
