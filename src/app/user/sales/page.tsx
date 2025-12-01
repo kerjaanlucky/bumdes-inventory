@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Table,
   TableBody,
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { sales } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link";
 
 export default function SalesPage() {
     const getStatusVariant = (status: string) => {
@@ -51,11 +54,13 @@ export default function SalesPage() {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Penjualan</h1>
         <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" className="h-8 gap-1">
-                <PlusCircle className="h-3.5 w-3.so" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Penjualan Baru
-                </span>
+            <Button size="sm" className="h-8 gap-1" asChild>
+                <Link href="/user/sales/new">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Penjualan Baru
+                    </span>
+                </Link>
             </Button>
         </div>
       </div>

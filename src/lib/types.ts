@@ -61,6 +61,7 @@ export interface Customer {
 export interface Supplier {
   id: string;
   nama_supplier: string;
+  nama_supplier_lowercase?: string;
   alamat?: string;
   telepon?: string;
   email?: string;
@@ -76,14 +77,33 @@ export type Transaction = {
   amount: number;
 };
 
-export type Sale = {
-    id: string;
-    customer: string;
-    date: string;
-    total: number;
-    status: 'Completed' | 'Pending' | 'Canceled';
-    branchId: string;
+export interface SaleItem {
+  id: any;
+  produk_id: string;
+  nama_produk: string;
+  nama_satuan: string;
+  jumlah: number;
+  harga_jual_satuan: number;
+  diskon: number;
+  subtotal: number;
 }
+
+export interface Sale {
+  id: string;
+  nomor_penjualan: string;
+  customer_id: string;
+  nama_customer?: string;
+  tanggal_penjualan: string;
+  total_harga: number;
+  diskon_invoice: number;
+  pajak: number;
+  ongkos_kirim: number;
+  status: 'DRAFT' | 'LUNAS' | 'DIBATALKAN';
+  created_at: string;
+  items?: SaleItem[];
+  branchId: string;
+}
+
 
 export type PurchaseStatus = 'DRAFT' | 'DIPESAN' | 'DITERIMA_SEBAGIAN' | 'DITERIMA_PENUH' | 'DIBATALKAN';
 
@@ -137,6 +157,7 @@ export type StockMovement = {
   stok_akhir: number;
   referensi: string;
   branchId: string;
+  searchable_keywords?: string[];
 };
 
 

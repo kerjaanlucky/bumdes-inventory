@@ -19,9 +19,9 @@ type CustomerState = {
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
-  fetchCustomers: () => Promise<void>;
+  fetchCustomers: (options?: { all?: boolean }) => Promise<void>;
   getCustomerById: (customerId: string) => Promise<Customer | undefined>;
-  addCustomer: (customer: Omit<Customer, 'id' | 'branchId'>) => Promise<void>;
+  addCustomer: (customer: Omit<Customer, 'id' | 'branchId'>) => Promise<Customer | undefined>;
   editCustomer: (customer: Customer) => Promise<void>;
   deleteCustomer: (customerId: string) => Promise<void>;
 };
@@ -40,7 +40,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   setLimit: (limit) => set({ limit, page: 1, customers: [] }),
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, customers: [] }),
 
-  fetchCustomers: async () => {
+  fetchCustomers: async (options = { all: false }) => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
@@ -62,7 +62,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       }
       
       const total = customers.length;
-      const paginatedCustomers = customers.slice((page - 1) * limit, page * limit);
+      const paginatedCustomers = options.all ? customers : customers.slice((page - 1) * limit, page * limit);
 
       set({ customers: paginatedCustomers, total: total, isFetching: false });
     } catch (error) {
@@ -76,6 +76,9 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
+
+    const customerInState = get().customers.find(c => c.id === customerId);
+    if(customerInState) return customerInState;
 
     set({ isFetching: true });
     try {
@@ -101,16 +104,20 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     
     set({ isSubmitting: true });
     const customersRef = collection(firestore, 'customers');
-    addDocumentNonBlocking(customersRef, { ...customer, branchId })
-      .then(() => {
-        toast({ title: "Pelanggan Ditambahkan", description: "Pelanggan baru telah berhasil ditambahkan." });
-        get().fetchCustomers();
-      })
-      .catch(err => {
+    const dataToSave = { ...customer, branchId };
+
+    try {
+        const docRef = await addDoc(customersRef, dataToSave);
+        const newCustomer = { id: docRef.id, ...dataToSave };
+        get().fetchCustomers(); // Re-fetch to update the main list
+        set({ isSubmitting: false });
+        return newCustomer;
+    } catch(err) {
         console.error("Failed to add customer:", err)
         toast({ variant: "destructive", title: "Gagal Menambahkan", description: "Terjadi kesalahan saat menambahkan pelanggan." });
-      })
-      .finally(() => set({ isSubmitting: false }));
+        set({ isSubmitting: false });
+        return undefined;
+    }
   },
 
   editCustomer: async (updatedCustomer) => {
