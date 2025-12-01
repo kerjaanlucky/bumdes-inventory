@@ -133,7 +133,7 @@ export default function ProductsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-               <Select value={filterCategoryId} onValueChange={setFilterCategoryId}>
+               <Select value={filterCategoryId} onValueChange={(value) => setFilterCategoryId(value || "")}>
                 <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Semua Kategori" />
                 </SelectTrigger>
