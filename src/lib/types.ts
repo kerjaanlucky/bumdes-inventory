@@ -77,7 +77,7 @@ export type Transaction = {
   amount: number;
 };
 
-export type SaleStatus = 'DRAFT' | 'DIKONFIRMASI' | 'DIKIRIM' | 'LUNAS' | 'RETUR' | 'DIBATALKAN';
+export type SaleStatus = 'DRAFT' | 'DIKONFIRMASI' | 'DIKIRIM' | 'LUNAS' | 'DIRETUR' | 'DIBATALKAN';
 
 export interface SaleItem {
   id: any;
@@ -165,7 +165,7 @@ export type StockMovement = {
   produk_id: string;
   nama_produk: string;
   nama_satuan: string;
-  tipe: 'Pembelian Masuk' | 'Penjualan Keluar' | 'Penyesuaian';
+  tipe: 'Pembelian Masuk' | 'Penjualan Keluar' | 'Penyesuaian' | 'Retur Penjualan';
   jumlah: number;
   stok_akhir: number;
   referensi: string;

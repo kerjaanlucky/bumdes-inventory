@@ -81,22 +81,23 @@ export const useStockStore = create<StockState>((set, get) => ({
       const snapshot = await getCountFromServer(countQuery);
       const total = snapshot.data().count;
 
-      // Fetch paginated documents
+      // Build the main query
       const finalQueryConstraints = [
         ...queryConstraints,
         orderBy('tanggal', 'desc'),
-        firestoreLimit(limit)
       ];
 
-      // For pagination, we need to get the last document of the previous page
+      // Handle pagination
       if (page > 1) {
-        const prevPageQuery = query(movementsRef, ...queryConstraints, orderBy('tanggal', 'desc'), firestoreLimit((page - 1) * limit));
+        const prevPageQuery = query(movementsRef, ...finalQueryConstraints, firestoreLimit((page - 1) * limit));
         const prevPageSnapshot = await getDocs(prevPageQuery);
         const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
         if (lastVisible) {
-          finalQueryConstraints.push(startAfter(lastVisible));
+            finalQueryConstraints.push(startAfter(lastVisible));
         }
       }
+      
+      finalQueryConstraints.push(firestoreLimit(limit));
       
       const paginatedQuery = query(movementsRef, ...finalQueryConstraints);
       const querySnapshot = await getDocs(paginatedQuery);
@@ -135,5 +136,3 @@ export const useStockStore = create<StockState>((set, get) => ({
     }
   },
 }));
-
-    

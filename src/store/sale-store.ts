@@ -217,7 +217,10 @@ export const useSaleStore = create<SaleState>((set, get) => ({
 
     set({ isSubmitting: true });
     const sale = await get().getSaleById(saleId);
-    if(!sale) return;
+    if(!sale) {
+        set({ isSubmitting: false });
+        return;
+    }
 
     const newHistoryEntry: SaleStatusHistory = {
         status: status,
@@ -253,6 +256,30 @@ export const useSaleStore = create<SaleState>((set, get) => ({
             }
         }
     }
+    
+    if (status === 'DIRETUR') {
+        const { getProductById, editProduct } = useProductStore.getState();
+        const { addStockMovement } = useStockStore.getState();
+        for (const item of sale.items) {
+            const product = await getProductById(item.produk_id);
+            if (product) {
+                const newStock = product.stok + item.jumlah;
+                await editProduct({ ...product, stok: newStock }, true);
+                await addStockMovement({
+                    tanggal: new Date().toISOString(),
+                    produk_id: product.id,
+                    nama_produk: product.nama_produk,
+                    nama_satuan: product.nama_satuan || 'N/A',
+                    tipe: 'Retur Penjualan',
+                    jumlah: item.jumlah,
+                    stok_akhir: newStock,
+                    referensi: sale.nomor_penjualan,
+                });
+            }
+        }
+        toast({ title: "Retur Diproses", description: "Stok telah dikembalikan ke persediaan." });
+    }
+
 
     await get().editSale(updatedSale);
     set({ isSubmitting: false });

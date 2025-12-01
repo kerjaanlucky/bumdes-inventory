@@ -7,7 +7,7 @@ import { useSaleStore } from '@/store/sale-store';
 import { Sale, SaleStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Edit, Truck, CheckCircle, PackageCheck, FileText, Ban } from 'lucide-react';
+import { Loader2, ArrowLeft, Edit, Truck, CheckCircle, PackageCheck, FileText, Ban, Undo2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -44,6 +44,7 @@ export default function SaleDetailPage() {
     const getStatusVariant = (status: SaleStatus): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
             case "LUNAS": return "default";
+            case "DIRETUR": return "destructive";
             case "DIKONFIRMASI": return "secondary";
             case "DIKIRIM": return "secondary";
             case "DRAFT": return "outline";
@@ -128,9 +129,14 @@ export default function SaleDetailPage() {
                         </Button>
                     )}
                      {sale.status === 'LUNAS' && (
-                         <Button size="sm" onClick={() => router.push(`/user/sales/invoice/${sale.id}`)}>
-                            <FileText className="mr-2 h-4 w-4" /> Lihat Faktur
-                        </Button>
+                        <>
+                            <Button variant="outline" size="sm" onClick={() => handleActionClick('DIRETUR', 'Proses Retur?', 'Status akan berubah menjadi DIRETUR dan stok akan dikembalikan ke persediaan.')}>
+                                <Undo2 className="mr-2 h-4 w-4" /> Proses Retur
+                            </Button>
+                            <Button size="sm" onClick={() => router.push(`/user/sales/invoice/${sale.id}`)}>
+                                <FileText className="mr-2 h-4 w-4" /> Lihat Faktur
+                            </Button>
+                        </>
                      )}
                 </div>
             </div>
@@ -233,10 +239,12 @@ export default function SaleDetailPage() {
                                 </div>
                                 </>
                             ) : (
-                                <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Pajak ({taxPercent}%)</span>
-                                <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
-                                </div>
+                                taxAmount > 0 && (
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Pajak ({taxPercent}%)</span>
+                                        <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
+                                    </div>
+                                )
                             )}
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>Ongkos Kirim</span>
