@@ -92,6 +92,10 @@ const reportLinks = [
         label: "Laporan Penjualan",
         href: "/user/reports/sales",
     },
+     {
+        label: "Laporan HPP",
+        href: "/user/reports/cogs",
+    },
     {
         label: "Laba & Rugi",
         href: "/user/reports/profit-loss",
