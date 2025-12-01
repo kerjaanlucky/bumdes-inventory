@@ -21,7 +21,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
-import { useAuth, useUser, useFirestore } from '@/firebase';
+import { useAuth, useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { useAuthRedirect } from '@/firebase/auth/use-auth-redirect';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -76,13 +76,14 @@ export default function RegisterPage() {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         name: data.name,
-        role: 'user', // Default role for new sign-ups is Kasir
+        role: 'user' as const, // Default role for new sign-ups is Kasir
         branchId: data.branchId || "", // Save empty string if no branch is selected
       };
       
       const userDocRef = doc(firestore, `users`, firebaseUser.uid);
       
-      await setDoc(userDocRef, userProfile);
+      // Use the non-blocking firestore update with proper error handling
+      setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
 
       toast({
         title: "Pendaftaran Berhasil",
