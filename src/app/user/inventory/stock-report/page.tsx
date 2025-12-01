@@ -19,12 +19,19 @@ import { format } from 'date-fns';
 import { useDebounce } from 'use-debounce';
 import SearchableSelect from '@/components/ui/searchable-select';
 import { useProductStore } from '@/store/product-store';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function StockReportPage() {
     const { 
       movements, 
       isFetching: isMovementsFetching,
       fetchMovements,
+      page,
+      limit,
+      total,
+      setPage,
+      setLimit,
     } = useStockStore();
     
     const { 
@@ -38,9 +45,10 @@ export default function StockReportPage() {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     const [debouncedProductSearch] = useDebounce(productSearch, 300);
+    const totalPages = Math.ceil(total / limit);
 
     useEffect(() => {
-        fetchProducts();
+        fetchProducts({ all: true });
     }, [fetchProducts, debouncedProductSearch]);
 
     useEffect(() => {
@@ -52,7 +60,7 @@ export default function StockReportPage() {
             setSelectedProduct(null);
             useStockStore.setState({ movements: [], total: 0 });
         }
-    }, [selectedProductId, products, fetchMovements]);
+    }, [selectedProductId, products, fetchMovements, page, limit]);
 
     const productOptions = useMemo(() => 
         products.map(p => ({ value: p.id, label: `${p.kode_produk} - ${p.nama_produk}` })), 
@@ -159,6 +167,50 @@ export default function StockReportPage() {
                         )}
                         </TableBody>
                     </Table>
+                    <div className="flex items-center justify-between mt-4">
+                        <div className="text-sm text-muted-foreground">
+                            Menampilkan {movements.length} dari {total} pergerakan.
+                        </div>
+                        <div className='flex items-center gap-4'>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium">Baris per halaman</p>
+                                <Select
+                                    value={`${limit}`}
+                                    onValueChange={(value) => {
+                                    setLimit(Number(value))
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-[70px]">
+                                    <SelectValue placeholder={limit} />
+                                    </SelectTrigger>
+                                    <SelectContent side="top">
+                                    {[10, 25, 50].map((pageSize) => (
+                                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                                        {pageSize}
+                                        </SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setPage(page - 1); }} aria-disabled={page <= 1} />
+                                </PaginationItem>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                <PaginationItem key={p}>
+                                    <PaginationLink href="#" onClick={(e) => {e.preventDefault(); setPage(p)}} isActive={p === page}>
+                                    {p}
+                                    </PaginationLink>
+                                </PaginationItem>
+                                ))}
+                                <PaginationItem>
+                                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setPage(page + 1); }} aria-disabled={page >= totalPages} />
+                                </PaginationItem>
+                            </PaginationContent>
+                            </Pagination>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>
