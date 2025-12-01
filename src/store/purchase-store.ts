@@ -88,10 +88,15 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       });
 
        if (searchTerm) {
-        purchases = purchases.filter(p =>
-          p.nomor_pembelian.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.nama_supplier?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        const lowercasedFilter = searchTerm.toLowerCase();
+        purchases = purchases.filter(p => {
+          const matchesPurchaseNumber = p.nomor_pembelian.toLowerCase().includes(lowercasedFilter);
+          const matchesSupplier = p.nama_supplier?.toLowerCase().includes(lowercasedFilter);
+          const matchesItem = p.items?.some(item => 
+            item.nama_produk.toLowerCase().includes(lowercasedFilter)
+          );
+          return matchesPurchaseNumber || matchesSupplier || matchesItem;
+        });
       }
       
       const total = purchases.length;
