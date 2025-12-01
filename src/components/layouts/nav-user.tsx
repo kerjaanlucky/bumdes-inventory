@@ -46,11 +46,6 @@ const userLinks = [
     icon: CreditCard,
   },
   {
-    label: "Laporan",
-    href: "/user/reports",
-    icon: BarChart3,
-  },
-  {
     label: "Log Aktivitas",
     href: "/user/activity",
     icon: History,
@@ -92,26 +87,39 @@ const masterDataLinks = [
     }
 ];
 
+const reportLinks = [
+    {
+        label: "Laporan Penjualan",
+        href: "/user/reports/sales",
+    },
+    {
+        label: "Laba & Rugi",
+        href: "/user/reports/profit-loss",
+    },
+];
+
 
 export function NavUser() {
   const pathname = usePathname();
   const isMasterDataActive = masterDataLinks.some(link => pathname.startsWith(link.href));
   const isInventoryActive = inventoryLinks.some(link => pathname.startsWith(link.href));
+  const isReportActive = reportLinks.some(link => pathname.startsWith(link.href));
   
   const [isMasterDataOpen, setIsMasterDataOpen] = React.useState(isMasterDataActive);
   const [isInventoryOpen, setIsInventoryOpen] = React.useState(isInventoryActive);
+  const [isReportOpen, setIsReportOpen] = React.useState(isReportActive);
 
   React.useEffect(() => {
-    if (isMasterDataActive) {
-      setIsMasterDataOpen(true);
-    }
+    if (isMasterDataActive) setIsMasterDataOpen(true);
   }, [isMasterDataActive]);
 
   React.useEffect(() => {
-    if (isInventoryActive) {
-      setIsInventoryOpen(true);
-    }
+    if (isInventoryActive) setIsInventoryOpen(true);
   }, [isInventoryActive]);
+
+  React.useEffect(() => {
+    if (isReportActive) setIsReportOpen(true);
+  }, [isReportActive]);
 
 
   return (
@@ -130,6 +138,33 @@ export function NavUser() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
+      
+       <Collapsible open={isReportOpen} onOpenChange={setIsReportOpen}>
+        <SidebarMenuItem>
+            <CollapsibleTrigger asChild>
+                 <SidebarMenuButton
+                    variant="ghost"
+                    className="w-full justify-start"
+                    isActive={isReportActive}
+                    >
+                    <BarChart3 />
+                    <span>Laporan</span>
+                    <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform", isReportOpen && "rotate-90")} />
+                </SidebarMenuButton>
+            </CollapsibleTrigger>
+        </SidebarMenuItem>
+        <CollapsibleContent>
+            <SidebarMenuSub>
+                {reportLinks.map((link) => (
+                    <SidebarMenuItem key={link.href}>
+                        <SidebarMenuSubButton asChild isActive={pathname.startsWith(link.href)}>
+                            <Link href={link.href}>{link.label}</Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenuSub>
+        </CollapsibleContent>
+      </Collapsible>
 
        <Collapsible open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>
         <SidebarMenuItem>
