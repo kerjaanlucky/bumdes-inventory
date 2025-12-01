@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StockMovement, PaginatedResponse } from '@/lib/types';
+import { StockMovement } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { DateRange } from 'react-day-picker';
 import {
@@ -9,6 +9,10 @@ import {
   addDoc,
   where,
   orderBy,
+  limit as firestoreLimit,
+  startAfter,
+  doc,
+  getCountFromServer,
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
@@ -39,10 +43,10 @@ export const useStockStore = create<StockState>((set, get) => ({
   dateRange: undefined,
   isFetching: false,
 
-  setPage: (page) => set({ page, movements: [] }),
-  setLimit: (limit) => set({ limit, page: 1, movements: [] }),
-  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, movements: [] }),
-  setDateRange: (dateRange?: DateRange) => set({ dateRange, page: 1, movements: [] }),
+  setPage: (page) => set({ page }),
+  setLimit: (limit) => set({ limit, page: 1 }),
+  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
+  setDateRange: (dateRange?: DateRange) => set({ dateRange, page: 1 }),
 
   fetchMovements: async (productId?: string) => {
     const { firestore } = useFirebaseStore.getState();
@@ -53,37 +57,52 @@ export const useStockStore = create<StockState>((set, get) => ({
     set({ isFetching: true });
 
     try {
-      const movementsRef = collection(firestore, `stocks`);
-      let queries = [
-          where('branchId', '==', branchId),
-          orderBy('tanggal', 'desc')
-        ];
+      const movementsRef = collection(firestore, 'stocks');
+      let queryConstraints = [where('branchId', '==', branchId)];
 
       if (productId) {
-        queries.push(where('produk_id', '==', productId));
+        queryConstraints.push(where('produk_id', '==', productId));
       }
-      if (dateRange?.from) {
-        queries.push(where('tanggal', '>=', dateRange.from.toISOString()));
-      }
-      if (dateRange?.to) {
-        queries.push(where('tanggal', '<=', dateRange.to.toISOString()));
-      }
-      
-      const q = query(movementsRef, ...queries);
-      const querySnapshot = await getDocs(q);
-      let movements: StockMovement[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockMovement));
-
-      if (searchTerm) {
-        movements = movements.filter(m =>
-          m.nama_produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.referensi.toLowerCase().includes(searchTerm.toLowerCase())
+       if (searchTerm) {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+         queryConstraints.push(
+            where('searchable_keywords', 'array-contains', lowercasedSearchTerm)
         );
       }
+      if (dateRange?.from) {
+        queryConstraints.push(where('tanggal', '>=', dateRange.from.toISOString()));
+      }
+      if (dateRange?.to) {
+        queryConstraints.push(where('tanggal', '<=', dateRange.to.toISOString()));
+      }
+
+      // Count total documents for pagination
+      const countQuery = query(movementsRef, ...queryConstraints);
+      const snapshot = await getCountFromServer(countQuery);
+      const total = snapshot.data().count;
+
+      // Fetch paginated documents
+      const finalQueryConstraints = [
+        ...queryConstraints,
+        orderBy('tanggal', 'desc'),
+        firestoreLimit(limit)
+      ];
+
+      // For pagination, we need to get the last document of the previous page
+      if (page > 1) {
+        const prevPageQuery = query(movementsRef, ...queryConstraints, orderBy('tanggal', 'desc'), firestoreLimit((page - 1) * limit));
+        const prevPageSnapshot = await getDocs(prevPageQuery);
+        const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+        if (lastVisible) {
+          finalQueryConstraints.push(startAfter(lastVisible));
+        }
+      }
       
-      const total = movements.length;
-      const paginatedMovements = movements.slice((page - 1) * limit, page * limit);
-      
-      set({ movements: paginatedMovements, total: total, isFetching: false });
+      const paginatedQuery = query(movementsRef, ...finalQueryConstraints);
+      const querySnapshot = await getDocs(paginatedQuery);
+      const movements: StockMovement[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockMovement));
+
+      set({ movements, total, isFetching: false });
 
     } catch (error) {
       console.error("Failed to fetch stock movements:", error);
@@ -99,10 +118,22 @@ export const useStockStore = create<StockState>((set, get) => ({
 
     try {
       const stocksRef = collection(firestore, `stocks`);
-      await addDocumentNonBlocking(stocksRef, {...movement, branchId});
+      const searchableKeywords = [
+        ...movement.nama_produk.toLowerCase().split(' '),
+        ...movement.referensi.toLowerCase().split(' ')
+      ].filter(Boolean); // Remove empty strings
+
+      const movementData = { 
+        ...movement, 
+        branchId,
+        searchable_keywords: Array.from(new Set(searchableKeywords)) // Ensure unique keywords
+      };
+      await addDocumentNonBlocking(stocksRef, movementData);
     } catch (error) {
       console.error("Failed to add stock movement:", error);
       toast({ variant: "destructive", title: "Gagal Mencatat Stok", description: "Terjadi kesalahan saat mencatat pergerakan stok." });
     }
   },
 }));
+
+    

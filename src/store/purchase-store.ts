@@ -272,12 +272,15 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
           const product = await getProductById(receivedItem.produk_id);
           if (product) {
             const newStock = product.stok + quantityReceivedNow;
-            await editProduct({ ...product, stok: newStock }, true);
+            // Ensure product object has nama_satuan before creating stock movement
+            const productWithUnit = product.nama_satuan ? product : {...product, nama_satuan: receivedItem.nama_satuan};
+
+            await editProduct({ ...productWithUnit, stok: newStock }, true);
             await addStockMovement({
               tanggal: new Date().toISOString(),
               produk_id: product.id,
               nama_produk: product.nama_produk,
-              nama_satuan: product.nama_satuan || 'N/A',
+              nama_satuan: productWithUnit.nama_satuan,
               tipe: 'Pembelian Masuk',
               jumlah: quantityReceivedNow,
               stok_akhir: newStock,
@@ -315,3 +318,5 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     await get().updatePurchaseStatus(purchaseId, 'DITERIMA_PENUH', 'Pesanan diselesaikan secara manual oleh pengguna.');
   },
 }));
+
+    

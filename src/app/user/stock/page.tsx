@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -42,7 +43,7 @@ export default function StockPage() {
       setDateRange,
     } = useStockStore();
     
-    const [debouncedSearch] = useDebounce(searchTerm, 300);
+    const [debouncedSearch] = useDebounce(searchTerm, 500);
 
     useEffect(() => {
       fetchMovements();
@@ -205,3 +206,5 @@ export default function StockPage() {
     </div>
   )
 }
+
+    

@@ -140,7 +140,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
   editProduct: async (updatedProduct, isStockUpdate = false) => {
     const { firestore } = useFirebaseStore.getState();
-    if (!firestore) return;
+    if (!firestore) return Promise.reject("Firestore not initialized");
 
     if (!isStockUpdate) {
         set({ isSubmitting: true });
@@ -162,9 +162,6 @@ export const useProductStore = create<ProductState>((set, get) => ({
         await get().fetchProducts();
         set({ isSubmitting: false });
     }
-
-    // Since this is now an async function, we need to return a resolved promise.
-    return Promise.resolve();
   },
 
   deleteProduct: async (productId: string) => {
@@ -183,20 +180,34 @@ export const useProductStore = create<ProductState>((set, get) => ({
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return undefined;
-
-    const productInState = get().products.find(p => p.id === productId);
-    if (productInState) return productInState;
-
+  
+    // Always fetch from Firestore to ensure the most up-to-date data, especially the unit name.
+    set({ isFetching: true });
     try {
-      const productRef = doc(firestore, `products`, productId);
+      const productRef = doc(firestore, 'products', productId);
       const docSnap = await getDoc(productRef);
+  
       if (docSnap.exists() && docSnap.data().branchId === branchId) {
-        return { id: docSnap.id, ...docSnap.data() } as Product;
+        const productData = { id: docSnap.id, ...docSnap.data() } as Product;
+        
+        // Ensure nama_satuan is populated
+        if (productData.satuan_id && !productData.nama_satuan) {
+          const unitRef = doc(firestore, 'units', productData.satuan_id);
+          const unitSnap = await getDoc(unitRef);
+          if (unitSnap.exists()) {
+            productData.nama_satuan = unitSnap.data().nama_satuan;
+          }
+        }
+        return productData;
       }
       return undefined;
     } catch (error) {
       console.error("Failed to fetch product:", error);
       return undefined;
+    } finally {
+      set({ isFetching: false });
     }
   },
 }));
+
+    
