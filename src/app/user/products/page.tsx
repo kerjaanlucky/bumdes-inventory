@@ -133,12 +133,12 @@ export default function ProductsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-               <Select value={filterCategoryId} onValueChange={(value) => setFilterCategoryId(value || "")}>
+               <Select value={filterCategoryId || 'all'} onValueChange={(value) => setFilterCategoryId(value === 'all' ? '' : value)}>
                 <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Semua Kategori" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Semua Kategori</SelectItem>
+                    <SelectItem value="all">Semua Kategori</SelectItem>
                     {categories.map((cat: Category) => (
                         <SelectItem key={cat.id} value={cat.id}>
                             {cat.nama_kategori}
