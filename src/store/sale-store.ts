@@ -1,7 +1,8 @@
 
+
 "use client";
 import { create } from 'zustand';
-import { Sale, PaginatedResponse, SaleItem } from '@/lib/types';
+import { Sale, PaginatedResponse, SaleItem, SaleStatus, SaleStatusHistory } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { useProductStore } from './product-store';
 import { useStockStore } from './stock-store';
@@ -35,7 +36,7 @@ type SaleState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchSales: () => Promise<void>;
   getSaleById: (saleId: string) => Promise<Sale | undefined>;
-  addSale: (sale: Omit<Sale, 'id' | 'nomor_penjualan' | 'created_at' | 'status' | 'branchId'>) => Promise<Sale | undefined>;
+  addSale: (sale: Omit<Sale, 'id' | 'nomor_penjualan' | 'created_at' | 'status' | 'branchId' | 'items' | 'history'> & { items: SaleItem[] }) => Promise<Sale | undefined>;
   editSale: (sale: Sale) => Promise<void>;
   deleteSale: (saleId: string) => Promise<void>;
 };
@@ -108,8 +109,8 @@ export const useSaleStore = create<SaleState>((set, get) => ({
 
   addSale: async (sale) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    const { branchId, user } = useAuthStore.getState();
+    if (!firestore || !branchId || !user) return;
 
     set({ isSubmitting: true });
     try {
@@ -120,40 +121,24 @@ export const useSaleStore = create<SaleState>((set, get) => ({
         ...sale,
         branchId,
         nomor_penjualan: soNumber,
-        status: 'LUNAS',
+        status: 'DRAFT', // New sales start as DRAFT
         created_at: new Date().toISOString(),
+        history: [{
+          status: 'DRAFT',
+          tanggal: new Date().toISOString(),
+          oleh: user.displayName || 'System'
+        }]
       };
 
       const docRef = await addDoc(salesRef, newSaleData);
       
-      // Update stock and add stock movement for each item
-      const { getProductById, editProduct } = useProductStore.getState();
-      const { addStockMovement } = useStockStore.getState();
+      // Stock is NO LONGER deducted at creation. It will be deducted on shipment.
 
-      for (const item of sale.items) {
-          const product = await getProductById(item.produk_id);
-          if (product) {
-              const newStock = product.stok - item.jumlah;
-              await editProduct({ ...product, stok: newStock }, true);
-              await addStockMovement({
-                  tanggal: new Date().toISOString(),
-                  produk_id: product.id,
-                  nama_produk: product.nama_produk,
-                  nama_satuan: product.nama_satuan || 'N/A',
-                  tipe: 'Penjualan Keluar',
-                  jumlah: -item.jumlah,
-                  stok_akhir: newStock,
-                  referensi: soNumber,
-              });
-          }
-      }
-
-      toast({ title: "Penjualan Berhasil", description: "Transaksi penjualan telah berhasil disimpan." });
+      toast({ title: "Draft Penjualan Disimpan", description: "Transaksi penjualan telah berhasil disimpan sebagai draft." });
       
       const customerName = useCustomerStore.getState().customers.find(c => c.id === sale.customer_id)?.nama_customer || 'N/A';
-      const saleWithCustomerName = { id: docRef.id, ...newSaleData, nama_customer: customerName };
+      const saleWithCustomerName = { id: docRef.id, ...newSaleData };
 
-      // Optimistically update state if needed, or re-fetch
       get().fetchSales();
 
       return saleWithCustomerName;
@@ -176,7 +161,7 @@ export const useSaleStore = create<SaleState>((set, get) => ({
 
     set({ isDeleting: true });
     const saleRef = doc(firestore, 'sales', saleId);
-    // Note: Deleting a sale should ideally reverse the stock movement.
+    // Note: Deleting a sale should ideally reverse the stock movement if it was shipped.
     // This is a complex operation (a transaction) and is omitted for simplicity here.
     // In a real app, you would add logic to find the stock movements by reference and revert them.
     deleteDocumentNonBlocking(saleRef)

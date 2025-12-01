@@ -77,6 +77,8 @@ export type Transaction = {
   amount: number;
 };
 
+export type SaleStatus = 'DRAFT' | 'DIKONFIRMASI' | 'DIKIRIM' | 'SELESAI' | 'RETUR' | 'DIBATALKAN';
+
 export interface SaleItem {
   id: any;
   produk_id: string;
@@ -87,6 +89,13 @@ export interface SaleItem {
   harga_jual_satuan: number;
   diskon: number;
   subtotal: number;
+}
+
+export interface SaleStatusHistory {
+    status: SaleStatus;
+    tanggal: string;
+    oleh: string; // User name
+    catatan?: string;
 }
 
 export interface Sale {
@@ -101,9 +110,10 @@ export interface Sale {
   taxType?: 'inclusive' | 'exclusive';
   ongkos_kirim: number;
   biaya_lain: number;
-  status: 'DRAFT' | 'LUNAS' | 'DIBATALKAN';
+  status: SaleStatus;
   created_at: string;
-  items?: SaleItem[];
+  items: SaleItem[];
+  history?: SaleStatusHistory[];
   branchId: string;
 }
 

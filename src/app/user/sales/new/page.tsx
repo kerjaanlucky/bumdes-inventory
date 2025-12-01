@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle, Building, Phone, AlertCircle } from "lucide-react";
-import { Customer, Product, Branch } from "@/lib/types";
+import { Customer, Product, Branch, SaleItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -267,7 +267,7 @@ export default function NewSalePage() {
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Simpan Penjualan
+                  Simpan sebagai Draft
                 </Button>
             </div>
           </div>
@@ -543,19 +543,23 @@ export default function NewSalePage() {
                         <span>Diskon Invoice</span>
                         <span className="text-red-500">- Rp{invDiscount.toLocaleString('id-ID')}</span>
                     </div>
-                    <Separator />
-                     {taxType === 'inclusive' && (
+                     {taxType === 'inclusive' ? (
                         <>
+                            <Separator />
                             <div className="flex justify-between font-medium">
                                 <span>DPP (Dasar Pengenaan Pajak)</span>
                                 <span>Rp{dpp.toLocaleString('id-ID')}</span>
                             </div>
-                            <Separator />
                             <div className="flex justify-between text-sm">
                                 <span>Pajak ({taxPercent}%)</span>
                                 <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
                             </div>
                         </>
+                    ) : (
+                        <div className="flex justify-between text-sm">
+                            <span>Pajak ({taxPercent}%)</span>
+                            <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
+                        </div>
                     )}
                      <div className="flex justify-between text-sm">
                         <span>Ongkos Kirim</span>
@@ -584,4 +588,3 @@ export default function NewSalePage() {
     </>
   );
 }
-
