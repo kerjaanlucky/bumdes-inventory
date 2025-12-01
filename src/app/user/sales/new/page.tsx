@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -14,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle, Building, Phone, AlertCircle } from "lucide-react";
-import { Customer, Product } from "@/lib/types";
+import { Customer, Product, Branch } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -72,7 +73,7 @@ export default function NewSalePage() {
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<Customer | null>(null);
   const [isCustomerSheetOpen, setCustomerSheetOpen] = useState(false);
-  const [branchDetails, setBranchDetails] = useState<any>(null);
+  const [branchDetails, setBranchDetails] = useState<Branch | null>(null);
 
   const [debouncedCustomerSearch] = useDebounce(customerQuery, 300);
   const [debouncedProductSearch] = useDebounce(productQuery, 300);
@@ -233,8 +234,8 @@ export default function NewSalePage() {
         diskon: 0,
         subtotal: product.harga_jual,
       });
+      // Do not reset product query to allow multiple adds from same search
       setSelectedProductToAdd('');
-      // Do not reset query to allow multiple adds from same search
     }
   };
 
@@ -543,15 +544,19 @@ export default function NewSalePage() {
                         <span className="text-red-500">- Rp{invDiscount.toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
-                    <div className="flex justify-between font-medium">
-                        <span>DPP (Dasar Pengenaan Pajak)</span>
-                        <span>Rp{dpp.toLocaleString('id-ID')}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-sm">
-                        <span>Pajak ({taxPercent}% - {taxType})</span>
-                        <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
-                    </div>
+                     {taxType === 'inclusive' && (
+                        <>
+                            <div className="flex justify-between font-medium">
+                                <span>DPP (Dasar Pengenaan Pajak)</span>
+                                <span>Rp{dpp.toLocaleString('id-ID')}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between text-sm">
+                                <span>Pajak ({taxPercent}%)</span>
+                                <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
+                            </div>
+                        </>
+                    )}
                      <div className="flex justify-between text-sm">
                         <span>Ongkos Kirim</span>
                          <span>+ Rp{(currentFormValues.ongkos_kirim || 0).toLocaleString('id-ID')}</span>
@@ -579,3 +584,4 @@ export default function NewSalePage() {
     </>
   );
 }
+
