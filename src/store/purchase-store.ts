@@ -253,11 +253,18 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
     set({ isSubmitting: true });
     try {
-        for (const item of receivedItems) {
-            if (item.jumlah_diterima > 0) {
-                const product = await getProductById(item.produk_id);
+        let anyItemReceived = false;
+        for (const receivedItem of receivedItems) {
+            const originalItem = purchase.items?.find(i => i.id === receivedItem.id);
+            if (!originalItem) continue;
+
+            const quantityReceivedNow = receivedItem.jumlah_diterima - originalItem.jumlah_diterima;
+
+            if (quantityReceivedNow > 0) {
+                anyItemReceived = true;
+                const product = await getProductById(receivedItem.produk_id);
                 if (product) {
-                    const newStock = product.stok + item.jumlah_diterima;
+                    const newStock = product.stok + quantityReceivedNow;
                     await editProduct({ ...product, stok: newStock }, true);
                     await addStockMovement({
                         tanggal: new Date().toISOString(),
@@ -265,7 +272,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
                         nama_produk: product.nama_produk,
                         nama_satuan: product.nama_satuan || 'N/A',
                         tipe: 'Pembelian Masuk',
-                        jumlah: item.jumlah_diterima,
+                        jumlah: quantityReceivedNow,
                         stok_akhir: newStock,
                         referensi: purchase.nomor_pembelian,
                     });
@@ -274,9 +281,9 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
         }
         
         const allItemsFullyReceived = receivedItems.every(item => item.jumlah_diterima >= item.jumlah);
-        const newStatus = allItemsFullyReceived ? 'DITERIMA_PENUH' : 'DITERIMA_SEBAGIAN';
+        const newStatus = allItemsFullyReceived ? 'DITERIMA_PENUH' : (anyItemReceived ? 'DITERIMA_SEBAGIAN' : purchase.status);
 
-        const updatedPurchase = {
+        const updatedPurchaseData = {
             ...purchase,
             items: receivedItems,
             status: newStatus,
@@ -286,7 +293,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
             ]
         };
 
-        await get().editPurchase(updatedPurchase);
+        await get().editPurchase(updatedPurchaseData);
         toast({ title: "Barang Diterima", description: "Stok telah berhasil diperbarui." });
     } catch (error) {
         console.error("Failed to receive items:", error);
