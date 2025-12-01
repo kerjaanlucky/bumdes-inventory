@@ -21,7 +21,8 @@ import {
   Users,
   Truck,
   Warehouse,
-  FileText
+  FileText,
+  Landmark
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
@@ -46,9 +47,9 @@ const userLinks = [
     icon: CreditCard,
   },
   {
-    label: "Log Aktivitas",
-    href: "/user/activity",
-    icon: History,
+    label: "Biaya",
+    href: "/user/expenses",
+    icon: Landmark,
   },
 ];
 

@@ -202,3 +202,19 @@ export type CogsItem = {
   totalCostPrice: number; // costPrice * quantity
   totalMargin: number; // totalSellingPrice - totalCostPrice
 };
+
+export interface ExpenseCategory {
+  id: string;
+  nama_kategori: string;
+  branchId: string;
+}
+
+export interface Expense {
+  id: string;
+  tanggal: string;
+  jumlah: number;
+  kategori_id: string;
+  nama_kategori?: string; // Joined from category
+  deskripsi: string;
+  branchId: string;
+}

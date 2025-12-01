@@ -126,6 +126,32 @@
         "saleId": { "type": "string" }
       },
       "required": ["produk_id", "jumlah", "harga_jual_satuan", "saleId"]
+    },
+    "ExpenseCategory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ExpenseCategory",
+      "type": "object",
+      "description": "Represents a category for expenses.",
+      "properties": {
+        "nama_kategori": { "type": "string", "description": "Name of the expense category." },
+        "branchId": { "type": "string", "description": "The ID of the branch this category belongs to." }
+      },
+      "required": ["nama_kategori", "branchId"]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an operational expense.",
+      "properties": {
+        "tanggal": { "type": "string", "format": "date-time", "description": "Date of the expense." },
+        "jumlah": { "type": "number", "description": "Amount of the expense." },
+        "kategori_id": { "type": "string", "description": "ID of the expense category." },
+        "nama_kategori": { "type": "string", "description": "Name of the expense category." },
+        "deskripsi": { "type": "string", "description": "Description of the expense." },
+        "branchId": { "type": "string", "description": "The ID of the branch where the expense occurred." }
+      },
+      "required": ["tanggal", "jumlah", "kategori_id", "deskripsi", "branchId"]
     }
   },
   "auth": {
@@ -141,6 +167,8 @@
     "/suppliers/{supplierId}": { "schema": { "$ref": "#/entities/Supplier" }, "description": "Stores supplier information." },
     "/purchases/{purchaseId}": { "schema": { "$ref": "#/entities/Purchase" }, "description": "Stores purchase orders." },
     "/sales/{saleId}": { "schema": { "$ref": "#/entities/Sale" }, "description": "Stores sales transactions." },
-    "/sales/{saleId}/saleItems/{saleItemId}": { "schema": { "$ref": "#/entities/SaleItem" }, "description": "Stores items for a specific sale." }
+    "/sales/{saleId}/saleItems/{saleItemId}": { "schema": { "$ref": "#/entities/SaleItem" }, "description": "Stores items for a specific sale." },
+    "/expenseCategories/{expenseCategoryId}": { "schema": { "$ref": "#/entities/ExpenseCategory"}, "description": "Stores expense categories."},
+    "/expenses/{expenseId}": { "schema": { "$ref": "#/entities/Expense"}, "description": "Stores operational expenses."}
   }
 }
