@@ -34,7 +34,7 @@ const registerSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   email: z.string().email("Alamat email tidak valid"),
   password: z.string().min(6, "Password minimal 6 karakter"),
-  branchId: z.string().min(1, "Cabang wajib dipilih"),
+  branchId: z.string().optional(), // branchId is now optional
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -77,7 +77,7 @@ export default function RegisterPage() {
         email: firebaseUser.email,
         name: data.name,
         role: 'user', // Default role for new sign-ups is Kasir
-        branchId: data.branchId,
+        branchId: data.branchId || "", // Save empty string if no branch is selected
       };
       
       const userDocRef = doc(firestore, `users`, firebaseUser.uid);
@@ -174,7 +174,7 @@ export default function RegisterPage() {
                 name="branchId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Pilih Cabang</FormLabel>
+                    <FormLabel>Pilih Cabang (Opsional)</FormLabel>
                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                         <FormControl>
                           <SelectTrigger>
