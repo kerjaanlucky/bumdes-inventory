@@ -146,24 +146,25 @@ export const useProductStore = create<ProductState>((set, get) => ({
         set({ isSubmitting: true });
     }
     const productRef = doc(firestore, `products`, updatedProduct.id);
-    setDocumentNonBlocking(productRef, updatedProduct, { merge: true })
-      .then(() => {
-         // Optimistically update the state for UI responsiveness
-         set((state) => ({
-            products: state.products.map((p) =>
-            p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p
-            ),
-        }));
-        if (!isStockUpdate) {
-            get().fetchProducts();
-        }
-      })
-      .catch(err => console.error("Failed to edit product:", err))
-      .finally(() => {
-        if (!isStockUpdate) {
-          set({ isSubmitting: false });
-        }
-      });
+    
+    // Call non-blocking function without chaining .then()
+    setDocumentNonBlocking(productRef, updatedProduct, { merge: true });
+
+    // Optimistically update the state for UI responsiveness immediately
+    set((state) => ({
+        products: state.products.map((p) =>
+        p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p
+        ),
+    }));
+
+    // If it's a regular edit (not just a background stock update), re-fetch for consistency
+    if (!isStockUpdate) {
+        await get().fetchProducts();
+        set({ isSubmitting: false });
+    }
+
+    // Since this is now an async function, we need to return a resolved promise.
+    return Promise.resolve();
   },
 
   deleteProduct: async (productId: string) => {
