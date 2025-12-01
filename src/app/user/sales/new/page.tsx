@@ -28,6 +28,7 @@ import { CustomerSheet } from "./customer-sheet";
 import { useAuthStore } from "@/store/auth-store";
 import { useBranchStore } from "@/store/branch-store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const saleItemSchema = z.object({
@@ -49,6 +50,7 @@ const saleSchema = z.object({
   total_harga: z.coerce.number(),
   diskon_invoice: z.coerce.number().optional().default(0),
   pajak: z.coerce.number().optional().default(0),
+  taxType: z.enum(["inclusive", "exclusive"]).optional(),
   ongkos_kirim: z.coerce.number().optional().default(0),
   biaya_lain: z.coerce.number().optional().default(0),
 });
@@ -61,7 +63,7 @@ export default function NewSalePage() {
   const { toast } = useToast();
   
   const { userProfile } = useAuthStore();
-  const { getBranchById, fetchBranches } = useBranchStore();
+  const { branches, getBranchById, fetchBranches } = useBranchStore();
   const { customers, fetchCustomers: fetchCustomerStore, isFetching: isCustomersLoading, setSearchTerm: setCustomerSearchTerm, getCustomerById } = useCustomerStore();
   const { products, fetchProducts, isFetching: isProductsLoading, setSearchTerm: setProductSearchTerm } = useProductStore();
   
@@ -70,20 +72,44 @@ export default function NewSalePage() {
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<Customer | null>(null);
   const [isCustomerSheetOpen, setCustomerSheetOpen] = useState(false);
+  const [branchDetails, setBranchDetails] = useState<any>(null);
 
-  const branchDetails = useMemo(() => userProfile ? getBranchById(userProfile.branchId) : null, [userProfile, getBranchById]);
-  
   const [debouncedCustomerSearch] = useDebounce(customerQuery, 300);
   const [debouncedProductSearch] = useDebounce(productQuery, 300);
+
+  const form = useForm<SaleFormValues>({
+    resolver: zodResolver(saleSchema),
+    defaultValues: {
+      items: [],
+      total_harga: 0,
+      diskon_invoice: 0,
+      pajak: 0,
+      taxType: 'exclusive',
+      ongkos_kirim: 0,
+      biaya_lain: 0,
+      tanggal_penjualan: new Date(),
+    },
+  });
 
   const fetchInitialData = useCallback(async () => {
     await fetchBranches();
     await fetchCustomerStore({ all: true });
   }, [fetchBranches, fetchCustomerStore]);
-
+  
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  useEffect(() => {
+    if (userProfile?.branchId && branches.length > 0) {
+      const details = getBranchById(userProfile.branchId);
+      if (details) {
+        setBranchDetails(details);
+        form.setValue('pajak', details.defaultTax || 0);
+        form.setValue('taxType', details.taxType || 'exclusive');
+      }
+    }
+  }, [userProfile, branches, getBranchById, form]);
 
   useEffect(() => {
     setCustomerSearchTerm(debouncedCustomerSearch);
@@ -107,26 +133,6 @@ export default function NewSalePage() {
     [products]
   );
 
-  const form = useForm<SaleFormValues>({
-    resolver: zodResolver(saleSchema),
-    defaultValues: {
-      items: [],
-      total_harga: 0,
-      diskon_invoice: 0,
-      pajak: branchDetails?.defaultTax || 0,
-      ongkos_kirim: 0,
-      biaya_lain: 0,
-      tanggal_penjualan: new Date(),
-    },
-  });
-
-  useEffect(() => {
-    if (branchDetails) {
-        form.setValue('pajak', branchDetails.defaultTax || 0);
-    }
-  }, [branchDetails, form]);
-
-
   const watchCustomerId = form.watch("customer_id");
 
   useEffect(() => {
@@ -148,7 +154,7 @@ export default function NewSalePage() {
   
   const watchAllFields = form.watch();
   useEffect(() => {
-      const { items, diskon_invoice, pajak, ongkos_kirim, biaya_lain } = watchAllFields;
+      const { items, diskon_invoice, pajak, taxType, ongkos_kirim, biaya_lain } = watchAllFields;
       let newSubtotal = 0;
       let newTotalDiscount = 0;
 
@@ -167,7 +173,6 @@ export default function NewSalePage() {
       const invDiscount = Number(diskon_invoice || 0);
       const taxPercent = Number(pajak || 0);
       
-      const taxType = branchDetails?.taxType || 'exclusive';
       let dpp = newSubtotal - newTotalDiscount - invDiscount;
       let newTaxAmount = 0;
       
@@ -185,7 +190,7 @@ export default function NewSalePage() {
       if (form.getValues('total_harga') !== newGrandTotal) {
         form.setValue("total_harga", newGrandTotal);
       }
-  }, [watchAllFields, form, branchDetails]);
+  }, [watchAllFields, form]);
   
   const currentFormValues = form.getValues();
   const items = currentFormValues.items || [];
@@ -193,7 +198,7 @@ export default function NewSalePage() {
   const totalDiscount = items.reduce((sum, item) => sum + ((item?.subtotal || 0) * ((item?.diskon || 0) / 100)), 0);
   const invDiscount = currentFormValues.diskon_invoice || 0;
   
-  const taxType = branchDetails?.taxType || 'exclusive';
+  const taxType = currentFormValues.taxType || 'exclusive';
   const taxPercent = currentFormValues.pajak || 0;
   
   let dpp = subtotal - totalDiscount - invDiscount;
@@ -471,12 +476,37 @@ export default function NewSalePage() {
                             render={({ field }) => <Input type="number" {...field} className="w-48" />}
                         />
                     </div>
-                     <div className="flex items-center justify-between">
-                        <FormLabel>Pajak ({taxPercent}%)</FormLabel>
+                     <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="taxType"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Tipe Pajak</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pilih tipe pajak" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="exclusive">Tidak Termasuk</SelectItem>
+                                    <SelectItem value="inclusive">Termasuk</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                          <FormField
                             control={form.control}
                             name="pajak"
-                            render={({ field }) => <Input type="number" {...field} className="w-48" />}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Pajak (%)</FormLabel>
+                                    <Input type="number" {...field} />
+                                </FormItem>
+                            )}
                         />
                     </div>
                      <div className="flex items-center justify-between">
