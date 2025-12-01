@@ -11,21 +11,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Edit, Trash2, Search } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { products } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Product } from "@/lib/types";
+import { Product, Category } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { useProductStore } from '@/store/product-store';
+import { useCategoryStore } from '@/store/category-store';
 import { useDebounce } from 'use-debounce';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 export default function ProductsPage() {
     const router = useRouter();
@@ -35,25 +36,37 @@ export default function ProductsPage() {
       page, 
       limit, 
       searchTerm,
+      filterCategoryId,
       isFetching,
       isDeleting,
       fetchProducts,
       setSearchTerm,
+      setFilterCategoryId,
       setPage,
       setLimit,
       deleteProduct,
+      editProduct
     } = useProductStore();
+
+    const { categories, fetchCategories } = useCategoryStore();
+    
     const { toast } = useToast();
     const [debouncedSearch] = useDebounce(searchTerm, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
     useEffect(() => {
       fetchProducts();
-    }, [fetchProducts, debouncedSearch, page, limit]);
+    }, [fetchProducts, debouncedSearch, page, limit, filterCategoryId]);
+    
+    useEffect(() => {
+        // Fetch all categories for the filter dropdown
+        useCategoryStore.setState({ limit: 1000 }); // Hack to get all categories
+        fetchCategories();
+    }, [fetchCategories]);
 
 
-    const getStatus = (stock: number): { text: string; variant: "default" | "secondary" | "destructive" } => {
+    const getStockStatus = (stock: number): { text: string; variant: "default" | "secondary" | "destructive" } => {
         if (stock <= 0) {
             return { text: "Habis", variant: "destructive" };
         }
@@ -65,7 +78,7 @@ export default function ProductsPage() {
 
     const totalPages = Math.ceil(total / limit);
 
-    const handleDeleteClick = (productId: number) => {
+    const handleDeleteClick = (productId: string) => {
       setSelectedProduct(productId);
       setDialogOpen(true);
     };
@@ -80,6 +93,11 @@ export default function ProductsPage() {
           description: "Produk telah berhasil dihapus.",
         });
       }
+    };
+
+    const handleStatusChange = (product: Product, checked: boolean) => {
+      const newStatus = checked ? 'Tersedia' : 'Tidak Tersedia';
+      editProduct({ ...product, status: newStatus }, true);
     };
 
   return (
@@ -104,7 +122,7 @@ export default function ProductsPage() {
             <CardDescription>Kelola produk Anda dan lihat status inventarisnya.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-2">
               <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -115,17 +133,28 @@ export default function ProductsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+               <Select value={filterCategoryId} onValueChange={setFilterCategoryId}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Semua Kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">Semua Kategori</SelectItem>
+                    {categories.map((cat: Category) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                            {cat.nama_kategori}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
             </div>
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Kode</TableHead>
                     <TableHead>Nama Produk</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Stok</TableHead>
                     <TableHead>Harga Jual</TableHead>
-                    <TableHead className="hidden md:table-cell">Harga Modal</TableHead>
-                    <TableHead className="hidden md:table-cell">Stok</TableHead>
-                    <TableHead className="hidden md:table-cell">Kategori</TableHead>
+                    <TableHead>Kategori</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>
                     <span className="sr-only">Aksi</span>
                     </TableHead>
@@ -135,29 +164,34 @@ export default function ProductsPage() {
                 {isFetching ? (
                   Array.from({ length: limit }).map((_, index) => (
                     <TableRow key={index}>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-12 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : products.map((product: Product) => {
-                    const status = getStatus(product.stok);
+                    const stockStatus = getStockStatus(product.stok);
                     return (
                         <TableRow key={product.id}>
-                            <TableCell className="font-mono text-xs">{product.kode_produk}</TableCell>
                             <TableCell className="font-medium">{product.nama_produk}</TableCell>
                             <TableCell>
-                                <Badge variant={status.variant}>{status.text}</Badge>
+                                <Badge variant={stockStatus.variant}>{product.stok} {product.nama_satuan}</Badge>
                             </TableCell>
                             <TableCell>Rp{product.harga_jual.toLocaleString('id-ID')}</TableCell>
-                            <TableCell className="hidden md:table-cell">Rp{product.harga_modal.toLocaleString('id-ID')}</TableCell>
-                            <TableCell className="hidden md:table-cell">{product.stok} {product.nama_satuan}</TableCell>
-                            <TableCell className="hidden md:table-cell">{product.nama_kategori}</TableCell>
+                            <TableCell>{product.nama_kategori}</TableCell>
+                            <TableCell>
+                                <div className="flex items-center gap-2">
+                                     <Switch
+                                        checked={product.status === 'Tersedia'}
+                                        onCheckedChange={(checked) => handleStatusChange(product, checked)}
+                                        aria-label="Product status"
+                                    />
+                                    <span className="text-xs text-muted-foreground">{product.status}</span>
+                                </div>
+                            </TableCell>
                             <TableCell className="text-right">
                               <TooltipProvider>
                                 <div className="flex items-center justify-end gap-2">

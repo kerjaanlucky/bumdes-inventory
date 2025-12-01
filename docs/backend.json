@@ -35,9 +35,10 @@
         "name": { "type": "string", "description": "Name of the item." },
         "description": { "type": "string", "description": "Description of the item." },
         "unit": { "type": "string", "description": "Unit of measure for the item." },
-        "branchId": { "type": "string", "description": "The ID of the branch that owns this item." }
+        "branchId": { "type": "string", "description": "The ID of the branch that owns this item." },
+        "status": { "type": "string", "enum": ["Tersedia", "Tidak Tersedia"], "description": "Availability status of the product." }
       },
-      "required": ["name", "description", "unit", "branchId"]
+      "required": ["name", "description", "unit", "branchId", "status"]
     },
     "Category": {
       "$schema": "http://json-schema.org/draft-07/schema#",

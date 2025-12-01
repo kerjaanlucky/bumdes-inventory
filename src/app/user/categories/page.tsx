@@ -133,7 +133,7 @@ export default function CategoriesPage() {
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>ID</TableHead>
+                    <TableHead className="w-[50px]">No.</TableHead>
                     <TableHead>Nama Kategori</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
@@ -147,9 +147,9 @@ export default function CategoriesPage() {
                       <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : categories.map(category => (
+                ) : categories.map((category, index) => (
                     <TableRow key={category.id}>
-                        <TableCell className="font-mono text-xs">{category.id}</TableCell>
+                        <TableCell>{(page - 1) * limit + index + 1}</TableCell>
                         <TableCell className="font-medium">{category.nama_kategori}</TableCell>
                         <TableCell className="text-right">
                           <TooltipProvider>

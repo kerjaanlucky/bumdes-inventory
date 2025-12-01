@@ -33,6 +33,7 @@ export interface Product {
   kategori_id: string;
   nama_kategori?: string; // Optional, joined from categories table
   branchId: string;
+  status: 'Tersedia' | 'Tidak Tersedia';
 }
 
 export interface Category {
