@@ -14,17 +14,33 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+
+const returnSchema = z.object({
+  note: z.string().min(1, "Alasan retur wajib diisi."),
+});
+
+type ReturnFormValues = z.infer<typeof returnSchema>;
 
 export default function SaleDetailPage() {
     const router = useRouter();
     const params = useParams();
     const saleId = params.id as string;
-    const { getSaleById, isFetching, updateSaleStatus } = useSaleStore();
+    const { getSaleById, isFetching, isSubmitting, updateSaleStatus } = useSaleStore();
     
     const [sale, setSale] = useState<Sale | null>(null);
     const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [isReturnModalOpen, setReturnModalOpen] = useState(false);
     const [modalAction, setModalAction] = useState<{ status: SaleStatus; title: string; description: string } | null>(null);
 
+    const returnForm = useForm<ReturnFormValues>({
+      resolver: zodResolver(returnSchema),
+    });
 
     const fetchAndSetSale = async () => {
         const data = await getSaleById(saleId);
@@ -54,25 +70,41 @@ export default function SaleDetailPage() {
     }
     
     const handleActionClick = (status: SaleStatus, title: string, description: string) => {
-        setModalAction({ status, title, description });
-        setConfirmModalOpen(true);
+        if (status === 'DIRETUR') {
+            setReturnModalOpen(true);
+        } else {
+            setModalAction({ status, title, description });
+            setConfirmModalOpen(true);
+        }
     };
 
     const handleConfirmAction = async () => {
         if (modalAction) {
             await updateSaleStatus(saleId, modalAction.status, `Status diubah menjadi ${modalAction.status}`);
             setConfirmModalOpen(false);
-            await fetchAndSetSale(); // Re-fetch data
+            setModalAction(null);
+            await fetchAndSetSale(); // Re-fetch data to update UI without full reload
         }
     };
+    
+    const handleReturnSubmit = async (data: ReturnFormValues) => {
+        await updateSaleStatus(saleId, 'DIRETUR', data.note);
+        setReturnModalOpen(false);
+        returnForm.reset();
+        await fetchAndSetSale(); // Re-fetch data
+    }
 
 
-    if (isFetching || !sale) {
+    if (isFetching && !sale) { // Show loader only on initial load
         return (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         );
+    }
+    
+    if (!sale) {
+        return null; // or a not found component
     }
 
     const subtotal = sale.items?.reduce((sum, item) => sum + item.subtotal, 0) || 0;
@@ -269,8 +301,38 @@ export default function SaleDetailPage() {
                 onConfirm={handleConfirmAction}
                 title={modalAction?.title || ''}
                 description={modalAction?.description || ''}
-                isSubmitting={useSaleStore.getState().isSubmitting}
+                isSubmitting={isSubmitting}
             />
+             <ConfirmationDialog
+                isOpen={isReturnModalOpen}
+                onClose={() => setReturnModalOpen(false)}
+                onConfirm={returnForm.handleSubmit(handleReturnSubmit)}
+                title="Proses Retur Penjualan?"
+                description="Tindakan ini akan mengembalikan stok barang ke persediaan. Pastikan Anda telah menerima barang kembali dari pelanggan."
+                isSubmitting={isSubmitting}
+            >
+                <Form {...returnForm}>
+                    <form className="space-y-4 mt-4">
+                        <FormField
+                        control={returnForm.control}
+                        name="note"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Alasan Retur</FormLabel>
+                            <FormControl>
+                                <Textarea
+                                placeholder="Contoh: Barang rusak saat diterima, salah kirim ukuran, dll."
+                                {...field}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </form>
+                </Form>
+            </ConfirmationDialog>
         </div>
     );
 }
+
