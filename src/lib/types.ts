@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -104,6 +105,7 @@ export interface PurchaseStatusHistory {
     status: PurchaseStatus;
     tanggal: string;
     oleh: string; // User name
+    catatan?: string;
 }
 
 export interface Purchase {

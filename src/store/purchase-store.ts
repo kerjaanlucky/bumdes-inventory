@@ -1,3 +1,4 @@
+
 "use client";
 import { create } from 'zustand';
 import { Purchase, PaginatedResponse, PurchaseStatus, PurchaseItem, Supplier } from '@/lib/types';
@@ -41,7 +42,7 @@ type PurchaseState = {
   addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status' | 'branchId'>) => Promise<Purchase | undefined>;
   editPurchase: (purchase: Purchase) => Promise<void>;
   deletePurchase: (purchaseId: string) => Promise<void>;
-  updatePurchaseStatus: (purchaseId: string, status: PurchaseStatus) => Promise<void>;
+  updatePurchaseStatus: (purchaseId: string, status: PurchaseStatus, note?: string) => Promise<void>;
   receiveItems: (purchaseId: string, receivedItems: PurchaseItem[]) => Promise<void>;
 };
 
@@ -158,7 +159,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
         nomor_pembelian: poNumber,
         status: 'DRAFT' as PurchaseStatus,
         created_at: new Date().toISOString(),
-        history: [{ status: 'DRAFT', tanggal: new Date().toISOString(), oleh: 'System' }]
+        history: [{ status: 'DRAFT' as PurchaseStatus, tanggal: new Date().toISOString(), oleh: 'System' }]
       }
 
       const docRef = await addDocumentNonBlocking(purchasesRef, newPurchaseData);
@@ -184,25 +185,24 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
   editPurchase: async (updatedPurchase) => {
     const { firestore } = useFirebaseStore.getState();
-    if (!firestore) return;
+    if (!firestore) return Promise.reject("Firestore not initialized");
 
     set({ isSubmitting: true });
     const purchaseRef = doc(firestore, 'purchases', updatedPurchase.id);
-    // nama_supplier is a joined field, so we don't save it back to the purchase document
     const { nama_supplier, ...purchaseToSave } = updatedPurchase;
 
-    setDocumentNonBlocking(purchaseRef, purchaseToSave, { merge: true })
-      .then(() => {
+    try {
+        await setDoc(purchaseRef, purchaseToSave, { merge: true });
         toast({ title: "Pembelian Diperbarui", description: "Perubahan pada pembelian telah berhasil disimpan." });
         set(state => ({
             purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p)
         }));
-      })
-      .catch(err => {
+    } catch (err) {
         console.error("Failed to edit purchase:", err);
         toast({ variant: "destructive", title: "Gagal Memperbarui", description: "Terjadi kesalahan saat memperbarui pembelian." });
-      })
-      .finally(() => set({ isSubmitting: false }));
+    } finally {
+        set({ isSubmitting: false });
+    }
   },
 
   deletePurchase: async (purchaseId: string) => {
@@ -223,7 +223,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       .finally(() => set({ isDeleting: false }));
   },
   
-  updatePurchaseStatus: async (purchaseId, status) => {
+  updatePurchaseStatus: async (purchaseId, status, note) => {
     const currentPurchase = get().purchases.find(p => p.id === purchaseId) 
       || await get().getPurchaseById(purchaseId);
 
@@ -238,7 +238,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       status,
       history: [
           ...(currentPurchase.history || []),
-          { status, tanggal: new Date().toISOString(), oleh: 'System' }
+          { status, tanggal: new Date().toISOString(), oleh: 'System', catatan: note }
       ]
     };
     await get().editPurchase(updatedPurchase);
@@ -282,7 +282,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
             status: newStatus,
             history: [
                 ...(purchase.history || []),
-                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System' }
+                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System', catatan: "Penerimaan barang otomatis" }
             ]
         };
 

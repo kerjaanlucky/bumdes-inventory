@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ReceiveItemsModal } from '../receive-items-modal';
+import { SendOrderConfirmationModal } from '../send-order-modal';
 
 export default function PurchaseDetailPage() {
     const router = useRouter();
@@ -24,6 +25,7 @@ export default function PurchaseDetailPage() {
     
     const [purchase, setPurchase] = useState<Purchase | null>(null);
     const [isReceiveModalOpen, setReceiveModalOpen] = useState(false);
+    const [isSendOrderModalOpen, setSendOrderModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchPurchase = async () => {
@@ -48,9 +50,10 @@ export default function PurchaseDetailPage() {
         }
     }
     
-    const handleUpdateStatus = async (newStatus: PurchaseStatus) => {
+    const handleSendOrderConfirm = async (note?: string) => {
         if (!purchase) return;
-        await updatePurchaseStatus(purchase.id, newStatus);
+        await updatePurchaseStatus(purchase.id, 'DIPESAN', note);
+        setSendOrderModalOpen(false);
         const updatedPurchase = await getPurchaseById(purchase.id);
         if (updatedPurchase) setPurchase(updatedPurchase);
     }
@@ -87,7 +90,7 @@ export default function PurchaseDetailPage() {
             status: newStatus,
             history: [
                 ...(purchase.history || []),
-                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System' }
+                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System', catatan: `Penerimaan barang otomatis` }
             ]
         };
         
@@ -130,7 +133,7 @@ export default function PurchaseDetailPage() {
                             <Button variant="outline" size="sm" onClick={() => router.push(`/user/purchases/${purchase.id}/edit`)}>
                                 <Edit className="mr-2 h-4 w-4" /> Ubah
                             </Button>
-                            <Button size="sm" onClick={() => handleUpdateStatus('DIPESAN')}>Kirim Pesanan</Button>
+                            <Button size="sm" onClick={() => setSendOrderModalOpen(true)}>Kirim Pesanan</Button>
                         </>
                     )}
                     {['DIPESAN', 'DITERIMA_SEBAGIAN'].includes(purchase.status) && (
@@ -181,11 +184,18 @@ export default function PurchaseDetailPage() {
                             <CardTitle>Riwayat Status</CardTitle>
                         </CardHeader>
                         <CardContent className="text-sm">
-                             <ul>
+                             <ul className="space-y-4">
                                 {purchase.history?.map((h, index) => (
-                                <li key={index} className="flex items-center gap-4 mb-2">
-                                    <Badge variant={getStatusVariant(h.status)}>{h.status.replace(/_/g, ' ')}</Badge>
-                                    <span>{format(new Date(h.tanggal), "dd MMM yyyy, HH:mm")} oleh <strong>{h.oleh}</strong></span>
+                                <li key={index} className="flex flex-col items-start gap-1">
+                                    <div className='flex items-center gap-2'>
+                                        <Badge variant={getStatusVariant(h.status)}>{h.status.replace(/_/g, ' ')}</Badge>
+                                        <span className='text-xs text-muted-foreground'>{format(new Date(h.tanggal), "dd MMM yyyy, HH:mm")} oleh <strong>{h.oleh}</strong></span>
+                                    </div>
+                                    {h.catatan && (
+                                        <p className="pl-2 border-l-2 border-muted ml-2 text-muted-foreground text-xs italic">
+                                            "{h.catatan}"
+                                        </p>
+                                    )}
                                 </li>
                                 ))}
                             </ul>
@@ -235,6 +245,15 @@ export default function PurchaseDetailPage() {
                     items={purchase.items}
                     onSubmit={handleReceiveSubmit}
                     purchaseNumber={purchase.nomor_pembelian}
+                />
+            )}
+             {isSendOrderModalOpen && (
+                <SendOrderConfirmationModal
+                    isOpen={isSendOrderModalOpen}
+                    onClose={() => setSendOrderModalOpen(false)}
+                    onSubmit={handleSendOrderConfirm}
+                    purchaseNumber={purchase.nomor_pembelian}
+                    isSubmitting={usePurchaseStore.getState().isSubmitting}
                 />
             )}
         </div>
