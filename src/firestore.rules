@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -45,16 +46,61 @@ service cloud.firestore {
       allow delete: if isGlobalAdmin();
     }
     
-    // Rules for branch-isolated master data
-    match /{collection}/{docId} where collection in ['products', 'categories', 'units', 'customers', 'suppliers', 'purchases', 'sales', 'stocks'] {
-        // Read: Users can only read data from their own branch. Admins can read anything.
-        allow read: if isSignedIn() && (isAssignedToBranch(resource.data.branchId) || isGlobalAdmin());
-        
-        // Create: Users can only create data for their own branch.
-        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+    function canAccessBranchData(branchId) {
+      return isAssignedToBranch(branchId) || isGlobalAdmin();
+    }
+    
+    function canWriteBranchData(branchId) {
+      return isGlobalAdmin() || (isUserRole(request.auth.uid, 'admin') && isAssignedToBranch(branchId));
+    }
 
-        // Update/Delete: Only admins can update/delete data. They can only affect docs in their own branch unless they are global admins.
-        allow update, delete: if isSignedIn() && (isGlobalAdmin() || (isUserRole(request.auth.uid, 'admin') && isAssignedToBranch(resource.data.branchId)));
+    // Rules for branch-isolated master data
+    match /products/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+    
+    match /categories/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+    match /units/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+    match /customers/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+    match /suppliers/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+    
+    match /purchases/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+    match /sales/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+    match /stocks/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
     }
   }
 }
