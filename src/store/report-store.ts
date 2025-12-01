@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from 'zustand';
-import { Sale } from '@/lib/types';
+import { Sale, CogsItem } from '@/lib/types';
 import { DateRange } from 'react-day-picker';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
@@ -20,16 +20,6 @@ type ProfitAndLoss = {
   grossProfit: number;
   expenses: number; // Discounts, shipping, etc.
   netProfit: number;
-};
-
-export type CogsItem = {
-  saleId: string;
-  saleDate: string;
-  productName: string;
-  quantity: number;
-  sellingPrice: number;
-  costPrice: number;
-  margin: number;
 };
 
 export type CogsSummary = {
@@ -240,34 +230,41 @@ export const useReportStore = create<ReportState>((set, get) => ({
       const cogsItems: CogsItem[] = [];
       let totalRevenue = 0;
       let totalCogs = 0;
+      let totalMargin = 0;
 
       for (const sale of sales) {
         for (const item of sale.items) {
           const productInfo = productsMap.get(item.produk_id);
           const costPrice = productInfo?.harga_modal || 0;
-          const margin = (item.harga_jual_satuan * item.jumlah) - (costPrice * item.jumlah);
-          
+          const totalSellingPrice = item.harga_jual_satuan * item.jumlah;
+          const totalCostPrice = costPrice * item.jumlah;
+          const itemMargin = totalSellingPrice - totalCostPrice;
+
           cogsItems.push({
             saleId: sale.id,
             saleDate: sale.tanggal_penjualan,
             productName: productInfo?.nama_produk || 'Produk Tidak Ditemukan',
             quantity: item.jumlah,
             sellingPrice: item.harga_jual_satuan,
+            totalSellingPrice: totalSellingPrice,
             costPrice: costPrice,
-            margin: margin,
+            totalCostPrice: totalCostPrice,
+            totalMargin: itemMargin,
           });
-          
-          totalRevenue += item.harga_jual_satuan * item.jumlah;
-          totalCogs += costPrice * item.jumlah;
+
+          totalRevenue += totalSellingPrice;
+          totalCogs += totalCostPrice;
         }
       }
+
+      totalMargin = totalRevenue - totalCogs;
 
       set({
         cogsData: cogsItems,
         cogsSummary: {
-          totalRevenue: totalRevenue,
-          totalCogs: totalCogs,
-          totalMargin: totalRevenue - totalCogs,
+          totalRevenue,
+          totalCogs,
+          totalMargin,
         },
         isFetching: false,
       });

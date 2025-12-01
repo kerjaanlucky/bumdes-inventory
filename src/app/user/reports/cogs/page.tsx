@@ -20,6 +20,7 @@ import { useReportStore, CogsItem } from '@/store/report-store';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 export default function CogsReportPage() {
   const {
@@ -115,12 +116,14 @@ export default function CogsReportPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tanggal</TableHead>
+                <TableHead className="w-[120px]">Tanggal</TableHead>
                 <TableHead>Produk</TableHead>
-                <TableHead>Qty</TableHead>
-                <TableHead>Harga Jual</TableHead>
-                <TableHead>Harga Modal</TableHead>
-                <TableHead>Margin</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Harga Jual</TableHead>
+                <TableHead className="text-right">Total Jual</TableHead>
+                <TableHead className="text-right">Harga Modal</TableHead>
+                <TableHead className="text-right">Total Modal</TableHead>
+                <TableHead className="text-right font-semibold">Total Margin</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -133,24 +136,37 @@ export default function CogsReportPage() {
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   </TableRow>
                 ))
               ) : cogsData.length > 0 ? (
-                cogsData.map((item: CogsItem, index: number) => (
-                    <TableRow key={`${item.saleId}-${index}`}>
-                    <TableCell>{format(new Date(item.saleDate), "dd MMM yyyy")}</TableCell>
-                    <TableCell>{item.productName}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>Rp{item.sellingPrice.toLocaleString('id-ID')}</TableCell>
-                    <TableCell>Rp{item.costPrice.toLocaleString('id-ID')}</TableCell>
-                    <TableCell className="font-semibold text-green-600">Rp{item.margin.toLocaleString('id-ID')}</TableCell>
+                cogsData.map((item: CogsItem) => (
+                    <TableRow key={`${item.saleId}-${item.productName}`}>
+                      <TableCell>{format(new Date(item.saleDate), "dd MMM yyyy")}</TableCell>
+                      <TableCell>{item.productName}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">Rp{item.sellingPrice.toLocaleString('id-ID')}</TableCell>
+                      <TableCell className="text-right">Rp{item.totalSellingPrice.toLocaleString('id-ID')}</TableCell>
+                      <TableCell className="text-right">Rp{item.costPrice.toLocaleString('id-ID')}</TableCell>
+                      <TableCell className="text-right">Rp{item.totalCostPrice.toLocaleString('id-ID')}</TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">Rp{item.totalMargin.toLocaleString('id-ID')}</TableCell>
                     </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     Tidak ada data penjualan untuk periode ini.
                   </TableCell>
+                </TableRow>
+              )}
+               {!isFetching && cogsData.length > 0 && (
+                <TableRow className="font-bold bg-muted/50">
+                  <TableCell colSpan={4} className="text-right">Total</TableCell>
+                  <TableCell className="text-right">Rp{cogsSummary.totalRevenue.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-right" colSpan={1}></TableCell>
+                  <TableCell className="text-right">Rp{cogsSummary.totalCogs.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-right text-primary">Rp{cogsSummary.totalMargin.toLocaleString('id-ID')}</TableCell>
                 </TableRow>
               )}
             </TableBody>

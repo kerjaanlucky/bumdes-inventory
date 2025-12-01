@@ -189,3 +189,16 @@ export interface UserProfile {
   role: 'admin' | 'user';
   branchId: string;
 }
+
+// Updated CogsItem for detailed report
+export type CogsItem = {
+  saleId: string;
+  saleDate: string;
+  productName: string;
+  quantity: number;
+  sellingPrice: number; // per unit
+  totalSellingPrice: number; // sellingPrice * quantity
+  costPrice: number; // per unit
+  totalCostPrice: number; // costPrice * quantity
+  totalMargin: number; // totalSellingPrice - totalCostPrice
+};
