@@ -29,7 +29,7 @@ type UserFormValues = z.infer<typeof userSchema>;
 export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
-  const { editUser, getUserById, isSubmitting, fetchUsers, users, findUserInAnyBranch } = useUserStore();
+  const { editUser, isSubmitting, findUserInAnyBranch } = useUserStore();
   const { branches, fetchBranches } = useBranchStore();
   const { toast } = useToast();
   const userId = params.id as string;

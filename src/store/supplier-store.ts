@@ -1,8 +1,8 @@
 "use client";
 import { create } from 'zustand';
-import { Supplier, PaginatedResponse } from '@/lib/types';
+import { Supplier } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -21,7 +21,7 @@ type SupplierState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchSuppliers: () => Promise<void>;
   getSupplierById: (supplierId: string) => Promise<Supplier | undefined>;
-  addSupplier: (supplier: Omit<Supplier, 'id' | 'branch_id'>) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'branchId'>) => Promise<void>;
   editSupplier: (supplier: Supplier) => Promise<void>;
   deleteSupplier: (supplierId: string) => Promise<void>;
 };
@@ -47,8 +47,8 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const suppliersRef = collection(firestore, `branches/${branchId}/suppliers`);
-      const q = query(suppliersRef);
+      const suppliersRef = collection(firestore, 'suppliers');
+      const q = query(suppliersRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
       let suppliers: Supplier[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
 
@@ -79,9 +79,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const supplierRef = doc(firestore, `branches/${branchId}/suppliers`, supplierId);
+      const supplierRef = doc(firestore, 'suppliers', supplierId);
       const docSnap = await getDoc(supplierRef);
-      if (docSnap.exists()) {
+      if (docSnap.exists() && docSnap.data().branchId === branchId) {
         return { id: docSnap.id, ...docSnap.data() } as Supplier;
       }
       return undefined;
@@ -100,7 +100,7 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     if (!firestore || !branchId) return;
 
     set({ isSubmitting: true });
-    const suppliersRef = collection(firestore, `branches/${branchId}/suppliers`);
+    const suppliersRef = collection(firestore, 'suppliers');
     addDocumentNonBlocking(suppliersRef, { ...supplier, branchId })
       .then(() => {
         toast({ title: "Pemasok Ditambahkan", description: "Pemasok baru telah berhasil ditambahkan." });
@@ -115,11 +115,10 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
   editSupplier: async (updatedSupplier) => {
      const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isSubmitting: true });
-    const supplierRef = doc(firestore, `branches/${branchId}/suppliers`, updatedSupplier.id);
+    const supplierRef = doc(firestore, 'suppliers', updatedSupplier.id);
     setDocumentNonBlocking(supplierRef, updatedSupplier, { merge: true })
       .then(() => {
          toast({ title: "Pemasok Diperbarui", description: "Perubahan pada pemasok telah berhasil disimpan." });
@@ -134,11 +133,10 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
 
   deleteSupplier: async (supplierId: string) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isDeleting: true });
-    const supplierRef = doc(firestore, `branches/${branchId}/suppliers`, supplierId);
+    const supplierRef = doc(firestore, 'suppliers', supplierId);
     deleteDocumentNonBlocking(supplierRef)
       .then(() => {
         toast({ title: "Pemasok Dihapus", description: "Pemasok telah berhasil dihapus." });

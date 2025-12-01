@@ -4,6 +4,9 @@ import { useFirebaseStore } from './firebase-store';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 type NewUserParams = {
   name: string;
@@ -37,14 +40,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const branchesSnapshot = await getDocs(collection(firestore, 'branches'));
-      const allUsers: UserProfile[] = [];
-      for (const branchDoc of branchesSnapshot.docs) {
-        const usersSnapshot = await getDocs(collection(firestore, `branches/${branchDoc.id}/users`));
-        usersSnapshot.forEach(userDoc => {
-          allUsers.push({ uid: userDoc.id, ...userDoc.data() } as UserProfile);
-        });
-      }
+      const usersSnapshot = await getDocs(collection(firestore, 'users'));
+      const allUsers: UserProfile[] = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
       set({ users: allUsers, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch users:", error);
@@ -63,14 +60,11 @@ export const useUserStore = create<UserState>((set, get) => ({
     // If not in state, query Firestore
     set({ isFetching: true });
     try {
-        const branchesSnapshot = await getDocs(collection(firestore, 'branches'));
-        for (const branchDoc of branchesSnapshot.docs) {
-            const userDocsSnap = await getDocs(collection(firestore, `branches/${branchDoc.id}/users`));
-            const userDoc = userDocsSnap.docs.find(d => d.id === userId);
-             if (userDoc?.exists()) {
-                return { uid: userDoc.id, ...userDoc.data() } as UserProfile;
-            }
-        }
+      const userDocRef = doc(firestore, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc?.exists()) {
+        return { uid: userDoc.id, ...userDoc.data() } as UserProfile;
+      }
     } catch (error) {
         console.error("Error finding user:", error);
     } finally {
@@ -85,34 +79,36 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     set({ isSubmitting: true });
     try {
-      // In a real app, this should be a Cloud Function.
-      // Creating a user on the client and then their profile has security implications.
-      // For this project, we'll proceed with a client-side implementation.
-      const { password, ...profileData } = user;
-      
-      // IMPORTANT: This part is a placeholder. Secure user creation requires Admin SDK.
-      // We will create the Firestore record, but Auth user creation won't work securely from client.
-      // We'll simulate it by assuming a UID could be created.
       console.warn("addUser function is for demonstration. Secure user creation requires a backend.");
       
       const tempUid = `TEMP_${Date.now()}`;
       
-      const userProfile: Omit<UserProfile, 'uid'> = {
-        name: profileData.name,
-        email: profileData.email,
-        role: profileData.role,
-        branchId: profileData.branchId,
+      const userProfile: UserProfile = {
+        uid: tempUid, // This will be overwritten by the real UID in a real scenario
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        branchId: user.branchId,
       };
 
-      const userDocRef = doc(firestore, `branches/${user.branchId}/users`, tempUid);
-      await setDoc(userDocRef, userProfile);
+      const userDocRef = doc(firestore, `users`, tempUid);
       
-      await get().fetchUsers();
+      setDoc(userDocRef, userProfile).then(async () => {
+         await get().fetchUsers();
+         set({ isSubmitting: false });
+      }).catch(error => {
+        console.log("Error in setDoc for addUser", error);
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'create',
+              requestResourceData: userProfile
+         }));
+         set({ isSubmitting: false });
+      });
 
     } catch (error) {
-      console.error("Failed to add user:", error);
-    } finally {
-        set({ isSubmitting: false });
+      console.error("Outer error in addUser:", error);
+      set({ isSubmitting: false });
     }
   },
 
@@ -122,16 +118,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     set({ isSubmitting: true });
     try {
-      const newUserDocRef = doc(firestore, `branches/${updatedUser.branchId}/users`, updatedUser.uid);
-
-      if (originalBranchId !== updatedUser.branchId) {
-        // Branch has changed, so we need to delete the old document and create a new one
-        const oldUserDocRef = doc(firestore, `branches/${originalBranchId}/users`, updatedUser.uid);
-        await deleteDoc(oldUserDocRef);
-      }
-      
-      // Create or update the document in the new branch
-      await setDoc(newUserDocRef, updatedUser, { merge: true });
+      const userDocRef = doc(firestore, `users`, updatedUser.uid);
+      await setDoc(userDocRef, updatedUser, { merge: true });
       await get().fetchUsers();
 
     } catch (error) {
@@ -146,9 +134,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (!firestore) return;
     set({ isDeleting: true });
     try {
-      const userDocRef = doc(firestore, `branches/${branchId}/users`, userId);
-      // Note: This only deletes the Firestore record, not the Firebase Auth user.
-      // Deleting the auth user requires the Admin SDK.
+      const userDocRef = doc(firestore, 'users', userId);
       await deleteDoc(userDocRef);
       set((state) => ({
         users: state.users.filter((user) => user.uid !== userId),

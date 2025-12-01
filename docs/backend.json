@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Branch": {
@@ -7,53 +6,23 @@
       "type": "object",
       "description": "Represents a branch of the business, each holding its own inventory.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Branch entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the branch."
-        },
-        "address": {
-          "type": "string",
-          "description": "Address of the branch."
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Branch entity." },
+        "name": { "type": "string", "description": "Name of the branch." },
+        "address": { "type": "string", "description": "Address of the branch." }
       },
-      "required": [
-        "id",
-        "name",
-        "address"
-      ]
+      "required": ["name", "address"]
     },
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's profile information stored in Firestore.",
+      "description": "Represents a user's profile information.",
       "properties": {
-        "uid": {
-          "type": "string",
-          "description": "The user's unique ID, matching their Firebase Auth UID."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address.",
-          "format": "email"
-        },
-        "name": {
-          "type": "string",
-          "description": "The display name of the user."
-        },
-        "role": {
-          "type": "string",
-          "description": "The role of the user (e.g., 'admin', 'user'). 'user' corresponds to 'Kasir'.",
-          "enum": ["admin", "user"]
-        },
-        "branchId": {
-          "type": "string",
-          "description": "The ID of the branch the user is assigned to."
-        }
+        "uid": { "type": "string", "description": "The user's unique ID, matching their Firebase Auth UID." },
+        "email": { "type": "string", "description": "The user's email address.", "format": "email" },
+        "name": { "type": "string", "description": "The display name of the user." },
+        "role": { "type": "string", "description": "The role of the user.", "enum": ["admin", "user"] },
+        "branchId": { "type": "string", "description": "The ID of the branch the user is assigned to." }
       },
       "required": ["uid", "email", "name", "role", "branchId"]
     },
@@ -63,64 +32,62 @@
       "type": "object",
       "description": "Represents a master item in the inventory.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Item entity."
-        },
-        "branchId": {
-          "type": "string",
-          "description": "Reference to Branch. (Relationship: Branch 1:N Item). The branch that owns this item."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the item."
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of the item."
-        },
-        "unit": {
-          "type": "string",
-          "description": "Unit of measure for the item (e.g., 'kg', 'piece')."
-        }
+        "name": { "type": "string", "description": "Name of the item." },
+        "description": { "type": "string", "description": "Description of the item." },
+        "unit": { "type": "string", "description": "Unit of measure for the item." },
+        "branchId": { "type": "string", "description": "The ID of the branch that owns this item." }
       },
-      "required": [
-        "id",
-        "branchId",
-        "name",
-        "description",
-        "unit"
-      ]
+      "required": ["name", "description", "unit", "branchId"]
     },
-    "Stock": {
+    "Category": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Stock",
+      "title": "Category",
       "type": "object",
-      "description": "Represents the stock level of an item at a specific branch.",
+      "description": "Represents a product category.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Stock entity."
-        },
-        "branchId": {
-          "type": "string",
-          "description": "Reference to Branch. (Relationship: Branch 1:N Stock). The branch where the stock is located."
-        },
-        "itemId": {
-          "type": "string",
-          "description": "Reference to Item. (Relationship: Item 1:N Stock). The item for which stock is being tracked."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "Current quantity of the item in stock."
-        }
+        "nama_kategori": { "type": "string", "description": "Name of the category." },
+        "branchId": { "type": "string", "description": "The ID of the branch this category belongs to." }
       },
-      "required": [
-        "id",
-        "branchId",
-        "itemId",
-        "quantity"
-      ]
+      "required": ["nama_kategori", "branchId"]
+    },
+     "Unit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Unit",
+      "type": "object",
+      "description": "Represents a product unit.",
+      "properties": {
+        "nama_satuan": { "type": "string", "description": "Name of the unit." },
+        "branchId": { "type": "string", "description": "The ID of the branch this unit belongs to." }
+      },
+      "required": ["nama_satuan", "branchId"]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer.",
+      "properties": {
+        "nama_customer": { "type": "string", "description": "Name of the customer." },
+        "alamat": { "type": "string", "description": "Address of the customer." },
+        "telepon": { "type": "string", "description": "Phone number of the customer." },
+        "email": { "type": "string", "description": "Email of the customer.", "format": "email" },
+        "branchId": { "type": "string", "description": "The ID of the branch this customer belongs to." }
+      },
+      "required": ["nama_customer", "branchId"]
+    },
+    "Supplier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Supplier",
+      "type": "object",
+      "description": "Represents a supplier.",
+      "properties": {
+        "nama_supplier": { "type": "string", "description": "Name of the supplier." },
+        "alamat": { "type": "string", "description": "Address of the supplier." },
+        "telepon": { "type": "string", "description": "Phone number of the supplier." },
+        "email": { "type": "string", "description": "Email of the supplier.", "format": "email" },
+        "branchId": { "type": "string", "description": "The ID of the branch this supplier belongs to." }
+      },
+      "required": ["nama_supplier", "branchId"]
     },
     "Purchase": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -128,65 +95,11 @@
       "type": "object",
       "description": "Represents a purchase order.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Purchase entity."
-        },
-        "branchId": {
-          "type": "string",
-          "description": "Reference to Branch. (Relationship: Branch 1:N Purchase). The branch that made the purchase."
-        },
-        "purchaseDate": {
-          "type": "string",
-          "description": "Date of the purchase order.",
-          "format": "date-time"
-        },
-        "totalAmount": {
-          "type": "number",
-          "description": "Total amount of the purchase."
-        }
+        "purchaseDate": { "type": "string", "format": "date-time" },
+        "totalAmount": { "type": "number" },
+        "branchId": { "type": "string", "description": "The ID of the branch that made the purchase." }
       },
-      "required": [
-        "id",
-        "branchId",
-        "purchaseDate",
-        "totalAmount"
-      ]
-    },
-    "PurchaseItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PurchaseItem",
-      "type": "object",
-      "description": "Represents an item within a purchase order.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the PurchaseItem entity."
-        },
-        "purchaseId": {
-          "type": "string",
-          "description": "Reference to Purchase. (Relationship: Purchase 1:N PurchaseItem). The purchase order to which this item belongs."
-        },
-        "itemId": {
-          "type": "string",
-          "description": "Reference to Item. (Relationship: Item 1:N PurchaseItem). The item being purchased."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "Quantity of the item purchased."
-        },
-        "unitPrice": {
-          "type": "number",
-          "description": "Unit price of the item at the time of purchase."
-        }
-      },
-      "required": [
-        "id",
-        "purchaseId",
-        "itemId",
-        "quantity",
-        "unitPrice"
-      ]
+      "required": ["purchaseDate", "totalAmount", "branchId"]
     },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -194,122 +107,25 @@
       "type": "object",
       "description": "Represents a sales transaction.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Sale entity."
-        },
-        "branchId": {
-          "type": "string",
-          "description": "Reference to Branch. (Relationship: Branch 1:N Sale). The branch where the sale occurred."
-        },
-        "saleDate": {
-          "type": "string",
-          "description": "Date of the sale.",
-          "format": "date-time"
-        },
-        "totalAmount": {
-          "type": "number",
-          "description": "Total amount of the sale."
-        }
+        "saleDate": { "type": "string", "format": "date-time" },
+        "totalAmount": { "type": "number" },
+        "branchId": { "type": "string", "description": "The ID of the branch where the sale occurred." }
       },
-      "required": [
-        "id",
-        "branchId",
-        "saleDate",
-        "totalAmount"
-      ]
-    },
-    "SaleItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SaleItem",
-      "type": "object",
-      "description": "Represents an item within a sales transaction.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the SaleItem entity."
-        },
-        "saleId": {
-          "type": "string",
-          "description": "Reference to Sale. (Relationship: Sale 1:N SaleItem). The sales transaction to which this item belongs."
-        },
-        "itemId": {
-          "type": "string",
-          "description": "Reference to Item. (Relationship: Item 1:N SaleItem). The item being sold."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "Quantity of the item sold."
-        },
-        "unitPrice": {
-          "type": "number",
-          "description": "Unit price of the item at the time of sale."
-        }
-      },
-      "required": [
-        "id",
-        "saleId",
-        "itemId",
-        "quantity",
-        "unitPrice"
-      ]
+      "required": ["saleDate", "totalAmount", "branchId"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous",
-      "google.com"
-    ]
+    "providers": ["password", "anonymous", "google.com"]
   },
   "firestore": {
-    "/branches/{branchId}": {
-      "schema": {
-        "$ref": "#/entities/Branch"
-      },
-      "description": "Stores branch information."
-    },
-    "/branches/{branchId}/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
-      },
-      "description": "Stores user profile information, including their role and assigned branch."
-    },
-    "/branches/{branchId}/items/{itemId}": {
-      "schema": {
-        "$ref": "#/entities/Item"
-      },
-      "description": "Stores item master data for a specific branch."
-    },
-    "/branches/{branchId}/stocks/{stockId}": {
-      "schema": {
-        "$ref": "#/entities/Stock"
-      },
-      "description": "Stores stock level information for a specific branch."
-    },
-    "/branches/{branchId}/purchases/{purchaseId}": {
-      "schema": {
-        "$ref": "#/entities/Purchase"
-      },
-      "description": "Stores purchase order information for a specific branch."
-    },
-    "/branches/{branchId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}": {
-      "schema": {
-        "$ref": "#/entities/PurchaseItem"
-      },
-      "description": "Stores individual items within a purchase order."
-    },
-    "/branches/{branchId}/sales/{saleId}": {
-      "schema": {
-        "$ref": "#/entities/Sale"
-      },
-      "description": "Stores sales transaction information for a specific branch."
-    },
-    "/branches/{branchId}/sales/{saleId}/saleItems/{saleItemId}": {
-      "schema": {
-        "$ref": "#/entities/SaleItem"
-      },
-      "description": "Stores individual items within a sales transaction."
-    }
+    "/branches/{branchId}": { "schema": { "$ref": "#/entities/Branch" }, "description": "Stores branch information." },
+    "/users/{userId}": { "schema": { "$ref": "#/entities/UserProfile" }, "description": "Stores user profile information." },
+    "/products/{productId}": { "schema": { "$ref": "#/entities/Item" }, "description": "Stores item master data." },
+    "/categories/{categoryId}": { "schema": { "$ref": "#/entities/Category" }, "description": "Stores product categories." },
+    "/units/{unitId}": { "schema": { "$ref": "#/entities/Unit" }, "description": "Stores product units." },
+    "/customers/{customerId}": { "schema": { "$ref": "#/entities/Customer" }, "description": "Stores customer information." },
+    "/suppliers/{supplierId}": { "schema": { "$ref": "#/entities/Supplier" }, "description": "Stores supplier information." },
+    "/purchases/{purchaseId}": { "schema": { "$ref": "#/entities/Purchase" }, "description": "Stores purchase orders." },
+    "/sales/{saleId}": { "schema": { "$ref": "#/entities/Sale" }, "description": "Stores sales transactions." }
   }
 }

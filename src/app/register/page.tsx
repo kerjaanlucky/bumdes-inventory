@@ -27,7 +27,7 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Branch } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useBranchStore } from '@/store/branch-store';
 import { useAuthStore } from '@/store/auth-store';
 
 const registerSchema = z.object({
@@ -46,22 +46,11 @@ export default function RegisterPage() {
   useAuthRedirect();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const { branches, fetchBranches } = useBranchStore();
 
   useEffect(() => {
-    async function fetchBranches() {
-        // In a real app with Firestore rules, this might need to be an unsecured collection or a Cloud Function
-        const response = await fetch('/api/branches');
-        if (response.ok) {
-            const data = await response.json();
-            setBranches(data);
-        } else {
-            // This is temporary, as api/branches will be removed. Branches will be fetched from Firestore directly.
-            console.warn("Could not fetch branches via API route.");
-        }
-    }
     fetchBranches();
-  }, []);
+  }, [fetchBranches]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -91,16 +80,14 @@ export default function RegisterPage() {
         branchId: data.branchId,
       };
       
-      const userDocRef = doc(firestore, `branches/${data.branchId}/users`, firebaseUser.uid);
+      const userDocRef = doc(firestore, `users`, firebaseUser.uid);
       
-      // Use blocking setDoc here to ensure profile is created before redirect
       await setDoc(userDocRef, userProfile);
 
       toast({
         title: "Pendaftaran Berhasil",
         description: "Akun Anda telah berhasil dibuat. Anda akan dialihkan...",
       });
-      // Redirect is handled by useAuthRedirect hook
 
     } catch (error: any) {
       console.error('Error creating user', error);

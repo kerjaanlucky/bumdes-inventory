@@ -3,7 +3,7 @@
 
 import { create } from 'zustand';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useFirebaseStore } from './firebase-store';
 import { UserProfile } from '@/lib/types';
 import { useEffect } from 'react';
@@ -14,7 +14,7 @@ interface AuthState {
   branchId: string | null;
   role: 'admin' | 'user' | null;
   isLoading: boolean;
-  initializeAuthListener: () => () => void; // Returns the unsubscribe function
+  initializeAuthListener: () => () => void;
   fetchUserProfile: (user: User) => Promise<void>;
   clearAuth: () => void;
 }
@@ -36,7 +36,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        set({ user });
+        set({ user, isLoading: true }); // Set user and start loading profile
         get().fetchUserProfile(user);
       } else {
         get().clearAuth();
@@ -53,33 +53,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       return;
     }
-
-    set({ isLoading: true });
     
     try {
-        const branchesSnapshot = await getDocs(collection(firestore, 'branches'));
-        let foundProfile: UserProfile | null = null;
+        const userDocRef = doc(firestore, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
 
-        for (const branchDoc of branchesSnapshot.docs) {
-            const userDocRef = doc(firestore, `branches/${branchDoc.id}/users`, user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                foundProfile = userDocSnap.data() as UserProfile;
-                break; 
-            }
-        }
-
-        if (foundProfile) {
+        if (userDocSnap.exists()) {
+            const userProfile = userDocSnap.data() as UserProfile;
             set({
-                userProfile: foundProfile,
-                branchId: foundProfile.branchId,
-                role: foundProfile.role,
+                userProfile: userProfile,
+                branchId: userProfile.branchId,
+                role: userProfile.role,
                 isLoading: false,
             });
         } else {
-             // This case is important: user is authenticated but has no profile document.
-             // This might happen during registration race conditions.
-             // We treat them as a non-profiled user.
             console.warn(`User profile not found for UID: ${user.uid}. The user is authenticated but has no profile document.`);
             set({
                 userProfile: null,

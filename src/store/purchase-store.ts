@@ -13,6 +13,7 @@ import {
   setDoc,
   deleteDoc,
   getDoc,
+  where,
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
@@ -36,7 +37,7 @@ type PurchaseState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchPurchases: () => Promise<void>;
   getPurchaseById: (purchaseId: string) => Promise<Purchase | undefined>;
-  addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status' | 'branch_id'>) => Promise<Purchase | undefined>;
+  addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status' | 'branchId'>) => Promise<Purchase | undefined>;
   editPurchase: (purchase: Purchase) => Promise<void>;
   deletePurchase: (purchaseId: string) => Promise<void>;
   updatePurchaseStatus: (purchaseId: string, status: PurchaseStatus) => Promise<void>;
@@ -65,8 +66,8 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     const { page, limit, searchTerm } = get();
     set({ isFetching: true });
     try {
-      const purchasesRef = collection(firestore, `branches/${branchId}/purchases`);
-      const q = query(purchasesRef);
+      const purchasesRef = collection(firestore, 'purchases');
+      const q = query(purchasesRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
       let purchases: Purchase[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Purchase));
 
@@ -96,9 +97,9 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const purchaseRef = doc(firestore, `branches/${branchId}/purchases`, purchaseId);
+      const purchaseRef = doc(firestore, 'purchases', purchaseId);
       const docSnap = await getDoc(purchaseRef);
-      if (docSnap.exists()) {
+      if (docSnap.exists() && docSnap.data().branchId === branchId) {
         return { id: docSnap.id, ...docSnap.data() } as Purchase;
       }
       return undefined;
@@ -118,8 +119,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
     set({ isSubmitting: true });
     try {
-      const purchasesRef = collection(firestore, `branches/${branchId}/purchases`);
-      // This is a simplified PO number generation. In a real app, use a server-side counter.
+      const purchasesRef = collection(firestore, 'purchases');
       const poNumber = `PO-${Date.now()}`; 
       
       const newPurchaseData = {
@@ -146,11 +146,10 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
   editPurchase: async (updatedPurchase) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isSubmitting: true });
-    const purchaseRef = doc(firestore, `branches/${branchId}/purchases`, updatedPurchase.id);
+    const purchaseRef = doc(firestore, 'purchases', updatedPurchase.id);
     setDocumentNonBlocking(purchaseRef, updatedPurchase, { merge: true })
       .then(() => {
         toast({ title: "Pembelian Diperbarui", description: "Perubahan pada pembelian telah berhasil disimpan." });
@@ -167,11 +166,10 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
   deletePurchase: async (purchaseId: string) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isDeleting: true });
-    const purchaseRef = doc(firestore, `branches/${branchId}/purchases`, purchaseId);
+    const purchaseRef = doc(firestore, 'purchases', purchaseId);
     deleteDocumentNonBlocking(purchaseRef)
       .then(() => {
         toast({ title: "Pembelian Dihapus", description: "Data pembelian telah berhasil dihapus." });
@@ -229,7 +227,6 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
                         jumlah: item.jumlah_diterima,
                         stok_akhir: newStock,
                         referensi: purchase.nomor_pembelian,
-                        branch_id: purchase.branch_id,
                     });
                 }
             }

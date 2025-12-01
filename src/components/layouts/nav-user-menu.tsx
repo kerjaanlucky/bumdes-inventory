@@ -2,15 +2,11 @@
 
 import React from "react";
 import { useAuth, useUser, useFirestore, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import { useDoc } from "@/firebase/firestore/use-doc";
-import { UserProfile } from "@/lib/types";
+import { useAuthStore } from "@/store/auth-store";
 import { useBranchStore } from "@/store/branch-store";
 import {
   BadgeCheck,
-  Bell,
   ChevronsUpDown,
-  CreditCard,
   LogOut,
   Sparkles,
 } from "lucide-react"
@@ -39,38 +35,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function NavUserMenu() {
   const { isMobile } = useSidebar()
   const auth = useAuth();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, userProfile, isLoading } = useAuthStore();
   const { branches, fetchBranches, getBranchById } = useBranchStore();
 
   React.useEffect(() => {
     fetchBranches();
   }, [fetchBranches]);
 
-  // Derive branchId from userProfile, not directly from user object
-  const userProfileRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    // We need to know the user's branchId to fetch their profile.
-    // This creates a temporary circular dependency if branchId is only in the profile.
-    // For now, we assume we can get it from somewhere or we have to query all branches.
-    // Let's assume for now we can't fetch it directly without more info.
-    // A better approach would be to have branchId in a custom claim on the auth token.
-    // Given the current structure, we can't reliably get the user's branch to look up their profile.
-    // We will simulate this by just showing the auth user's display name and email.
-    return null; // This will be improved later
-  }, [firestore, user?.uid]);
-  
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-
   const branch = userProfile ? getBranchById(userProfile.branchId) : null;
   const role = userProfile?.role === 'admin' ? 'Admin' : 'Kasir';
-
 
   const handleLogout = () => {
     auth.signOut();
   }
-
-  const isLoading = isUserLoading || isProfileLoading;
 
   return (
     <SidebarMenu>

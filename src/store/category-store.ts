@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Category, PaginatedResponse } from '@/lib/types';
+import { Category } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, where } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -45,8 +45,8 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const categoriesRef = collection(firestore, `branches/${branchId}/categories`);
-      const q = query(categoriesRef);
+      const categoriesRef = collection(firestore, 'categories');
+      const q = query(categoriesRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
       let categories: Category[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
       
@@ -71,7 +71,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     if (!firestore || !branchId) return;
 
     set({ isSubmitting: true });
-    const categoriesRef = collection(firestore, `branches/${branchId}/categories`);
+    const categoriesRef = collection(firestore, `categories`);
     addDocumentNonBlocking(categoriesRef, { ...category, branchId })
         .then(() => get().fetchCategories())
         .catch(err => console.error("Failed to add category:", err))
@@ -80,11 +80,10 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
   editCategory: async (updatedCategory) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isSubmitting: true });
-    const categoryRef = doc(firestore, `branches/${branchId}/categories`, updatedCategory.id);
+    const categoryRef = doc(firestore, `categories`, updatedCategory.id);
     setDocumentNonBlocking(categoryRef, updatedCategory, { merge: true })
       .then(() => get().fetchCategories())
       .catch(err => console.error("Failed to edit category:", err))
@@ -93,14 +92,10 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
   deleteCategory: async (categoryId: string) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isDeleting: true });
-    const categoryRef = doc(firestore, `branches/${branchId}/categories`, categoryId);
-    // Note: Checking for orphan products client-side before deleting can be complex.
-    // This example proceeds with deletion. A more robust solution might use a Cloud Function
-    // to check for references before deleting.
+    const categoryRef = doc(firestore, `categories`, categoryId);
     deleteDocumentNonBlocking(categoryRef)
       .then(() => {
         toast({

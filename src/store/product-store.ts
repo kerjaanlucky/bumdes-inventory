@@ -19,7 +19,7 @@ type ProductState = {
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   fetchProducts: () => Promise<void>;
-  addProduct: (product: Omit<Product, 'id' | 'branch_id'>) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'branchId'>) => Promise<void>;
   editProduct: (product: Product, isStockUpdate?: boolean) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   getProductById: (productId: string) => Promise<Product | undefined>;
@@ -45,9 +45,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const productsRef = collection(firestore, `branches/${branchId}/products`);
-      // Basic client-side search for simplicity. For larger datasets, use a search service like Algolia.
-      const q = query(productsRef);
+      const productsRef = collection(firestore, `products`);
+      const q = query(productsRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
       let products: Product[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       
@@ -80,7 +79,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     if (!firestore || !branchId) return;
 
     set({ isSubmitting: true });
-    const productsRef = collection(firestore, `branches/${branchId}/products`);
+    const productsRef = collection(firestore, `products`);
     addDocumentNonBlocking(productsRef, { ...product, branchId })
         .then(() => get().fetchProducts())
         .catch(err => console.error("Failed to add product", err))
@@ -89,13 +88,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
   editProduct: async (updatedProduct, isStockUpdate = false) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     if (!isStockUpdate) {
         set({ isSubmitting: true });
     }
-    const productRef = doc(firestore, `branches/${branchId}/products`, updatedProduct.id);
+    const productRef = doc(firestore, `products`, updatedProduct.id);
     setDocumentNonBlocking(productRef, updatedProduct, { merge: true })
       .then(() => {
         if (!isStockUpdate) {
@@ -116,13 +114,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
       });
   },
 
-  deleteProduct: async (productId) => {
+  deleteProduct: async (productId: string) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
     
     set({ isDeleting: true });
-    const productRef = doc(firestore, `branches/${branchId}/products`, productId);
+    const productRef = doc(firestore, `products`, productId);
     deleteDocumentNonBlocking(productRef)
       .then(() => get().fetchProducts())
       .catch(err => console.error("Failed to delete product", err))
@@ -138,9 +135,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
     if (productInState) return productInState;
 
     try {
-      const productRef = doc(firestore, `branches/${branchId}/products`, productId);
+      const productRef = doc(firestore, `products`, productId);
       const docSnap = await getDoc(productRef);
-      if (docSnap.exists()) {
+      if (docSnap.exists() && docSnap.data().branchId === branchId) {
         return { id: docSnap.id, ...docSnap.data() } as Product;
       }
       return undefined;

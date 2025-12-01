@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Unit, PaginatedResponse } from '@/lib/types';
+import { Unit } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, where } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -45,8 +45,8 @@ export const useUnitStore = create<UnitState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const unitsRef = collection(firestore, `branches/${branchId}/units`);
-      const q = query(unitsRef);
+      const unitsRef = collection(firestore, `units`);
+      const q = query(unitsRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
       let units: Unit[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Unit));
 
@@ -71,7 +71,7 @@ export const useUnitStore = create<UnitState>((set, get) => ({
     if (!firestore || !branchId) return;
 
     set({ isSubmitting: true });
-    const unitsRef = collection(firestore, `branches/${branchId}/units`);
+    const unitsRef = collection(firestore, `units`);
     addDocumentNonBlocking(unitsRef, { ...unit, branchId })
         .then(() => get().fetchUnits())
         .catch(err => console.error("Failed to add unit:", err))
@@ -80,11 +80,10 @@ export const useUnitStore = create<UnitState>((set, get) => ({
 
   editUnit: async (updatedUnit) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isSubmitting: true });
-    const unitRef = doc(firestore, `branches/${branchId}/units`, updatedUnit.id);
+    const unitRef = doc(firestore, `units`, updatedUnit.id);
     setDocumentNonBlocking(unitRef, updatedUnit, { merge: true })
       .then(() => get().fetchUnits())
       .catch(err => console.error("Failed to edit unit:", err))
@@ -93,11 +92,10 @@ export const useUnitStore = create<UnitState>((set, get) => ({
 
   deleteUnit: async (unitId: string) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isDeleting: true });
-    const unitRef = doc(firestore, `branches/${branchId}/units`, unitId);
+    const unitRef = doc(firestore, `units`, unitId);
     deleteDocumentNonBlocking(unitRef)
       .then(() => {
         toast({

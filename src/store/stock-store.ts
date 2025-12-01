@@ -27,7 +27,7 @@ type StockState = {
   setSearchTerm: (searchTerm: string) => void;
   setDateRange: (dateRange?: DateRange) => void;
   fetchMovements: (productId?: string) => Promise<void>;
-  addStockMovement: (movement: Omit<StockMovement, 'id'>) => Promise<void>;
+  addStockMovement: (movement: Omit<StockMovement, 'id' | 'branchId'>) => Promise<void>;
 };
 
 export const useStockStore = create<StockState>((set, get) => ({
@@ -53,8 +53,11 @@ export const useStockStore = create<StockState>((set, get) => ({
     set({ isFetching: true });
 
     try {
-      const movementsRef = collection(firestore, `branches/${branchId}/stocks`);
-      let queries = [orderBy('tanggal', 'desc')];
+      const movementsRef = collection(firestore, `stocks`);
+      let queries = [
+          where('branchId', '==', branchId),
+          orderBy('tanggal', 'desc')
+        ];
 
       if (productId) {
         queries.push(where('produk_id', '==', productId));
@@ -95,8 +98,8 @@ export const useStockStore = create<StockState>((set, get) => ({
     if (!firestore || !branchId) return;
 
     try {
-      const stocksRef = collection(firestore, `branches/${branchId}/stocks`);
-      await addDocumentNonBlocking(stocksRef, movement);
+      const stocksRef = collection(firestore, `stocks`);
+      await addDocumentNonBlocking(stocksRef, {...movement, branchId});
     } catch (error) {
       console.error("Failed to add stock movement:", error);
       toast({ variant: "destructive", title: "Gagal Mencatat Stok", description: "Terjadi kesalahan saat mencatat pergerakan stok." });

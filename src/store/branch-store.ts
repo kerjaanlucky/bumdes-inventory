@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { Branch } from '@/lib/types';
 import { useFirebaseStore } from './firebase-store';
 import { collection, getDocs, doc, deleteDoc, addDoc, setDoc } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-
 
 type BranchState = {
   branches: Branch[];

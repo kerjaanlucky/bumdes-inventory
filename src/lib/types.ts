@@ -32,19 +32,19 @@ export interface Product {
   harga_jual: number;
   kategori_id: string;
   nama_kategori?: string; // Optional, joined from categories table
-  branch_id: string;
+  branchId: string;
 }
 
 export interface Category {
   id: string;
   nama_kategori: string;
-  branch_id: string;
+  branchId: string;
 }
 
 export interface Unit {
   id: string;
   nama_satuan: string;
-  branch_id: string;
+  branchId: string;
 }
 
 export interface Customer {
@@ -53,7 +53,7 @@ export interface Customer {
   alamat?: string;
   telepon?: string;
   email?: string;
-  branch_id: string;
+  branchId: string;
 }
 
 export interface Supplier {
@@ -62,7 +62,7 @@ export interface Supplier {
   alamat?: string;
   telepon?: string;
   email?: string;
-  branch_id: string;
+  branchId: string;
 }
 
 
@@ -80,6 +80,7 @@ export type Sale = {
     date: string;
     total: number;
     status: 'Completed' | 'Pending' | 'Canceled';
+    branchId: string;
 }
 
 export type PurchaseStatus = 'DRAFT' | 'DIPESAN' | 'DITERIMA_SEBAGIAN' | 'DITERIMA_PENUH' | 'DIBATALKAN';
@@ -119,7 +120,7 @@ export interface Purchase {
   created_at: string;
   items?: PurchaseItem[];
   history?: PurchaseStatusHistory[];
-  branch_id: string;
+  branchId: string;
 }
 
 export type StockMovement = {
@@ -132,7 +133,7 @@ export type StockMovement = {
   jumlah: number;
   stok_akhir: number;
   referensi: string;
-  branch_id: string;
+  branchId: string;
 };
 
 

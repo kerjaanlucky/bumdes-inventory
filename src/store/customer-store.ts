@@ -1,8 +1,8 @@
 "use client";
 import { create } from 'zustand';
-import { Customer, PaginatedResponse } from '@/lib/types';
+import { Customer } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -21,7 +21,7 @@ type CustomerState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchCustomers: () => Promise<void>;
   getCustomerById: (customerId: string) => Promise<Customer | undefined>;
-  addCustomer: (customer: Omit<Customer, 'id' | 'branch_id'>) => Promise<void>;
+  addCustomer: (customer: Omit<Customer, 'id' | 'branchId'>) => Promise<void>;
   editCustomer: (customer: Customer) => Promise<void>;
   deleteCustomer: (customerId: string) => Promise<void>;
 };
@@ -47,8 +47,8 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const customersRef = collection(firestore, `branches/${branchId}/customers`);
-      const q = query(customersRef);
+      const customersRef = collection(firestore, 'customers');
+      const q = query(customersRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
       let customers: Customer[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
@@ -79,9 +79,9 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
     set({ isFetching: true });
     try {
-      const customerRef = doc(firestore, `branches/${branchId}/customers`, customerId);
+      const customerRef = doc(firestore, 'customers', customerId);
       const docSnap = await getDoc(customerRef);
-      if (docSnap.exists()) {
+      if (docSnap.exists() && docSnap.data().branchId === branchId) {
         return { id: docSnap.id, ...docSnap.data() } as Customer;
       }
       return undefined;
@@ -100,7 +100,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     if (!firestore || !branchId) return;
     
     set({ isSubmitting: true });
-    const customersRef = collection(firestore, `branches/${branchId}/customers`);
+    const customersRef = collection(firestore, 'customers');
     addDocumentNonBlocking(customersRef, { ...customer, branchId })
       .then(() => {
         toast({ title: "Pelanggan Ditambahkan", description: "Pelanggan baru telah berhasil ditambahkan." });
@@ -115,11 +115,10 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   editCustomer: async (updatedCustomer) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
     
     set({ isSubmitting: true });
-    const customerRef = doc(firestore, `branches/${branchId}/customers`, updatedCustomer.id);
+    const customerRef = doc(firestore, 'customers', updatedCustomer.id);
     setDocumentNonBlocking(customerRef, updatedCustomer, { merge: true })
       .then(() => {
          toast({ title: "Pelanggan Diperbarui", description: "Perubahan pada pelanggan telah berhasil disimpan." });
@@ -134,11 +133,10 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   deleteCustomer: async (customerId: string) => {
     const { firestore } = useFirebaseStore.getState();
-    const { branchId } = useAuthStore.getState();
-    if (!firestore || !branchId) return;
+    if (!firestore) return;
 
     set({ isDeleting: true });
-    const customerRef = doc(firestore, `branches/${branchId}/customers`, customerId);
+    const customerRef = doc(firestore, 'customers', customerId);
     deleteDocumentNonBlocking(customerRef)
       .then(() => {
         toast({ title: "Pelanggan Dihapus", description: "Pelanggan telah berhasil dihapus." });
