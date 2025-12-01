@@ -7,7 +7,7 @@ import { usePurchaseStore } from '@/store/purchase-store';
 import { Purchase, PurchaseItem, PurchaseStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Edit, Truck } from 'lucide-react';
+import { Loader2, ArrowLeft, Edit, Truck, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -20,23 +20,26 @@ export default function PurchaseDetailPage() {
     const router = useRouter();
     const params = useParams();
     const purchaseId = params.id as string;
-    const { getPurchaseById, isFetching, updatePurchaseStatus, receiveItems } = usePurchaseStore();
+    const { getPurchaseById, isFetching, updatePurchaseStatus, receiveItems, finalizePurchase } = usePurchaseStore();
     
     const [purchase, setPurchase] = useState<Purchase | null>(null);
     const [isReceiveModalOpen, setReceiveModalOpen] = useState(false);
     const [isSendOrderModalOpen, setSendOrderModalOpen] = useState(false);
 
+    const fetchAndSetPurchase = async () => {
+        const data = await getPurchaseById(purchaseId);
+        if (data) {
+            setPurchase(data);
+        } else {
+            router.push('/user/purchases');
+        }
+    };
+
     useEffect(() => {
-        const fetchPurchase = async () => {
-            const data = await getPurchaseById(purchaseId);
-            if (data) {
-                setPurchase(data);
-            } else {
-                router.push('/user/purchases');
-            }
-        };
-        fetchPurchase();
-    }, [purchaseId, getPurchaseById, router]);
+        if (purchaseId) {
+            fetchAndSetPurchase();
+        }
+    }, [purchaseId]);
     
     const getStatusVariant = (status: PurchaseStatus): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
@@ -50,19 +53,20 @@ export default function PurchaseDetailPage() {
     }
     
     const handleSendOrderConfirm = async (note?: string) => {
-        if (!purchase) return;
-        await updatePurchaseStatus(purchase.id, 'DIPESAN', note);
+        await updatePurchaseStatus(purchaseId, 'DIPESAN', note);
         setSendOrderModalOpen(false);
-        const updatedPurchase = await getPurchaseById(purchase.id);
-        if (updatedPurchase) setPurchase(updatedPurchase);
+        await fetchAndSetPurchase(); // Re-fetch data
     }
     
     const handleReceiveSubmit = async (items: PurchaseItem[]) => {
-        if (!purchase) return;
-        await receiveItems(purchase.id, items);
-        const updatedPurchase = await getPurchaseById(purchase.id);
-        if (updatedPurchase) setPurchase(updatedPurchase);
+        await receiveItems(purchaseId, items);
         setReceiveModalOpen(false);
+        await fetchAndSetPurchase(); // Re-fetch data
+    }
+    
+    const handleFinalize = async () => {
+        await finalizePurchase(purchaseId);
+        await fetchAndSetPurchase(); // Re-fetch data
     }
 
     if (isFetching || !purchase) {
@@ -100,10 +104,20 @@ export default function PurchaseDetailPage() {
                             <Button size="sm" onClick={() => setSendOrderModalOpen(true)}>Kirim Pesanan</Button>
                         </>
                     )}
-                    {['DIPESAN', 'DITERIMA_SEBAGIAN'].includes(purchase.status) && (
+                    {purchase.status === 'DIPESAN' && (
                         <Button size="sm" onClick={() => setReceiveModalOpen(true)}>
                             <Truck className="mr-2 h-4 w-4" /> Proses Penerimaan Barang
                         </Button>
+                    )}
+                    {purchase.status === 'DITERIMA_SEBAGIAN' && (
+                        <>
+                            <Button size="sm" variant="secondary" onClick={() => setReceiveModalOpen(true)}>
+                                <Truck className="mr-2 h-4 w-4" /> Lanjutkan Penerimaan
+                            </Button>
+                             <Button size="sm" variant="outline" onClick={handleFinalize}>
+                                <CheckCircle className="mr-2 h-4 w-4" /> Selesaikan Kuitansi
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>

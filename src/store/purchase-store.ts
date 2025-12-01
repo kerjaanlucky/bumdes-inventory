@@ -44,6 +44,7 @@ type PurchaseState = {
   deletePurchase: (purchaseId: string) => Promise<void>;
   updatePurchaseStatus: (purchaseId: string, status: PurchaseStatus, note?: string) => Promise<void>;
   receiveItems: (purchaseId: string, receivedItems: PurchaseItem[]) => Promise<void>;
+  finalizePurchase: (purchaseId: string) => Promise<void>;
 };
 
 export const usePurchaseStore = create<PurchaseState>((set, get) => ({
@@ -68,13 +69,11 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     const { page, limit, searchTerm } = get();
     set({ isFetching: true });
     try {
-      // Fetch suppliers first to map their names
       const suppliersRef = collection(firestore, 'suppliers');
       const supplierQuery = query(suppliersRef, where("branchId", "==", branchId));
       const suppliersSnapshot = await getDocs(supplierQuery);
       const suppliersMap = new Map(suppliersSnapshot.docs.map(doc => [doc.id, doc.data().nama_supplier]));
 
-      // Fetch purchases
       const purchasesRef = collection(firestore, 'purchases');
       const q = query(purchasesRef, where("branchId", "==", branchId));
       const querySnapshot = await getDocs(q);
@@ -124,11 +123,12 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       if (docSnap.exists() && docSnap.data().branchId === branchId) {
         const purchaseData = { id: docSnap.id, ...docSnap.data() } as Purchase;
         
-        // Fetch supplier name
-        const supplierRef = doc(firestore, 'suppliers', purchaseData.supplier_id);
-        const supplierSnap = await getDoc(supplierRef);
-        if(supplierSnap.exists()){
-            purchaseData.nama_supplier = supplierSnap.data().nama_supplier;
+        if(purchaseData.supplier_id){
+          const supplierRef = doc(firestore, 'suppliers', purchaseData.supplier_id);
+          const supplierSnap = await getDoc(supplierRef);
+          if(supplierSnap.exists()){
+              purchaseData.nama_supplier = supplierSnap.data().nama_supplier;
+          }
         }
 
         return purchaseData;
@@ -162,7 +162,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
         history: [{ status: 'DRAFT' as PurchaseStatus, tanggal: new Date().toISOString(), oleh: 'System' }]
       }
 
-      const docRef = await addDocumentNonBlocking(purchasesRef, newPurchaseData);
+      const docRef = await addDoc(purchasesRef, newPurchaseData);
       toast({ title: "Pembelian Ditambahkan", description: "Draft pembelian baru telah berhasil dibuat." });
       
       const supplierName = useSupplierStore.getState().suppliers.find(s => s.id === purchase.supplier_id)?.nama_supplier || 'N/A';
@@ -211,16 +211,16 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
     set({ isDeleting: true });
     const purchaseRef = doc(firestore, 'purchases', purchaseId);
-    deleteDocumentNonBlocking(purchaseRef)
-      .then(() => {
+    try {
+        await deleteDoc(purchaseRef);
         toast({ title: "Pembelian Dihapus", description: "Data pembelian telah berhasil dihapus." });
         get().fetchPurchases();
-      })
-      .catch(err => {
+    } catch(err) {
         console.error("Failed to delete purchase:", err);
         toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pembelian." });
-      })
-      .finally(() => set({ isDeleting: false }));
+    } finally {
+        set({ isDeleting: false });
+    }
   },
   
   updatePurchaseStatus: async (purchaseId, status, note) => {
@@ -244,62 +244,74 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     await get().editPurchase(updatedPurchase);
     set({ isSubmitting: false });
   },
-   receiveItems: async (purchaseId, receivedItems) => {
+
+  receiveItems: async (purchaseId, receivedItems) => {
+    set({ isSubmitting: true });
     const { getProductById, editProduct } = useProductStore.getState();
     const { addStockMovement } = useStockStore.getState();
 
     const purchase = await get().getPurchaseById(purchaseId);
-    if (!purchase) return;
-
-    set({ isSubmitting: true });
-    try {
-        let anyItemReceived = false;
-        for (const receivedItem of receivedItems) {
-            const originalItem = purchase.items?.find(i => i.id === receivedItem.id);
-            if (!originalItem) continue;
-
-            const quantityReceivedNow = receivedItem.jumlah_diterima - originalItem.jumlah_diterima;
-
-            if (quantityReceivedNow > 0) {
-                anyItemReceived = true;
-                const product = await getProductById(receivedItem.produk_id);
-                if (product) {
-                    const newStock = product.stok + quantityReceivedNow;
-                    await editProduct({ ...product, stok: newStock }, true);
-                    await addStockMovement({
-                        tanggal: new Date().toISOString(),
-                        produk_id: product.id,
-                        nama_produk: product.nama_produk,
-                        nama_satuan: product.nama_satuan || 'N/A',
-                        tipe: 'Pembelian Masuk',
-                        jumlah: quantityReceivedNow,
-                        stok_akhir: newStock,
-                        referensi: purchase.nomor_pembelian,
-                    });
-                }
-            }
-        }
-        
-        const allItemsFullyReceived = receivedItems.every(item => item.jumlah_diterima >= item.jumlah);
-        const newStatus = allItemsFullyReceived ? 'DITERIMA_PENUH' : (anyItemReceived ? 'DITERIMA_SEBAGIAN' : purchase.status);
-
-        const updatedPurchaseData = {
-            ...purchase,
-            items: receivedItems,
-            status: newStatus,
-            history: [
-                ...(purchase.history || []),
-                { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System', catatan: "Penerimaan barang otomatis" }
-            ]
-        };
-
-        await get().editPurchase(updatedPurchaseData);
-        toast({ title: "Barang Diterima", description: "Stok telah berhasil diperbarui." });
-    } catch (error) {
-        console.error("Failed to receive items:", error);
-        toast({ variant: "destructive", title: "Gagal Menerima Barang", description: "Terjadi kesalahan." });
-    } finally {
-        set({ isSubmitting: false });
+    if (!purchase) {
+      toast({ variant: "destructive", title: "Gagal", description: "Pembelian tidak ditemukan." });
+      set({ isSubmitting: false });
+      return;
     }
+
+    try {
+      let anyItemReceived = false;
+      const updatedItemsFromModal = receivedItems;
+
+      for (const receivedItem of updatedItemsFromModal) {
+        const originalItem = purchase.items?.find(i => i.id === receivedItem.id);
+        if (!originalItem) continue;
+
+        const quantityReceivedNow = receivedItem.jumlah_diterima - originalItem.jumlah_diterima;
+
+        if (quantityReceivedNow > 0) {
+          anyItemReceived = true;
+          const product = await getProductById(receivedItem.produk_id);
+          if (product) {
+            const newStock = product.stok + quantityReceivedNow;
+            await editProduct({ ...product, stok: newStock }, true);
+            await addStockMovement({
+              tanggal: new Date().toISOString(),
+              produk_id: product.id,
+              nama_produk: product.nama_produk,
+              nama_satuan: product.nama_satuan || 'N/A',
+              tipe: 'Pembelian Masuk',
+              jumlah: quantityReceivedNow,
+              stok_akhir: newStock,
+              referensi: purchase.nomor_pembelian,
+            });
+          }
+        }
+      }
+      
+      const allItemsFullyReceived = updatedItemsFromModal.every(item => item.jumlah_diterima >= item.jumlah);
+      const newStatus = allItemsFullyReceived ? 'DITERIMA_PENUH' : (anyItemReceived ? 'DITERIMA_SEBAGIAN' : purchase.status);
+
+      const updatedPurchaseData: Purchase = {
+        ...purchase,
+        items: updatedItemsFromModal,
+        status: newStatus,
+        history: [
+          ...(purchase.history || []),
+          { status: newStatus, tanggal: new Date().toISOString(), oleh: 'System', catatan: "Penerimaan barang otomatis" }
+        ]
+      };
+      
+      await get().editPurchase(updatedPurchaseData);
+      toast({ title: "Barang Diterima", description: "Stok telah berhasil diperbarui." });
+
+    } catch (error) {
+      console.error("Failed to receive items:", error);
+      toast({ variant: "destructive", title: "Gagal Menerima Barang", description: "Terjadi kesalahan." });
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+  
+  finalizePurchase: async (purchaseId: string) => {
+    await get().updatePurchaseStatus(purchaseId, 'DITERIMA_PENUH', 'Pesanan diselesaikan secara manual oleh pengguna.');
   },
 }));
