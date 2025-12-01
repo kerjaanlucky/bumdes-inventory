@@ -98,6 +98,7 @@ export interface Sale {
   total_harga: number;
   diskon_invoice: number;
   pajak: number;
+  taxType?: 'inclusive' | 'exclusive';
   ongkos_kirim: number;
   biaya_lain: number;
   status: 'DRAFT' | 'LUNAS' | 'DIBATALKAN';

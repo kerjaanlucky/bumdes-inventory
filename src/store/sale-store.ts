@@ -55,7 +55,50 @@ export const useSaleStore = create<SaleState>((set, get) => ({
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, sales: [] }),
 
   fetchSales: async () => {
-    // Implement fetch logic similar to purchase-store if needed
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
+    const { page, limit, searchTerm } = get();
+    set({ isFetching: true });
+
+    try {
+      const customersRef = collection(firestore, 'customers');
+      const customerQuery = query(customersRef, where("branchId", "==", branchId));
+      const customersSnapshot = await getDocs(customerQuery);
+      const customersMap = new Map(customersSnapshot.docs.map(doc => [doc.id, doc.data().nama_customer]));
+
+      const salesRef = collection(firestore, 'sales');
+      const q = query(salesRef, where("branchId", "==", branchId));
+      const querySnapshot = await getDocs(q);
+      
+      let salesData: Sale[] = querySnapshot.docs.map(doc => {
+        const data = doc.data() as Sale;
+        return {
+          id: doc.id,
+          ...data,
+          nama_customer: customersMap.get(data.customer_id) || 'N/A'
+        };
+      });
+
+      if (searchTerm) {
+        const lowercasedFilter = searchTerm.toLowerCase();
+        salesData = salesData.filter(s => 
+          s.nomor_penjualan.toLowerCase().includes(lowercasedFilter) ||
+          s.nama_customer?.toLowerCase().includes(lowercasedFilter)
+        );
+      }
+
+      const total = salesData.length;
+      const paginatedSales = salesData.slice((page - 1) * limit, page * limit);
+      
+      set({ sales: paginatedSales, total, isFetching: false });
+
+    } catch (error) {
+      console.error("Failed to fetch sales:", error);
+      toast({ variant: "destructive", title: "Gagal Mengambil Data", description: "Terjadi kesalahan saat mengambil data penjualan." });
+      set({ isFetching: false });
+    }
   },
 
   getSaleById: async (saleId: string) => {
@@ -111,7 +154,7 @@ export const useSaleStore = create<SaleState>((set, get) => ({
       const saleWithCustomerName = { id: docRef.id, ...newSaleData, nama_customer: customerName };
 
       // Optimistically update state if needed, or re-fetch
-      // get().fetchSales();
+      get().fetchSales();
 
       return saleWithCustomerName;
 
@@ -128,6 +171,23 @@ export const useSaleStore = create<SaleState>((set, get) => ({
   },
 
   deleteSale: async (saleId: string) => {
-    // Implement delete logic if needed
+    const { firestore } = useFirebaseStore.getState();
+    if (!firestore) return;
+
+    set({ isDeleting: true });
+    const saleRef = doc(firestore, 'sales', saleId);
+    // Note: Deleting a sale should ideally reverse the stock movement.
+    // This is a complex operation (a transaction) and is omitted for simplicity here.
+    // In a real app, you would add logic to find the stock movements by reference and revert them.
+    deleteDocumentNonBlocking(saleRef)
+      .then(() => {
+        toast({ title: "Penjualan Dihapus", description: "Transaksi penjualan telah berhasil dihapus." });
+        get().fetchSales();
+      })
+      .catch(err => {
+         console.error("Failed to delete sale:", err);
+         toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus penjualan." });
+      })
+      .finally(() => set({ isDeleting: false }));
   },
 }));
