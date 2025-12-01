@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -10,19 +11,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { History, Package } from "lucide-react";
+import { History, Package, Calendar as CalendarIcon, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStockStore } from '@/store/stock-store';
 import { Product, StockMovement } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { useDebounce } from 'use-debounce';
 import SearchableSelect from '@/components/ui/searchable-select';
 import { useProductStore } from '@/store/product-store';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 
 export default function StockReportPage() {
+    const router = useRouter();
     const { 
       movements, 
       isFetching: isMovementsFetching,
@@ -43,6 +50,10 @@ export default function StockReportPage() {
     const [productSearch, setProductSearch] = useState('');
     const [selectedProductId, setSelectedProductId] = useState<string>('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+      from: subDays(new Date(), 29),
+      to: new Date(),
+    });
 
     const [debouncedProductSearch] = useDebounce(productSearch, 300);
     const totalPages = Math.ceil(total / limit);
@@ -67,6 +78,15 @@ export default function StockReportPage() {
         [products]
     );
 
+    const handleDownloadReport = () => {
+      if (selectedProductId && dateRange?.from && dateRange?.to) {
+        const from = format(dateRange.from, 'yyyy-MM-dd');
+        const to = format(dateRange.to, 'yyyy-MM-dd');
+        const url = `/user/inventory/stock-report/${selectedProductId}?from=${from}&to=${to}`;
+        window.open(url, '_blank');
+      }
+    };
+
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
@@ -75,11 +95,11 @@ export default function StockReportPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Pilih Produk</CardTitle>
-            <CardDescription>Cari dan pilih produk untuk melihat detail dan riwayat stoknya.</CardDescription>
+            <CardTitle>Pilih Produk & Periode</CardTitle>
+            <CardDescription>Pilih produk dan rentang tanggal untuk melihat detail, riwayat, dan mengunduh laporan kartu stok.</CardDescription>
         </CardHeader>
-        <CardContent>
-            <div className="max-w-md">
+        <CardContent className="flex flex-col md:flex-row gap-4">
+            <div className="flex-grow md:max-w-md">
                 <SearchableSelect
                     options={productOptions}
                     value={selectedProductId}
@@ -89,6 +109,46 @@ export default function StockReportPage() {
                     isLoading={isProductsFetching}
                 />
             </div>
+             <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full md:w-[300px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pilih rentang tanggal</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+               <Button onClick={handleDownloadReport} disabled={!selectedProductId || !dateRange?.from || !dateRange?.to}>
+                <Download className="mr-2 h-4 w-4" />
+                Buat & Unduh Laporan
+            </Button>
         </CardContent>
       </Card>
 
@@ -121,7 +181,8 @@ export default function StockReportPage() {
 
             <Card className="lg:col-span-2">
                 <CardHeader>
-                    <CardTitle>Riwayat Pergerakan</CardTitle>
+                    <CardTitle>Riwayat Pergerakan Terbaru</CardTitle>
+                    <CardDescription>Menampilkan 10 pergerakan stok terakhir untuk produk ini.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -234,3 +295,5 @@ export default function StockReportPage() {
     </div>
   )
 }
+
+    

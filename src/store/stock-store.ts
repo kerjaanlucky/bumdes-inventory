@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { StockMovement } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
@@ -13,10 +14,17 @@ import {
   startAfter,
   doc,
   getCountFromServer,
+  Timestamp,
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking } from '@/firebase';
+
+export type StockReport = {
+  openingBalance: number;
+  closingBalance: number;
+  movements: StockMovement[];
+}
 
 type StockState = {
   movements: StockMovement[];
@@ -32,6 +40,7 @@ type StockState = {
   setDateRange: (dateRange?: DateRange) => void;
   fetchMovements: (productId?: string) => Promise<void>;
   addStockMovement: (movement: Omit<StockMovement, 'id' | 'branchId'>) => Promise<void>;
+  fetchStockReport: (productId: string, dateRange: DateRange) => Promise<StockReport | null>;
 };
 
 export const useStockStore = create<StockState>((set, get) => ({
@@ -53,7 +62,7 @@ export const useStockStore = create<StockState>((set, get) => ({
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
-    const { page, limit, searchTerm, dateRange } = get();
+    const { page, limit, searchTerm } = get();
     set({ isFetching: true });
 
     try {
@@ -63,17 +72,11 @@ export const useStockStore = create<StockState>((set, get) => ({
       if (productId) {
         queryConstraints.push(where('produk_id', '==', productId));
       }
-       if (searchTerm) {
+      if (searchTerm) {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
-         queryConstraints.push(
-            where('searchable_keywords', 'array-contains', lowercasedSearchTerm)
+        queryConstraints.push(
+          where('searchable_keywords', 'array-contains', lowercasedSearchTerm)
         );
-      }
-      if (dateRange?.from) {
-        queryConstraints.push(where('tanggal', '>=', dateRange.from.toISOString()));
-      }
-      if (dateRange?.to) {
-        queryConstraints.push(where('tanggal', '<=', dateRange.to.toISOString()));
       }
 
       // Count total documents for pagination
@@ -81,24 +84,22 @@ export const useStockStore = create<StockState>((set, get) => ({
       const snapshot = await getCountFromServer(countQuery);
       const total = snapshot.data().count;
 
-      // Build the main query
       const finalQueryConstraints = [
         ...queryConstraints,
         orderBy('tanggal', 'desc'),
+        firestoreLimit(limit),
       ];
-
-      // Handle pagination
+      
+      // Pagination logic
       if (page > 1) {
-        const prevPageQuery = query(movementsRef, ...finalQueryConstraints, firestoreLimit((page - 1) * limit));
+        const prevPageQuery = query(movementsRef, ...finalQueryConstraints.slice(0, -1), firestoreLimit((page - 1) * limit));
         const prevPageSnapshot = await getDocs(prevPageQuery);
         const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
         if (lastVisible) {
             finalQueryConstraints.push(startAfter(lastVisible));
         }
       }
-      
-      finalQueryConstraints.push(firestoreLimit(limit));
-      
+
       const paginatedQuery = query(movementsRef, ...finalQueryConstraints);
       const querySnapshot = await getDocs(paginatedQuery);
       const movements: StockMovement[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockMovement));
@@ -122,12 +123,12 @@ export const useStockStore = create<StockState>((set, get) => ({
       const searchableKeywords = [
         ...movement.nama_produk.toLowerCase().split(' '),
         ...movement.referensi.toLowerCase().split(' ')
-      ].filter(Boolean); // Remove empty strings
+      ].filter(Boolean);
 
       const movementData = { 
         ...movement, 
         branchId,
-        searchable_keywords: Array.from(new Set(searchableKeywords)) // Ensure unique keywords
+        searchable_keywords: Array.from(new Set(searchableKeywords))
       };
       await addDocumentNonBlocking(stocksRef, movementData);
     } catch (error) {
@@ -135,4 +136,59 @@ export const useStockStore = create<StockState>((set, get) => ({
       toast({ variant: "destructive", title: "Gagal Mencatat Stok", description: "Terjadi kesalahan saat mencatat pergerakan stok." });
     }
   },
+
+  fetchStockReport: async (productId, dateRange) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId || !dateRange.from) return null;
+
+    set({ isFetching: true });
+    try {
+        const movementsRef = collection(firestore, 'stocks');
+        
+        // 1. Calculate Opening Balance
+        const openingBalanceQuery = query(
+            movementsRef,
+            where('branchId', '==', branchId),
+            where('produk_id', '==', productId),
+            where('tanggal', '<', dateRange.from.toISOString())
+        );
+        const openingSnapshot = await getDocs(openingBalanceQuery);
+        const openingBalance = openingSnapshot.docs.reduce((acc, doc) => acc + doc.data().jumlah, 0);
+
+        // 2. Get Movements within Date Range
+        const movementsQuery = query(
+            movementsRef,
+            where('branchId', '==', branchId),
+            where('produk_id', '==', productId),
+            where('tanggal', '>=', dateRange.from.toISOString()),
+            where('tanggal', '<=', dateRange.to ? dateRange.to.toISOString() : new Date().toISOString()),
+            orderBy('tanggal', 'asc')
+        );
+        const movementsSnapshot = await getDocs(movementsQuery);
+        const movements = movementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockMovement));
+
+        // 3. Calculate running balance and closing balance
+        let runningBalance = openingBalance;
+        const movementsWithRunningBalance = movements.map(m => {
+            runningBalance += m.jumlah;
+            return { ...m, stok_akhir: runningBalance };
+        });
+
+        return {
+            openingBalance,
+            movements: movementsWithRunningBalance,
+            closingBalance: runningBalance,
+        };
+
+    } catch (error) {
+        console.error("Failed to fetch stock report:", error);
+        toast({ variant: "destructive", title: "Gagal Membuat Laporan", description: "Terjadi kesalahan." });
+        return null;
+    } finally {
+        set({ isFetching: false });
+    }
+  },
 }));
+
+    
