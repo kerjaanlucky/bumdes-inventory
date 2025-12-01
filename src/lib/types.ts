@@ -81,6 +81,7 @@ export interface SaleItem {
   id: any;
   produk_id: string;
   nama_produk: string;
+  stok_tersedia: number; // To hold the available stock when item is added
   nama_satuan: string;
   jumlah: number;
   harga_jual_satuan: number;
@@ -98,6 +99,7 @@ export interface Sale {
   diskon_invoice: number;
   pajak: number;
   ongkos_kirim: number;
+  biaya_lain: number;
   status: 'DRAFT' | 'LUNAS' | 'DIBATALKAN';
   created_at: string;
   items?: SaleItem[];

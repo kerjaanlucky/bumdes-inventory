@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
@@ -45,21 +46,19 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   )
 
   useEffect(() => {
-    // Sync internal query with external search query prop
-    setQuery(currentSearchQuery);
+    // Sync internal query with external search query when it changes,
+    // but only if the user isn't currently focused on the input.
+    if (document.activeElement !== inputRef.current) {
+      setQuery(currentSearchQuery);
+    }
   }, [currentSearchQuery]);
 
-
   useEffect(() => {
+    // If a value is selected and we close the dropdown, set the input text to the selected label
     if (selectedOption && !isOpen) {
       setQuery(selectedOption.label)
-    } else if (!value) {
-      // Don't clear query if there's an external search term
-      if(!currentSearchQuery) {
-        setQuery('')
-      }
     }
-  }, [selectedOption, value, isOpen, currentSearchQuery])
+  }, [selectedOption, isOpen])
 
 
   useEffect(() => {
@@ -79,13 +78,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (!isOpen) {
       setHighlightedIndex(-1)
       if (selectedOption) {
-        setQuery(selectedOption.label)
-      } else if (!value && !currentSearchQuery) {
-        setQuery('')
-        onSearchChange('')
+        setQuery(selectedOption.label);
+      } else {
+        // When dropdown closes without selection, reflect the parent's search term
+        setQuery(currentSearchQuery); 
       }
     }
-  }, [isOpen, selectedOption, value, onSearchChange, currentSearchQuery])
+  }, [isOpen, selectedOption, currentSearchQuery])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value
@@ -93,6 +92,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     onSearchChange(newQuery)
     if (!isOpen) setIsOpen(true)
     if (newQuery === '') {
+      // Clear selection when input is manually cleared
       onChange('')
     }
   }
@@ -101,6 +101,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     onChange(option.value)
     setQuery(option.label)
     setIsOpen(false)
+    // We don't clear onSearchChange here to keep the search context
   }
 
   const handleClear = () => {
@@ -177,9 +178,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
         {isOpen && !disabled && (
           <ul className='absolute z-20 w-full mt-1 bg-background shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm'>
-            {isLoading ? (
+            {isLoading && query ? (
                  <li className='px-3 py-2 text-muted-foreground'>
-                    Memuat...
+                    Mencari...
                 </li>
             ) : options.length > 0 ? (
               options.map((option, index) => (

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -11,8 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useMemo } from "react";
-import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle, Building, Phone } from "lucide-react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle, Building, Phone, AlertCircle } from "lucide-react";
 import { Customer, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -24,12 +25,17 @@ import { useCustomerStore } from "@/store/customer-store";
 import { useProductStore } from "@/store/product-store";
 import { useSaleStore } from "@/store/sale-store";
 import { CustomerSheet } from "./customer-sheet";
+import { useAuthStore } from "@/store/auth-store";
+import { useBranchStore } from "@/store/branch-store";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const saleItemSchema = z.object({
   id: z.string(),
   produk_id: z.string().min(1, "Produk harus dipilih"),
   nama_produk: z.string(),
   nama_satuan: z.string(),
+  stok_tersedia: z.number(),
   jumlah: z.coerce.number().min(1, "Jumlah minimal 1"),
   harga_jual_satuan: z.coerce.number().min(0, "Harga tidak boleh negatif"),
   diskon: z.coerce.number().min(0, "Diskon tidak boleh negatif").optional().default(0),
@@ -44,6 +50,7 @@ const saleSchema = z.object({
   diskon_invoice: z.coerce.number().optional().default(0),
   pajak: z.coerce.number().optional().default(0),
   ongkos_kirim: z.coerce.number().optional().default(0),
+  biaya_lain: z.coerce.number().optional().default(0),
 });
 
 type SaleFormValues = z.infer<typeof saleSchema>;
@@ -53,6 +60,8 @@ export default function NewSalePage() {
   const { addSale, isSubmitting } = useSaleStore();
   const { toast } = useToast();
   
+  const { userProfile } = useAuthStore();
+  const { getBranchById, fetchBranches } = useBranchStore();
   const { customers, fetchCustomers: fetchCustomerStore, isFetching: isCustomersLoading, setSearchTerm: setCustomerSearchTerm, getCustomerById } = useCustomerStore();
   const { products, fetchProducts, isFetching: isProductsLoading, setSearchTerm: setProductSearchTerm } = useProductStore();
   
@@ -61,19 +70,32 @@ export default function NewSalePage() {
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<Customer | null>(null);
   const [isCustomerSheetOpen, setCustomerSheetOpen] = useState(false);
+
+  const branchDetails = useMemo(() => userProfile ? getBranchById(userProfile.branchId) : null, [userProfile, getBranchById]);
   
   const [debouncedCustomerSearch] = useDebounce(customerQuery, 300);
   const [debouncedProductSearch] = useDebounce(productQuery, 300);
 
+  const fetchInitialData = useCallback(async () => {
+    await fetchBranches();
+    await fetchCustomerStore({ all: true });
+  }, [fetchBranches, fetchCustomerStore]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
   useEffect(() => {
     setCustomerSearchTerm(debouncedCustomerSearch);
-    fetchCustomerStore({ all: true });
-  }, [debouncedCustomerSearch, fetchCustomerStore, setCustomerSearchTerm]);
+  }, [debouncedCustomerSearch, setCustomerSearchTerm]);
 
   useEffect(() => {
     setProductSearchTerm(debouncedProductSearch);
+  }, [debouncedProductSearch, setProductSearchTerm]);
+
+  useEffect(() => {
     fetchProducts();
-  }, [debouncedProductSearch, fetchProducts, setProductSearchTerm]);
+  }, [debouncedProductSearch, fetchProducts]);
 
   const customerOptions = useMemo(() => 
     customers.map(c => ({ value: c.id, label: c.nama_customer })), 
@@ -91,11 +113,19 @@ export default function NewSalePage() {
       items: [],
       total_harga: 0,
       diskon_invoice: 0,
-      pajak: 0,
+      pajak: branchDetails?.defaultTax || 0,
       ongkos_kirim: 0,
+      biaya_lain: 0,
       tanggal_penjualan: new Date(),
     },
   });
+
+  useEffect(() => {
+    if (branchDetails) {
+        form.setValue('pajak', branchDetails.defaultTax || 0);
+    }
+  }, [branchDetails, form]);
+
 
   const watchCustomerId = form.watch("customer_id");
 
@@ -118,7 +148,7 @@ export default function NewSalePage() {
   
   const watchAllFields = form.watch();
   useEffect(() => {
-      const { items, diskon_invoice, pajak, ongkos_kirim } = watchAllFields;
+      const { items, diskon_invoice, pajak, ongkos_kirim, biaya_lain } = watchAllFields;
       let newSubtotal = 0;
       let newTotalDiscount = 0;
 
@@ -133,25 +163,51 @@ export default function NewSalePage() {
       });
       
       const ongkir = Number(ongkos_kirim || 0);
+      const biayaLain = Number(biaya_lain || 0);
       const invDiscount = Number(diskon_invoice || 0);
       const taxPercent = Number(pajak || 0);
+      
+      const taxType = branchDetails?.taxType || 'exclusive';
+      let dpp = newSubtotal - newTotalDiscount - invDiscount;
+      let newTaxAmount = 0;
+      
+      if (taxType === 'inclusive') {
+        const totalBeforeCosts = dpp;
+        dpp = totalBeforeCosts / (1 + (taxPercent / 100));
+        newTaxAmount = totalBeforeCosts - dpp;
+      } else { // exclusive
+        newTaxAmount = dpp * (taxPercent / 100);
+      }
+      
+      const newGrandTotal = dpp + newTaxAmount + ongkir + biayaLain;
 
-      const newDpp = newSubtotal - newTotalDiscount - invDiscount;
-      const newTaxAmount = newDpp * (taxPercent / 100);
-      const newGrandTotal = newDpp + newTaxAmount + ongkir;
 
       if (form.getValues('total_harga') !== newGrandTotal) {
         form.setValue("total_harga", newGrandTotal);
       }
-  }, [watchAllFields, form]);
+  }, [watchAllFields, form, branchDetails]);
   
   const currentFormValues = form.getValues();
   const items = currentFormValues.items || [];
   const subtotal = items.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
   const totalDiscount = items.reduce((sum, item) => sum + ((item?.subtotal || 0) * ((item?.diskon || 0) / 100)), 0);
-  const dpp = subtotal - totalDiscount - (currentFormValues.diskon_invoice || 0);
-  const taxAmount = dpp * ((currentFormValues.pajak || 0) / 100);
-  const grandTotal = dpp + taxAmount + (currentFormValues.ongkos_kirim || 0);
+  const invDiscount = currentFormValues.diskon_invoice || 0;
+  
+  const taxType = branchDetails?.taxType || 'exclusive';
+  const taxPercent = currentFormValues.pajak || 0;
+  
+  let dpp = subtotal - totalDiscount - invDiscount;
+  let taxAmount = 0;
+
+  if (taxType === 'inclusive') {
+    taxAmount = dpp - (dpp / (1 + (taxPercent / 100)));
+    dpp = dpp - taxAmount;
+  } else {
+    taxAmount = dpp * (taxPercent / 100);
+  }
+
+  const grandTotal = dpp + taxAmount + (currentFormValues.ongkos_kirim || 0) + (currentFormValues.biaya_lain || 0);
+
 
 
   const handleAddProduct = () => {
@@ -161,22 +217,19 @@ export default function NewSalePage() {
     };
     const product = products.find(p => p.id === selectedProductToAdd);
     if (product) {
-      if (product.stok <= 0) {
-        toast({ variant: "destructive", title: "Stok Habis", description: `${product.nama_produk} tidak tersedia.`});
-        return;
-      }
       append({
         id: `new-${fields.length}`,
         produk_id: product.id,
         nama_produk: product.nama_produk,
         nama_satuan: product.nama_satuan || 'N/A',
+        stok_tersedia: product.stok,
         jumlah: 1,
         harga_jual_satuan: product.harga_jual,
         diskon: 0,
         subtotal: product.harga_jual,
       });
       setSelectedProductToAdd('');
-      // Don't reset query to allow multiple adds from same search
+      // Do not reset query to allow multiple adds from same search
     }
   };
 
@@ -344,9 +397,12 @@ export default function NewSalePage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {fields.map((item, index) => (
+                            {fields.map((item, index) => {
+                                const currentJumlah = form.watch(`items.${index}.jumlah`);
+                                const showStockWarning = currentJumlah > item.stok_tersedia;
+                                return (
                                 <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.nama_produk}</TableCell>
+                                    <TableCell className="font-medium">{item.nama_produk} <br/> <span className="text-xs text-muted-foreground">Stok: {item.stok_tersedia}</span></TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <FormField
@@ -355,6 +411,18 @@ export default function NewSalePage() {
                                                 render={({ field }) => <Input type="number" {...field} className="w-24" />}
                                             />
                                             <span className="text-sm text-muted-foreground">{item.nama_satuan}</span>
+                                             {showStockWarning && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger>
+                                                             <AlertCircle className="h-4 w-4 text-destructive" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Jumlah melebihi stok yang tersedia!</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -380,7 +448,8 @@ export default function NewSalePage() {
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                                )
+                            })}
                         </TableBody>
                     </Table>
                 </div>
@@ -403,7 +472,7 @@ export default function NewSalePage() {
                         />
                     </div>
                      <div className="flex items-center justify-between">
-                        <FormLabel>Pajak (%)</FormLabel>
+                        <FormLabel>Pajak ({taxPercent}%)</FormLabel>
                          <FormField
                             control={form.control}
                             name="pajak"
@@ -415,6 +484,14 @@ export default function NewSalePage() {
                         <FormField
                             control={form.control}
                             name="ongkos_kirim"
+                            render={({ field }) => <Input type="number" {...field} className="w-48" />}
+                        />
+                    </div>
+                     <div className="flex items-center justify-between">
+                        <FormLabel>Biaya Lain-lain (Rp)</FormLabel>
+                        <FormField
+                            control={form.control}
+                            name="biaya_lain"
                             render={({ field }) => <Input type="number" {...field} className="w-48" />}
                         />
                     </div>
@@ -431,19 +508,27 @@ export default function NewSalePage() {
                         <span>Total Diskon</span>
                         <span className="text-red-500">- Rp{totalDiscount.toLocaleString('id-ID')}</span>
                     </div>
+                    <div className="flex justify-between text-sm">
+                        <span>Diskon Invoice</span>
+                        <span className="text-red-500">- Rp{invDiscount.toLocaleString('id-ID')}</span>
+                    </div>
                     <Separator />
                     <div className="flex justify-between font-medium">
-                        <span>DPP (Total Setelah Diskon)</span>
+                        <span>DPP (Dasar Pengenaan Pajak)</span>
                         <span>Rp{dpp.toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-sm">
-                        <span>Pajak ({currentFormValues.pajak || 0}%)</span>
+                        <span>Pajak ({taxPercent}% - {taxType})</span>
                         <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
                     </div>
                      <div className="flex justify-between text-sm">
                         <span>Ongkos Kirim</span>
                          <span>+ Rp{(currentFormValues.ongkos_kirim || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                     <div className="flex justify-between text-sm">
+                        <span>Biaya Lain-lain</span>
+                         <span>+ Rp{(currentFormValues.biaya_lain || 0).toLocaleString('id-ID')}</span>
                     </div>
                     <Separator />
                      <div className="flex justify-between font-bold text-lg text-primary">

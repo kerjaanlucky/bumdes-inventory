@@ -1,3 +1,4 @@
+
 "use client";
 import { create } from 'zustand';
 import { Customer } from '@/lib/types';
@@ -38,7 +39,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   setPage: (page) => set({ page, customers: [] }),
   setLimit: (limit) => set({ limit, page: 1, customers: [] }),
-  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, customers: [] }),
+  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
 
   fetchCustomers: async (options = { all: false }) => {
     const { firestore } = useFirebaseStore.getState();
@@ -48,11 +49,20 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     set({ isFetching: true });
     try {
       const customersRef = collection(firestore, 'customers');
-      const q = query(customersRef, where("branchId", "==", branchId));
+      let queryConstraints = [where("branchId", "==", branchId)];
+      
+      const { searchTerm, page, limit } = get();
+      if (searchTerm) {
+        // Firestore doesn't support case-insensitive `contains` search natively.
+        // A common practice is to store a lowercased version of the field.
+        // For now, we will filter client-side after fetching all. For large datasets,
+        // a more robust solution like Algolia or a different database structure is needed.
+      }
+      
+      const q = query(customersRef, ...queryConstraints);
       const querySnapshot = await getDocs(q);
       let customers: Customer[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
-      const { page, limit, searchTerm } = get();
       if (searchTerm) {
         customers = customers.filter(c =>
           c.nama_customer.toLowerCase().includes(searchTerm.toLowerCase()) ||

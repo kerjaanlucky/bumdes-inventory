@@ -1,3 +1,4 @@
+
 "use client";
 import { create } from 'zustand';
 import { Sale, PaginatedResponse, SaleItem } from '@/lib/types';
