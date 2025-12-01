@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Trash2, Search, Eye } from "lucide-react";
+import { PlusCircle, Trash2, Search, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
 import { useSaleStore } from '@/store/sale-store';
-import { Sale } from '@/lib/types';
+import { Sale, SaleStatus } from '@/lib/types';
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 
@@ -65,9 +65,11 @@ export default function SalesPage() {
       }
     };
     
-    const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    const getStatusVariant = (status: SaleStatus): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
             case "LUNAS": return "default";
+            case "DIKONFIRMASI": return "secondary";
+            case "DIKIRIM": return "secondary";
             case "DRAFT": return "outline";
             case "DIBATALKAN": return "destructive";
             default: return "secondary";
@@ -118,9 +120,7 @@ export default function SalesPage() {
                     <TableHead>Tanggal</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>
-                      <span className="sr-only">Aksi</span>
-                    </TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -132,7 +132,7 @@ export default function SalesPage() {
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : sales.map((sale: Sale) => (
@@ -149,7 +149,7 @@ export default function SalesPage() {
                             <div className="flex items-center justify-end gap-2">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => { /* router.push(`/user/sales/${sale.id}`) */ }}>
+                                        <Button variant="ghost" size="icon" onClick={() => router.push(`/user/sales/${sale.id}`)}>
                                             <Eye className="h-4 w-4" />
                                             <span className="sr-only">Lihat Detail</span>
                                         </Button>
@@ -158,9 +158,22 @@ export default function SalesPage() {
                                         <p>Lihat Detail</p>
                                     </TooltipContent>
                                 </Tooltip>
+                                {sale.status === 'LUNAS' && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={() => router.push(`/user/sales/invoice/${sale.id}`)}>
+                                                <FileText className="h-4 w-4" />
+                                                <span className="sr-only">Lihat Faktur</span>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Lihat Faktur</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                )}
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(sale.id)}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(sale.id)} disabled={sale.status !== 'DRAFT'}>
                                             <Trash2 className="h-4 w-4" />
                                             <span className="sr-only">Hapus</span>
                                         </Button>

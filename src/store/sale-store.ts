@@ -36,9 +36,10 @@ type SaleState = {
   setSearchTerm: (searchTerm: string) => void;
   fetchSales: () => Promise<void>;
   getSaleById: (saleId: string) => Promise<Sale | undefined>;
-  addSale: (sale: Omit<Sale, 'id' | 'nomor_penjualan' | 'created_at' | 'status' | 'branchId' | 'items' | 'history'> & { items: SaleItem[] }) => Promise<Sale | undefined>;
+  addSale: (sale: Omit<Sale, 'id' | 'nomor_penjualan' | 'created_at' | 'status' | 'branchId' | 'history'> & { items: SaleItem[] }) => Promise<Sale | undefined>;
   editSale: (sale: Sale) => Promise<void>;
   deleteSale: (saleId: string) => Promise<void>;
+  updateSaleStatus: (saleId: string, status: SaleStatus, note?: string) => Promise<void>;
 };
 
 export const useSaleStore = create<SaleState>((set, get) => ({
@@ -103,8 +104,33 @@ export const useSaleStore = create<SaleState>((set, get) => ({
   },
 
   getSaleById: async (saleId: string) => {
-    // Implement get by ID logic if needed
-    return undefined;
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return undefined;
+    
+    set({ isFetching: true });
+    try {
+      const saleRef = doc(firestore, 'sales', saleId);
+      const docSnap = await getDoc(saleRef);
+      if(docSnap.exists() && docSnap.data().branchId === branchId) {
+        const saleData = { id: docSnap.id, ...docSnap.data() } as Sale;
+        // Fetch customer name if not present
+        if(saleData.customer_id && !saleData.nama_customer) {
+            const customerRef = doc(firestore, 'customers', saleData.customer_id);
+            const customerSnap = await getDoc(customerRef);
+            if(customerSnap.exists()) {
+                saleData.nama_customer = customerSnap.data().nama_customer;
+            }
+        }
+        return saleData;
+      }
+      return undefined;
+    } catch(error) {
+      console.error("Failed to fetch sale:", error);
+      return undefined;
+    } finally {
+        set({ isFetching: false });
+    }
   },
 
   addSale: async (sale) => {
@@ -121,7 +147,7 @@ export const useSaleStore = create<SaleState>((set, get) => ({
         ...sale,
         branchId,
         nomor_penjualan: soNumber,
-        status: 'DRAFT', // New sales start as DRAFT
+        status: 'DRAFT',
         created_at: new Date().toISOString(),
         history: [{
           status: 'DRAFT',
@@ -132,16 +158,11 @@ export const useSaleStore = create<SaleState>((set, get) => ({
 
       const docRef = await addDoc(salesRef, newSaleData);
       
-      // Stock is NO LONGER deducted at creation. It will be deducted on shipment.
-
       toast({ title: "Draft Penjualan Disimpan", description: "Transaksi penjualan telah berhasil disimpan sebagai draft." });
       
-      const customerName = useCustomerStore.getState().customers.find(c => c.id === sale.customer_id)?.nama_customer || 'N/A';
-      const saleWithCustomerName = { id: docRef.id, ...newSaleData };
-
       get().fetchSales();
 
-      return saleWithCustomerName;
+      return { id: docRef.id, ...newSaleData };
 
     } catch (error) {
       console.error("Failed to add sale:", error);
@@ -152,7 +173,24 @@ export const useSaleStore = create<SaleState>((set, get) => ({
   },
 
   editSale: async (updatedSale) => {
-    // Implement edit logic if needed
+    const { firestore } = useFirebaseStore.getState();
+    if (!firestore) return;
+    
+    set({isSubmitting: true});
+    const saleRef = doc(firestore, 'sales', updatedSale.id);
+    const { nama_customer, ...saleToSave } = updatedSale;
+    try {
+      await setDoc(saleRef, saleToSave, { merge: true });
+      toast({ title: "Penjualan Diperbarui", description: "Perubahan pada penjualan telah berhasil disimpan." });
+      // Optimistically update local state
+      set(state => ({
+        sales: state.sales.map(s => s.id === updatedSale.id ? updatedSale : s)
+      }));
+    } catch (error) {
+      console.error("Failed to edit sale:", error);
+    } finally {
+      set({isSubmitting: false});
+    }
   },
 
   deleteSale: async (saleId: string) => {
@@ -161,9 +199,6 @@ export const useSaleStore = create<SaleState>((set, get) => ({
 
     set({ isDeleting: true });
     const saleRef = doc(firestore, 'sales', saleId);
-    // Note: Deleting a sale should ideally reverse the stock movement if it was shipped.
-    // This is a complex operation (a transaction) and is omitted for simplicity here.
-    // In a real app, you would add logic to find the stock movements by reference and revert them.
     deleteDocumentNonBlocking(saleRef)
       .then(() => {
         toast({ title: "Penjualan Dihapus", description: "Transaksi penjualan telah berhasil dihapus." });
@@ -174,5 +209,52 @@ export const useSaleStore = create<SaleState>((set, get) => ({
          toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus penjualan." });
       })
       .finally(() => set({ isDeleting: false }));
+  },
+
+  updateSaleStatus: async (saleId, status, note) => {
+    const { firestore, auth } = useFirebaseStore.getState();
+    if (!firestore || !auth?.currentUser) return;
+
+    set({ isSubmitting: true });
+    const sale = await get().getSaleById(saleId);
+    if(!sale) return;
+
+    const newHistoryEntry: SaleStatusHistory = {
+        status: status,
+        tanggal: new Date().toISOString(),
+        oleh: auth.currentUser.displayName || 'System',
+        catatan: note
+    };
+
+    const updatedSale: Sale = {
+        ...sale,
+        status: status,
+        history: [...(sale.history || []), newHistoryEntry]
+    };
+
+    if (status === 'DIKIRIM') {
+        const { getProductById, editProduct } = useProductStore.getState();
+        const { addStockMovement } = useStockStore.getState();
+        for (const item of sale.items) {
+            const product = await getProductById(item.produk_id);
+            if (product) {
+                const newStock = product.stok - item.jumlah;
+                await editProduct({ ...product, stok: newStock }, true);
+                await addStockMovement({
+                    tanggal: new Date().toISOString(),
+                    produk_id: product.id,
+                    nama_produk: product.nama_produk,
+                    nama_satuan: product.nama_satuan || 'N/A',
+                    tipe: 'Penjualan Keluar',
+                    jumlah: -item.jumlah,
+                    stok_akhir: newStock,
+                    referensi: sale.nomor_penjualan,
+                });
+            }
+        }
+    }
+
+    await get().editSale(updatedSale);
+    set({ isSubmitting: false });
   },
 }));

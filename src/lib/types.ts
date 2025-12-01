@@ -77,7 +77,7 @@ export type Transaction = {
   amount: number;
 };
 
-export type SaleStatus = 'DRAFT' | 'DIKONFIRMASI' | 'DIKIRIM' | 'SELESAI' | 'RETUR' | 'DIBATALKAN';
+export type SaleStatus = 'DRAFT' | 'DIKONFIRMASI' | 'DIKIRIM' | 'LUNAS' | 'RETUR' | 'DIBATALKAN';
 
 export interface SaleItem {
   id: any;
