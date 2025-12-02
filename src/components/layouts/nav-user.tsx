@@ -8,6 +8,7 @@ import {
   SidebarMenuButton,
   SidebarMenuSub,
   SidebarMenuSubButton,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -133,6 +134,7 @@ export function NavUser() {
 
 
   return (
+    <>
     <SidebarMenu>
       {userLinks.map((link) => (
         <SidebarMenuItem key={link.href}>
@@ -229,18 +231,23 @@ export function NavUser() {
             </SidebarMenuSub>
         </CollapsibleContent>
       </Collapsible>
-      <SidebarMenuItem>
-          <SidebarMenuButton
-            asChild
-            isActive={pathname.startsWith("/user/settings")}
-            tooltip="Pengaturan"
-          >
-            <Link href="/user/settings">
-              <Settings />
-              <span>Pengaturan</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
     </SidebarMenu>
+    <div className="mt-auto flex flex-col gap-1">
+        <SidebarMenu>
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/user/settings")}
+                    tooltip="Pengaturan"
+                >
+                    <Link href="/user/settings">
+                    <Settings />
+                    <span>Pengaturan</span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
+    </div>
+    </>
   );
 }
