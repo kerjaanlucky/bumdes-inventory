@@ -90,10 +90,12 @@ export const useExpenseCategoryStore = create<ExpenseCategoryState>((set, get) =
     try {
       await deleteDoc(doc(firestore, 'expenseCategories', categoryId));
       await get().fetchExpenseCategories();
+      toast({ title: "Kategori Dihapus" });
     } catch (error) {
       console.error("Failed to delete expense category:", error);
+      toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus kategori." });
     } finally {
-      set({ isDeleting: false });
+        set({ isDeleting: false });
     }
   },
 }));
@@ -232,6 +234,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
       get().fetchExpenses();
     } catch (error) {
       console.error("Failed to delete expense:", error);
+      toast({ variant: "destructive", title: "Gagal Menghapus" });
     } finally {
       set({ isDeleting: false });
     }

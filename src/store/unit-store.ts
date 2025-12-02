@@ -96,15 +96,15 @@ export const useUnitStore = create<UnitState>((set, get) => ({
 
     set({ isDeleting: true });
     const unitRef = doc(firestore, `units`, unitId);
-    deleteDocumentNonBlocking(unitRef)
-      .then(() => {
-        toast({
-          title: "Satuan Dihapus",
-          description: "Satuan telah berhasil dihapus.",
-        });
-        get().fetchUnits();
-      })
-      .catch(err => console.error("Failed to delete unit:", err))
-      .finally(() => set({ isDeleting: false }));
+    try {
+      await deleteDoc(unitRef);
+      toast({ title: "Satuan Dihapus" });
+      get().fetchUnits();
+    } catch (error) {
+      console.error("Failed to delete unit:", error);
+      toast({ variant: "destructive", title: "Gagal Menghapus", description: "Tidak dapat menghapus satuan. Mungkin sedang digunakan oleh produk." });
+    } finally {
+        set({ isDeleting: false });
+    }
   },
 }));

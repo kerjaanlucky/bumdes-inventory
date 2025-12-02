@@ -95,16 +95,16 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     if (!firestore) return;
 
     set({ isDeleting: true });
-    const categoryRef = doc(firestore, `categories`, categoryId);
-    deleteDocumentNonBlocking(categoryRef)
-      .then(() => {
-        toast({
-            title: "Kategori Dihapus",
-            description: "Kategori telah berhasil dihapus.",
-        });
-        get().fetchCategories();
-      })
-      .catch(err => console.error("Failed to delete category:", err))
-      .finally(() => set({ isDeleting: false }));
+    const categoryRef = doc(firestore, 'categories', categoryId);
+    try {
+      await deleteDoc(categoryRef);
+      toast({ title: "Kategori Dihapus" });
+      get().fetchCategories();
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+      toast({ variant: "destructive", title: "Gagal Menghapus", description: "Tidak dapat menghapus kategori. Mungkin sedang digunakan oleh produk." });
+    } finally {
+        set({ isDeleting: false });
+    }
   },
 }));
