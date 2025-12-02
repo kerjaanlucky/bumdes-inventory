@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { UserProfile } from '@/lib/types';
 import { useFirebaseStore } from './firebase-store';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, updateProfile } from 'firebase/auth';
 import { deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useAuthStore } from './auth-store';
 
 
 type NewUserParams = {
@@ -24,6 +25,7 @@ type UserState = {
   fetchUsers: () => Promise<void>;
   addUser: (user: NewUserParams) => Promise<void>;
   editUser: (originalBranchId: string, user: UserProfile) => Promise<void>;
+  updateCurrentUserProfile: (newName: string) => Promise<void>;
   deleteUser: (branchId: string, userId: string) => Promise<void>;
   findUserInAnyBranch: (userId: string) => Promise<UserProfile | undefined>;
 };
@@ -126,6 +128,33 @@ export const useUserStore = create<UserState>((set, get) => ({
       console.error("Failed to edit user:", error);
     } finally {
       set({ isSubmitting: false });
+    }
+  },
+  
+  updateCurrentUserProfile: async (newName: string) => {
+    const { auth, firestore } = useFirebaseStore.getState();
+    const currentUser = auth?.currentUser;
+    if (!currentUser || !firestore) {
+        console.error("User not logged in or firestore not available");
+        return;
+    }
+
+    set({ isSubmitting: true });
+    try {
+        // 1. Update Firebase Auth profile
+        await updateProfile(currentUser, { displayName: newName });
+        
+        // 2. Update Firestore user document
+        const userDocRef = doc(firestore, 'users', currentUser.uid);
+        await setDoc(userDocRef, { name: newName }, { merge: true });
+
+        // 3. Re-fetch user profile in auth store to reflect changes globally
+        useAuthStore.getState().fetchUserProfile(currentUser);
+
+    } catch(error) {
+        console.error("Error updating user profile:", error);
+    } finally {
+        set({ isSubmitting: false });
     }
   },
 
