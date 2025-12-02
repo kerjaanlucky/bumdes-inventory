@@ -49,6 +49,17 @@ export default function UserDashboardPage() {
 
   return (
     <div className="flex flex-col gap-4 py-4">
+       <div className="flex justify-end">
+        <Select value={timeRange} onValueChange={(value: ChartTimeRange) => setTimeRange(value)}>
+            <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Pilih rentang waktu" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="7d">7 Hari Terakhir</SelectItem>
+                <SelectItem value="30d">30 Hari Terakhir</SelectItem>
+            </SelectContent>
+        </Select>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -107,22 +118,11 @@ export default function UserDashboardPage() {
       </div>
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader className="flex flex-row items-center">
-            <div className="grid gap-2">
-              <CardTitle>Ikhtisar Penjualan & Laba</CardTitle>
-              <CardDescription>
-                Pendapatan dan laba kotor selama {timeRange === '7d' ? '7' : '30'} hari terakhir.
-              </CardDescription>
-            </div>
-            <Select value={timeRange} onValueChange={(value: ChartTimeRange) => setTimeRange(value)}>
-                <SelectTrigger className="w-[160px] ml-auto">
-                    <SelectValue placeholder="Pilih rentang" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="7d">7 Hari Terakhir</SelectItem>
-                    <SelectItem value="30d">30 Hari Terakhir</SelectItem>
-                </SelectContent>
-            </Select>
+          <CardHeader>
+            <CardTitle>Ikhtisar Penjualan & Laba</CardTitle>
+            <CardDescription>
+              Pendapatan dan laba kotor selama {timeRange === '7d' ? '7' : '30'} hari terakhir.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isFetching ? <div className="h-[350px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
