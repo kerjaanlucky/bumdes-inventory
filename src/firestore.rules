@@ -34,7 +34,9 @@ service cloud.firestore {
     // Admins can manage branches
     match /branches/{branchId} {
       allow read: if isSignedIn();
-      allow write: if isGlobalAdmin();
+      // Allow user to update their own branch, and admin to update any branch
+      allow update: if isSignedIn() && (isGlobalAdmin() || isAssignedToBranch(branchId));
+      allow create, delete: if isGlobalAdmin();
     }
 
     // Admins can manage any user. Users can read their own profile.
@@ -51,7 +53,7 @@ service cloud.firestore {
     }
     
     function canWriteBranchData(branchId) {
-      return isGlobalAdmin() || (isUserRole(request.auth.uid, 'admin') && isAssignedToBranch(branchId));
+      return isGlobalAdmin() || isAssignedToBranch(branchId);
     }
 
     // Rules for branch-isolated master data
@@ -98,6 +100,18 @@ service cloud.firestore {
     }
 
     match /stocks/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+     match /expenses/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
+
+     match /expenseCategories/{docId} {
         allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
         allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
         allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);

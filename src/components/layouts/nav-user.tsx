@@ -22,7 +22,8 @@ import {
   Truck,
   Warehouse,
   FileText,
-  Landmark
+  Landmark,
+  Settings
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
@@ -224,6 +225,18 @@ export function NavUser() {
             </SidebarMenuSub>
         </CollapsibleContent>
       </Collapsible>
+      <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            isActive={pathname.startsWith("/user/settings")}
+            tooltip="Pengaturan"
+          >
+            <Link href="/user/settings">
+              <Settings />
+              <span>Pengaturan</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
     </SidebarMenu>
   );
 }

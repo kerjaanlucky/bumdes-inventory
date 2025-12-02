@@ -40,6 +40,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     const branchesRef = collection(firestore, 'branches');
     try {
         const docRef = await addDoc(branchesRef, branch);
+        // Optimistically update the state
         set((state) => ({
             branches: [...state.branches, { id: docRef.id, ...branch }],
         }));
@@ -56,6 +57,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     const branchRef = doc(firestore, "branches", updatedBranch.id);
     try {
         await setDoc(branchRef, updatedBranch, { merge: true });
+        // Optimistically update the state so UI reflects changes immediately
         set((state) => ({
             branches: state.branches.map((branch) =>
             branch.id === updatedBranch.id ? updatedBranch : branch
@@ -74,6 +76,7 @@ export const useBranchStore = create<BranchState>((set, get) => ({
     const branchRef = doc(firestore, "branches", branchId);
     try {
         await deleteDoc(branchRef);
+        // Optimistically update the state
         set((state) => ({
             branches: state.branches.filter((branch) => branch.id !== branchId),
         }));
