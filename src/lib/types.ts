@@ -87,6 +87,7 @@ export interface SaleItem {
   nama_satuan: string;
   jumlah: number;
   harga_jual_satuan: number;
+  harga_modal: number; // Added for editable cost price per transaction
   diskon: number;
   subtotal: number;
 }

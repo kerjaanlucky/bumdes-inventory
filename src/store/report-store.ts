@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { create } from 'zustand';
@@ -192,8 +193,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
                 todayRevenue += sale.total_harga;
                 todayTransactions += 1;
                 for (const item of sale.items) {
-                    const product = productsMap.get(item.produk_id);
-                    todayProfit += (item.harga_jual_satuan - (product?.harga_modal || 0)) * item.jumlah;
+                    todayProfit += (item.harga_jual_satuan - item.harga_modal) * item.jumlah;
                     topProductsMap.set(item.produk_id, (topProductsMap.get(item.produk_id) || 0) + item.jumlah);
                 }
             } else if (saleDate === yesterdayStr) {
@@ -206,8 +206,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
             const dayData = chartDataMap.get(formattedDate) || { penjualan: 0, laba: 0 };
             dayData.penjualan += sale.total_harga;
             for (const item of sale.items) {
-                const product = productsMap.get(item.produk_id);
-                dayData.laba += (item.harga_jual_satuan - (product?.harga_modal || 0)) * item.jumlah;
+                dayData.laba += (item.harga_jual_satuan - item.harga_modal) * item.jumlah;
             }
             chartDataMap.set(formattedDate, dayData);
         }
@@ -331,25 +330,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
         const salesSnapshot = await getDocs(salesQuery);
         const sales = salesSnapshot.docs.map(doc => doc.data() as Sale);
-
-        const productIds = Array.from(new Set(sales.flatMap(s => s.items.map(i => i.produk_id))));
-        const productsMap = new Map<string, number>();
-
-        if (productIds.length > 0) {
-            const productsRef = collection(firestore, 'products');
-            // Firestore 'in' query has a limit of 30 items
-            const productChunks: string[][] = [];
-            for (let i = 0; i < productIds.length; i += 30) {
-                productChunks.push(productIds.slice(i, i + 30));
-            }
-            for (const chunk of productChunks) {
-                const productQuery = query(productsRef, where('__name__', 'in', chunk));
-                const productsSnapshot = await getDocs(productQuery);
-                productsSnapshot.forEach(doc => {
-                    productsMap.set(doc.id, doc.data().harga_modal || 0);
-                });
-            }
-        }
         
         let totalRevenue = 0;
         let totalCogs = 0;
@@ -359,7 +339,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
             totalRevenue += sale.total_harga;
             totalExpenses += (sale.diskon_invoice || 0) + (sale.ongkos_kirim || 0) + (sale.biaya_lain || 0);
              for (const item of sale.items) {
-                totalCogs += (productsMap.get(item.produk_id) || 0) * item.jumlah;
+                totalCogs += item.harga_modal * item.jumlah;
             }
         }
         
@@ -407,33 +387,13 @@ export const useReportStore = create<ReportState>((set, get) => ({
       const salesSnapshot = await getDocs(salesQuery);
       const sales = salesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
 
-      const productIds = Array.from(new Set(sales.flatMap(s => s.items.map(i => i.produk_id))));
-      const productsMap = new Map<string, { nama_produk: string, harga_modal: number }>();
-
-       if (productIds.length > 0) {
-            const productsRef = collection(firestore, 'products');
-            const productChunks: string[][] = [];
-            for (let i = 0; i < productIds.length; i += 30) {
-                productChunks.push(productIds.slice(i, i + 30));
-            }
-            for (const chunk of productChunks) {
-                const productQuery = query(productsRef, where('__name__', 'in', chunk));
-                const productsSnapshot = await getDocs(productQuery);
-                productsSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    productsMap.set(doc.id, { nama_produk: data.nama_produk, harga_modal: data.harga_modal || 0 });
-                });
-            }
-        }
-
       const cogsItems: CogsItem[] = [];
       let totalRevenue = 0;
       let totalCogs = 0;
 
       for (const sale of sales) {
         for (const item of sale.items) {
-          const productInfo = productsMap.get(item.produk_id);
-          const costPrice = productInfo?.harga_modal || 0;
+          const costPrice = item.harga_modal || 0;
           const totalSellingPrice = item.harga_jual_satuan * item.jumlah;
           const totalCostPrice = costPrice * item.jumlah;
           const itemMargin = totalSellingPrice - totalCostPrice;
@@ -441,7 +401,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
           cogsItems.push({
             saleId: sale.id,
             saleDate: sale.tanggal_penjualan,
-            productName: productInfo?.nama_produk || 'Produk Tidak Ditemukan',
+            productName: item.nama_produk || 'Produk Tidak Ditemukan',
             quantity: item.jumlah,
             sellingPrice: item.harga_jual_satuan,
             totalSellingPrice: totalSellingPrice,
@@ -471,5 +431,3 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
   },
 }));
-
-    

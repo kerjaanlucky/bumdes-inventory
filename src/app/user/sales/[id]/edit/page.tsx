@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -39,6 +40,7 @@ const saleItemSchema = z.object({
   stok_tersedia: z.number(),
   jumlah: z.coerce.number().min(1, "Jumlah minimal 1"),
   harga_jual_satuan: z.coerce.number().min(0, "Harga tidak boleh negatif"),
+  harga_modal: z.coerce.number().min(0, "Harga modal tidak boleh negatif"),
   diskon: z.coerce.number().min(0, "Diskon tidak boleh negatif").optional().default(0),
   subtotal: z.coerce.number(),
 });
@@ -242,6 +244,7 @@ export default function EditSalePage() {
         stok_tersedia: product.stok,
         jumlah: 1,
         harga_jual_satuan: product.harga_jual,
+        harga_modal: product.harga_modal,
         diskon: 0,
         subtotal: product.harga_jual,
       });
@@ -415,6 +418,7 @@ export default function EditSalePage() {
                             <TableRow>
                                 <TableHead className="w-[30%]">Produk</TableHead>
                                 <TableHead>Jumlah</TableHead>
+                                <TableHead>Harga Modal</TableHead>
                                 <TableHead>Harga Jual</TableHead>
                                 <TableHead>Diskon (%)</TableHead>
                                 <TableHead className="text-right">Subtotal</TableHead>
@@ -449,6 +453,13 @@ export default function EditSalePage() {
                                                 </TooltipProvider>
                                             )}
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.harga_modal`}
+                                            render={({ field }) => <Input type="number" {...field} />}
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <FormField
