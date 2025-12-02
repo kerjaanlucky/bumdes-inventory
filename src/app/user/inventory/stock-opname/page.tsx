@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Eye } from "lucide-react";
+import { PlusCircle, Eye, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,6 +20,10 @@ import { useStockOpnameStore } from '@/store/stock-opname-store';
 import { StockOpname, StockOpnameStatus } from '@/lib/types';
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { useDebounce } from 'use-debounce';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function StockOpnamePage() {
   const router = useRouter();
@@ -27,11 +31,21 @@ export default function StockOpnamePage() {
     stockOpnames, 
     isFetching,
     fetchStockOpnames,
+    page,
+    limit,
+    total,
+    searchTerm,
+    setPage,
+    setLimit,
+    setSearchTerm
   } = useStockOpnameStore();
+
+  const [debouncedSearch] = useDebounce(searchTerm, 300);
+  const totalPages = Math.ceil(total / limit);
 
   useEffect(() => {
     fetchStockOpnames();
-  }, [fetchStockOpnames]);
+  }, [fetchStockOpnames, page, limit, debouncedSearch]);
   
   const getStatusVariant = (status: StockOpnameStatus): "default" | "secondary" => {
     return status === 'SELESAI' ? 'default' : 'secondary';
@@ -59,6 +73,18 @@ export default function StockOpnamePage() {
             <CardDescription>Daftar semua kegiatan penyesuaian stok yang telah dilakukan.</CardDescription>
         </CardHeader>
         <CardContent>
+            <div className="flex items-center justify-between mb-4">
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Cari no. referensi atau catatan..."
+                  className="pl-8 sm:w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
             <Table>
                 <TableHeader>
                 <TableRow>
@@ -71,7 +97,7 @@ export default function StockOpnamePage() {
                 </TableHeader>
                 <TableBody>
                 {isFetching ? (
-                  Array.from({ length: 5 }).map((_, index) => (
+                  Array.from({ length: limit }).map((_, index) => (
                     <TableRow key={index}>
                       <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -107,7 +133,48 @@ export default function StockOpnamePage() {
                 ))}
                 </TableBody>
             </Table>
-            {/* Add pagination here if needed */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Menampilkan {stockOpnames.length} dari {total} data.
+              </div>
+              <div className='flex items-center gap-4'>
+                 <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">Baris per halaman</p>
+                    <Select
+                        value={`${limit}`}
+                        onValueChange={(value) => { setLimit(Number(value)) }}
+                    >
+                        <SelectTrigger className="h-8 w-[70px]">
+                        <SelectValue placeholder={limit} />
+                        </SelectTrigger>
+                        <SelectContent side="top">
+                        {[5, 10, 25, 50].map((pageSize) => (
+                            <SelectItem key={pageSize} value={`${pageSize}`}>
+                            {pageSize}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setPage(page - 1); }} aria-disabled={page <= 1} />
+                    </PaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                      <PaginationItem key={p}>
+                        <PaginationLink href="#" onClick={(e) => {e.preventDefault(); setPage(p)}} isActive={p === page}>
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setPage(page + 1); }} aria-disabled={page >= totalPages} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
         </CardContent>
       </Card>
     </div>

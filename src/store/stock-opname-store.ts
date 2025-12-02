@@ -14,6 +14,13 @@ type StockOpnameState = {
   stockOpnames: StockOpname[];
   isFetching: boolean;
   isSubmitting: boolean;
+  total: number;
+  page: number;
+  limit: number;
+  searchTerm: string;
+  setPage: (page: number) => void;
+  setLimit: (limit: number) => void;
+  setSearchTerm: (searchTerm: string) => void;
   fetchStockOpnames: () => Promise<void>;
   getStockOpnameById: (id: string) => Promise<StockOpname | undefined>;
   addStockOpname: (opnameData: Omit<StockOpname, 'id' | 'branchId' | 'status' | 'nomor_referensi'>) => Promise<void>;
@@ -24,6 +31,14 @@ export const useStockOpnameStore = create<StockOpnameState>((set, get) => ({
   stockOpnames: [],
   isFetching: false,
   isSubmitting: false,
+  total: 0,
+  page: 1,
+  limit: 10,
+  searchTerm: '',
+
+  setPage: (page) => set({ page }),
+  setLimit: (limit) => set({ limit, page: 1 }),
+  setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
 
   fetchStockOpnames: async () => {
     const { firestore } = useFirebaseStore.getState();
@@ -35,8 +50,21 @@ export const useStockOpnameStore = create<StockOpnameState>((set, get) => ({
       const opnamesRef = collection(firestore, 'stockOpnames');
       const q = query(opnamesRef, where("branchId", "==", branchId));
       const snapshot = await getDocs(q);
-      const opnames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockOpname));
-      set({ stockOpnames: opnames, isFetching: false });
+      let opnames: StockOpname[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockOpname))
+        .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()); // Sort by date descending
+        
+      const { searchTerm, page, limit } = get();
+      if (searchTerm) {
+        opnames = opnames.filter(o => 
+            o.nomor_referensi.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            o.catatan?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      const total = opnames.length;
+      const paginatedOpnames = opnames.slice((page - 1) * limit, page * limit);
+      
+      set({ stockOpnames: paginatedOpnames, total, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch stock opnames:", error);
       toast({ variant: "destructive", title: "Gagal", description: "Tidak dapat memuat data stock opname." });
