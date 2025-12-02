@@ -1,12 +1,34 @@
+
 "use client";
 
 import { create } from 'zustand';
-import { Sale, CogsItem } from '@/lib/types';
+import { Sale, CogsItem, Product } from '@/lib/types';
 import { DateRange } from 'react-day-picker';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
-import { subDays } from 'date-fns';
+import { subDays, startOfDay, endOfDay, format } from 'date-fns';
+
+export type DashboardSummary = {
+  todayRevenue: number;
+  yesterdayRevenue: number;
+  todayProfit: number;
+  todayTransactions: number;
+  lowStockItems: number;
+};
+
+export type DashboardChartData = {
+  date: string;
+  penjualan: number;
+  laba: number;
+}
+
+export type DashboardData = {
+    summary: DashboardSummary;
+    topProducts: { nama_produk: string; kode_produk: string; total_quantity: number }[];
+    chartData: DashboardChartData[];
+};
+
 
 type SalesReportSummary = {
   totalRevenue: number;
@@ -34,12 +56,14 @@ type ReportState = {
   profitAndLoss: ProfitAndLoss;
   cogsData: CogsItem[];
   cogsSummary: CogsSummary;
+  dashboardData: DashboardData | null;
   isFetching: boolean;
   dateRange?: DateRange;
   setDateRange: (dateRange?: DateRange) => void;
   fetchSalesReport: () => Promise<void>;
   fetchProfitAndLossReport: () => Promise<void>;
   fetchCogsReport: () => Promise<void>;
+  fetchDashboardData: (timeRange: '7d' | '30d') => Promise<void>;
 };
 
 const initialSummary: SalesReportSummary = {
@@ -62,12 +86,25 @@ const initialCogsSummary: CogsSummary = {
     totalMargin: 0,
 }
 
+const initialDashboardData: DashboardData = {
+    summary: {
+        todayRevenue: 0,
+        yesterdayRevenue: 0,
+        todayProfit: 0,
+        todayTransactions: 0,
+        lowStockItems: 0,
+    },
+    topProducts: [],
+    chartData: [],
+}
+
 export const useReportStore = create<ReportState>((set, get) => ({
   sales: [],
   summary: initialSummary,
   profitAndLoss: initialProfitAndLoss,
   cogsData: [],
   cogsSummary: initialCogsSummary,
+  dashboardData: null,
   isFetching: false,
   dateRange: {
     from: subDays(new Date(), 29),
@@ -75,6 +112,115 @@ export const useReportStore = create<ReportState>((set, get) => ({
   },
 
   setDateRange: (dateRange?: DateRange) => set({ dateRange }),
+
+  fetchDashboardData: async (timeRange) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
+    set({ isFetching: true });
+
+    try {
+        const today = new Date();
+        const yesterday = subDays(today, 1);
+        const startDate = subDays(today, timeRange === '7d' ? 6 : 29);
+
+        // --- Queries ---
+        const salesRef = collection(firestore, 'sales');
+        const salesQuery = query(
+            salesRef,
+            where('branchId', '==', branchId),
+            where('status', 'in', ['LUNAS', 'DIKIRIM']),
+            where('tanggal_penjualan', '>=', format(startDate, 'yyyy-MM-dd'))
+        );
+        const productsRef = collection(firestore, 'products');
+        const productsQuery = query(productsRef, where('branchId', '==', branchId));
+
+        const [salesSnapshot, productsSnapshot] = await Promise.all([
+            getDocs(salesQuery),
+            getDocs(productsQuery)
+        ]);
+        
+        const sales = salesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+        const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        const productsMap = new Map(products.map(p => [p.id, p]));
+
+        // --- Calculations ---
+        let todayRevenue = 0;
+        let yesterdayRevenue = 0;
+        let todayProfit = 0;
+        let todayTransactions = 0;
+        const topProductsMap = new Map<string, number>();
+        const chartDataMap = new Map<string, { penjualan: number, laba: number }>();
+
+        const todayStr = format(today, 'yyyy-MM-dd');
+        const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+
+        for (const sale of sales) {
+            const saleDate = sale.tanggal_penjualan;
+            
+            // For summary cards
+            if (saleDate === todayStr) {
+                todayRevenue += sale.total_harga;
+                todayTransactions += 1;
+                for (const item of sale.items) {
+                    const product = productsMap.get(item.produk_id);
+                    todayProfit += (item.harga_jual_satuan - (product?.harga_modal || 0)) * item.jumlah;
+                    topProductsMap.set(item.produk_id, (topProductsMap.get(item.produk_id) || 0) + item.jumlah);
+                }
+            } else if (saleDate === yesterdayStr) {
+                yesterdayRevenue += sale.total_harga;
+            }
+
+            // For chart
+            const formattedDate = format(new Date(saleDate), 'dd/MM');
+            const dayData = chartDataMap.get(formattedDate) || { penjualan: 0, laba: 0 };
+            dayData.penjualan += sale.total_harga;
+            for (const item of sale.items) {
+                const product = productsMap.get(item.produk_id);
+                dayData.laba += (item.harga_jual_satuan - (product?.harga_modal || 0)) * item.jumlah;
+            }
+            chartDataMap.set(formattedDate, dayData);
+        }
+
+        const lowStockItems = products.filter(p => p.stok > 0 && p.stok < 10).length;
+
+        const topProducts = Array.from(topProductsMap.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([productId, quantity]) => {
+                const product = productsMap.get(productId);
+                return {
+                    nama_produk: product?.nama_produk || 'N/A',
+                    kode_produk: product?.kode_produk || 'N/A',
+                    total_quantity: quantity,
+                };
+            });
+            
+        const chartData = Array.from({ length: timeRange === '7d' ? 7 : 30 }, (_, i) => {
+            const date = subDays(today, i);
+            const formattedDate = format(date, 'dd/MM');
+            return {
+                date: formattedDate,
+                penjualan: chartDataMap.get(formattedDate)?.penjualan || 0,
+                laba: chartDataMap.get(formattedDate)?.laba || 0,
+            };
+        }).reverse();
+
+        set({
+            dashboardData: {
+                summary: { todayRevenue, yesterdayRevenue, todayProfit, todayTransactions, lowStockItems },
+                topProducts,
+                chartData,
+            },
+            isFetching: false,
+        });
+
+    } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        set({ isFetching: false, dashboardData: initialDashboardData });
+    }
+  },
 
   fetchSalesReport: async () => {
     const { firestore } = useFirebaseStore.getState();
@@ -94,8 +240,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
         salesRef,
         where('branchId', '==', branchId),
         where('status', 'in', ['LUNAS', 'DIKIRIM', 'DIKONFIRMASI']),
-        where('tanggal_penjualan', '>=', dateRange.from.toISOString().split('T')[0]),
-        where('tanggal_penjualan', '<=', (dateRange.to || new Date()).toISOString().split('T')[0])
+        where('tanggal_penjualan', '>=', format(dateRange.from, 'yyyy-MM-dd')),
+        where('tanggal_penjualan', '<=', format(dateRange.to || new Date(), 'yyyy-MM-dd'))
       );
 
       const querySnapshot = await getDocs(q);
@@ -138,8 +284,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
             salesRef,
             where('branchId', '==', branchId),
             where('status', 'in', ['LUNAS', 'DIKIRIM']),
-            where('tanggal_penjualan', '>=', dateRange.from.toISOString().split('T')[0]),
-            where('tanggal_penjualan', '<=', (dateRange.to || new Date()).toISOString().split('T')[0])
+            where('tanggal_penjualan', '>=', format(dateRange.from, 'yyyy-MM-dd')),
+            where('tanggal_penjualan', '<=', format(dateRange.to || new Date(), 'yyyy-MM-dd'))
         );
 
         const salesSnapshot = await getDocs(salesQuery);
@@ -148,14 +294,20 @@ export const useReportStore = create<ReportState>((set, get) => ({
         const productIds = Array.from(new Set(sales.flatMap(s => s.items.map(i => i.produk_id))));
         const productsMap = new Map<string, number>();
 
-        // Fetch product costs in chunks if necessary
         if (productIds.length > 0) {
             const productsRef = collection(firestore, 'products');
-            const productQuery = query(productsRef, where('__name__', 'in', productIds));
-            const productsSnapshot = await getDocs(productQuery);
-            productsSnapshot.forEach(doc => {
-                productsMap.set(doc.id, doc.data().harga_modal || 0);
-            });
+            // Firestore 'in' query has a limit of 30 items
+            const productChunks: string[][] = [];
+            for (let i = 0; i < productIds.length; i += 30) {
+                productChunks.push(productIds.slice(i, i + 30));
+            }
+            for (const chunk of productChunks) {
+                const productQuery = query(productsRef, where('__name__', 'in', chunk));
+                const productsSnapshot = await getDocs(productQuery);
+                productsSnapshot.forEach(doc => {
+                    productsMap.set(doc.id, doc.data().harga_modal || 0);
+                });
+            }
         }
         
         let totalRevenue = 0;
@@ -207,8 +359,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
         salesRef,
         where('branchId', '==', branchId),
         where('status', 'in', ['LUNAS', 'DIKIRIM']),
-        where('tanggal_penjualan', '>=', dateRange.from.toISOString().split('T')[0]),
-        where('tanggal_penjualan', '<=', (dateRange.to || new Date()).toISOString().split('T')[0])
+        where('tanggal_penjualan', '>=', format(dateRange.from, 'yyyy-MM-dd')),
+        where('tanggal_penjualan', '<=', format(dateRange.to || new Date(), 'yyyy-MM-dd'))
       );
 
       const salesSnapshot = await getDocs(salesQuery);
@@ -217,20 +369,25 @@ export const useReportStore = create<ReportState>((set, get) => ({
       const productIds = Array.from(new Set(sales.flatMap(s => s.items.map(i => i.produk_id))));
       const productsMap = new Map<string, { nama_produk: string, harga_modal: number }>();
 
-      if (productIds.length > 0) {
-        const productsRef = collection(firestore, 'products');
-        const productQuery = query(productsRef, where('__name__', 'in', productIds));
-        const productsSnapshot = await getDocs(productQuery);
-        productsSnapshot.forEach(doc => {
-          const data = doc.data();
-          productsMap.set(doc.id, { nama_produk: data.nama_produk, harga_modal: data.harga_modal || 0 });
-        });
-      }
+       if (productIds.length > 0) {
+            const productsRef = collection(firestore, 'products');
+            const productChunks: string[][] = [];
+            for (let i = 0; i < productIds.length; i += 30) {
+                productChunks.push(productIds.slice(i, i + 30));
+            }
+            for (const chunk of productChunks) {
+                const productQuery = query(productsRef, where('__name__', 'in', chunk));
+                const productsSnapshot = await getDocs(productQuery);
+                productsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    productsMap.set(doc.id, { nama_produk: data.nama_produk, harga_modal: data.harga_modal || 0 });
+                });
+            }
+        }
 
       const cogsItems: CogsItem[] = [];
       let totalRevenue = 0;
       let totalCogs = 0;
-      let totalMargin = 0;
 
       for (const sale of sales) {
         for (const item of sale.items) {
@@ -257,14 +414,12 @@ export const useReportStore = create<ReportState>((set, get) => ({
         }
       }
 
-      totalMargin = totalRevenue - totalCogs;
-
       set({
         cogsData: cogsItems,
         cogsSummary: {
           totalRevenue,
           totalCogs,
-          totalMargin,
+          totalMargin: totalRevenue - totalCogs,
         },
         isFetching: false,
       });

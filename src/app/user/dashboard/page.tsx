@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -9,159 +9,178 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Activity, Package, ShoppingCart, Link2Off, Database, Loader2 } from "lucide-react";
-import { userMock } from "@/lib/mock/user";
-import { useAuthStore } from "@/store/auth-store";
-import { Button } from "@/components/ui/button";
-import { useFirebaseStore } from "@/store/firebase-store";
-import { toast } from "@/hooks/use-toast";
-import { seedProducts } from "@/lib/seeder";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+import {
+  Activity,
+  CreditCard,
+  DollarSign,
+  Package,
+  TrendingUp,
+  Loader2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { useReportStore, DashboardData } from "@/store/report-store";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+type ChartTimeRange = '7d' | '30d';
 
 export default function UserDashboardPage() {
-  const { name, recentActivities, inventorySummary } = userMock;
-  const { userProfile } = useAuthStore();
-  const { firestore } = useFirebaseStore();
-  const [isSeeding, setIsSeeding] = useState(false);
+  const { 
+    dashboardData, 
+    fetchDashboardData, 
+    isFetching 
+  } = useReportStore();
+  
+  const [timeRange, setTimeRange] = useState<ChartTimeRange>('7d');
 
-  const handleSeedData = async () => {
-    if (!firestore || !userProfile?.branchId) {
-      toast({
-        variant: "destructive",
-        title: "Gagal Seed Data",
-        description: "Tidak dapat terhubung ke database atau branch ID tidak ditemukan.",
-      });
-      return;
-    }
-    setIsSeeding(true);
-    try {
-      await seedProducts(firestore, userProfile.branchId);
-      toast({
-        title: "Seeding Berhasil",
-        description: "50 produk contoh telah berhasil ditambahkan ke database.",
-      });
-    } catch (error) {
-      console.error("Seeding failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Seeding Gagal",
-        description: "Terjadi kesalahan saat menambahkan data contoh.",
-      });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
+  useEffect(() => {
+    fetchDashboardData(timeRange);
+  }, [fetchDashboardData, timeRange]);
 
-
-  if (!userProfile?.branchId) {
-    return (
-      <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm py-24">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Link2Off className="h-12 w-12 text-muted-foreground" />
-          <h3 className="text-2xl font-bold tracking-tight">
-            Akun Anda Belum Tertaut
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Anda belum ditugaskan ke cabang mana pun. Silakan hubungi administrator Anda.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const { summary, topProducts, chartData } = dashboardData || {};
 
   return (
     <div className="flex flex-col gap-4 py-4">
-      <h1 className="text-lg font-semibold md:text-2xl font-headline">Selamat Datang, {userProfile.name}!</h1>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Barang Tersedia</CardTitle>
+            <CardTitle className="text-sm font-medium">Penjualan Hari Ini</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
+              <>
+                <div className="text-2xl font-bold">Rp{summary?.todayRevenue.toLocaleString('id-ID') || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  vs kemarin: Rp{summary?.yesterdayRevenue.toLocaleString('id-ID') || 0}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Laba Hari Ini</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+             {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
+              <>
+                <div className="text-2xl font-bold">Rp{summary?.todayProfit.toLocaleString('id-ID') || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Estimasi laba kotor
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Transaksi Hari Ini</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+             {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
+                <div className="text-2xl font-bold">+{summary?.todayTransactions || 0}</div>
+             )}
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stok Rendah</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inventorySummary.inStock}</div>
-            <p className="text-xs text-muted-foreground">
-              di {inventorySummary.categories} kategori
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pembelian Tertunda</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inventorySummary.pendingPurchases}</div>
-            <p className="text-xs text-muted-foreground">
-              Menunggu pengiriman
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aktivitas Terkini</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-sm text-muted-foreground">
-                {recentActivities.length > 0 ? (
-                    <ul>
-                        {recentActivities.map((activity, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                                <span className="font-semibold">{activity.action}:</span>
-                                <span>{activity.details}</span>
-                                <span className="text-xs text-gray-500">({activity.time})</span>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>Tidak ada aktivitas terkini.</p>
-                )}
-             </div>
+             {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
+                <div className="text-2xl font-bold">{summary?.lowStockItems || 0}</div>
+             )}
           </CardContent>
         </Card>
       </div>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-            <CardHeader>
-                <CardTitle>Aksi Pengguna</CardTitle>
-                <CardDescription>Aksi cepat untuk tugas harian Anda.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm py-24">
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <h3 className="text-2xl font-bold tracking-tight">
-                    Fitur spesifik pengguna segera hadir
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                    Anda akan dapat melakukan aksi di sini.
-                    </p>
-                </div>
-                </div>
-            </CardContent>
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader className="flex flex-row items-center">
+            <div className="grid gap-2">
+              <CardTitle>Ikhtisar Penjualan & Laba</CardTitle>
+              <CardDescription>
+                Pendapatan dan laba kotor selama {timeRange === '7d' ? '7' : '30'} hari terakhir.
+              </CardDescription>
+            </div>
+            <Select value={timeRange} onValueChange={(value: ChartTimeRange) => setTimeRange(value)}>
+                <SelectTrigger className="w-[160px] ml-auto">
+                    <SelectValue placeholder="Pilih rentang" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="7d">7 Hari Terakhir</SelectItem>
+                    <SelectItem value="30d">30 Hari Terakhir</SelectItem>
+                </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {isFetching ? <div className="h-[350px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+              <ChartContainer
+                  config={{
+                      penjualan: {
+                          label: 'Penjualan',
+                          color: 'hsl(var(--primary))',
+                      },
+                       laba: {
+                          label: 'Laba',
+                          color: 'hsl(var(--chart-2))',
+                      },
+                  }}
+                  className="min-h-[350px] w-full"
+              >
+                  <BarChart accessibilityLayer data={chartData}>
+                      <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                      />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${Number(value) / 1000}k`} />
+                      <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent />} />
+                      <Bar dataKey="penjualan" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="laba" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
         </Card>
         <Card>
             <CardHeader>
-              <CardTitle>Aksi Development</CardTitle>
-              <CardDescription>Gunakan tombol di bawah ini untuk mengisi data contoh.</CardDescription>
+                <CardTitle>Produk Terlaris Hari Ini</CardTitle>
+                <CardDescription>5 produk dengan kuantitas penjualan tertinggi hari ini.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={handleSeedData} disabled={isSeeding}>
-                {isSeeding ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    Seed 50 Produk
-                  </>
-                )}
-              </Button>
+               {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
+                 topProducts && topProducts.length > 0 ? (
+                    <div className="space-y-4">
+                        {topProducts.map((product, index) => (
+                            <div key={index} className="flex items-center">
+                                <div>
+                                    <p className="text-sm font-medium leading-none">{product.nama_produk}</p>
+                                    <p className="text-sm text-muted-foreground">{product.kode_produk}</p>
+                                </div>
+                                <div className="ml-auto font-medium">{product.total_quantity} terjual</div>
+                            </div>
+                        ))}
+                    </div>
+                 ) : (
+                    <div className="text-sm text-muted-foreground">Belum ada penjualan hari ini.</div>
+                 )
+               )}
             </CardContent>
         </Card>
-       </div>
+      </div>
     </div>
   );
 }
