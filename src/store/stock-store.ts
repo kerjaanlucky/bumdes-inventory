@@ -1,6 +1,7 @@
+"use client";
 
 import { create } from 'zustand';
-import { StockMovement } from '@/lib/types';
+import { StockMovement, Product } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { DateRange } from 'react-day-picker';
 import {
@@ -19,11 +20,32 @@ import {
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking } from '@/firebase';
+import { endOfDay } from 'date-fns';
 
 export type StockReport = {
   openingBalance: number;
   closingBalance: number;
   movements: StockMovement[];
+}
+
+export type StockValuationItem = {
+    id: string;
+    kode_produk: string;
+    nama_produk: string;
+    stock: number;
+    harga_modal: number;
+    total_value: number;
+}
+
+export type StockValuationReport = {
+    allItems: StockValuationItem[];
+    paginatedItems: StockValuationItem[];
+    summary: {
+        totalItems: number;
+        totalStock: number;
+        totalValue: number;
+    };
+    totalProducts: number;
 }
 
 type StockState = {
@@ -34,28 +56,39 @@ type StockState = {
   searchTerm: string;
   dateRange?: DateRange;
   isFetching: boolean;
+  
+  // New state for valuation report
+  valuationReport: StockValuationReport | null;
+  reportDate: Date;
+  
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   setDateRange: (dateRange?: DateRange) => void;
+  setReportDate: (date: Date) => void;
+
   fetchMovements: (productId?: string) => Promise<void>;
   addStockMovement: (movement: Omit<StockMovement, 'id' | 'branchId'>) => Promise<void>;
   fetchStockReport: (productId: string, dateRange: DateRange) => Promise<StockReport | null>;
+  fetchStockValuationReport: () => Promise<void>;
 };
 
 export const useStockStore = create<StockState>((set, get) => ({
   movements: [],
   total: 0,
   page: 1,
-  limit: 10,
+  limit: 50,
   searchTerm: '',
   dateRange: undefined,
   isFetching: false,
+  valuationReport: null,
+  reportDate: new Date(),
 
   setPage: (page) => set({ page }),
   setLimit: (limit) => set({ limit, page: 1 }),
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
   setDateRange: (dateRange?: DateRange) => set({ dateRange, page: 1 }),
+  setReportDate: (date: Date) => set({ reportDate: date, page: 1 }),
 
   fetchMovements: async (productId?: string) => {
     const { firestore } = useFirebaseStore.getState();
@@ -92,7 +125,7 @@ export const useStockStore = create<StockState>((set, get) => ({
       
       // Pagination logic
       if (page > 1) {
-        const prevPageQuery = query(movementsRef, ...finalQueryConstraints.slice(0, -1), firestoreLimit((page - 1) * limit));
+        const prevPageQuery = query(movementsRef, ...queryConstraints, orderBy('tanggal', 'desc'), firestoreLimit((page - 1) * limit));
         const prevPageSnapshot = await getDocs(prevPageQuery);
         const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
         if (lastVisible) {
@@ -154,7 +187,10 @@ export const useStockStore = create<StockState>((set, get) => ({
             where('tanggal', '<', dateRange.from.toISOString())
         );
         const openingSnapshot = await getDocs(openingBalanceQuery);
-        const openingBalance = openingSnapshot.docs.reduce((acc, doc) => acc + doc.data().jumlah, 0);
+        let openingBalance = 0;
+        openingSnapshot.docs.forEach(doc => {
+            openingBalance += doc.data().jumlah;
+        });
 
         // 2. Get Movements within Date Range
         const movementsQuery = query(
@@ -189,6 +225,75 @@ export const useStockStore = create<StockState>((set, get) => ({
         set({ isFetching: false });
     }
   },
-}));
+  
+  fetchStockValuationReport: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    const { reportDate, page, limit } = get();
 
-    
+    if (!firestore || !branchId) return;
+    set({ isFetching: true });
+
+    try {
+        // 1. Get all products for the branch
+        const productsRef = collection(firestore, 'products');
+        const productsQuery = query(productsRef, where('branchId', '==', branchId));
+        const productsSnapshot = await getDocs(productsQuery);
+        const allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+
+        // 2. Get all relevant stock movements up to the report date
+        const movementsRef = collection(firestore, 'stocks');
+        const movementsQuery = query(
+            movementsRef,
+            where('branchId', '==', branchId),
+            where('tanggal', '<=', endOfDay(reportDate).toISOString())
+        );
+        const movementsSnapshot = await getDocs(movementsQuery);
+        
+        // 3. Process movements into a map for quick lookup
+        const stockMap = new Map<string, number>();
+        movementsSnapshot.docs.forEach(doc => {
+            const movement = doc.data();
+            const currentStock = stockMap.get(movement.produk_id) || 0;
+            stockMap.set(movement.produk_id, currentStock + movement.jumlah);
+        });
+
+        // 4. Calculate valuation for each product
+        const allItems: StockValuationItem[] = allProducts.map(product => {
+            const stock = stockMap.get(product.id) || 0;
+            return {
+                id: product.id,
+                kode_produk: product.kode_produk,
+                nama_produk: product.nama_produk,
+                stock,
+                harga_modal: product.harga_modal,
+                total_value: stock * product.harga_modal,
+            };
+        });
+
+        // 5. Calculate summary
+        const totalValue = allItems.reduce((acc, item) => acc + item.total_value, 0);
+        const totalStock = allItems.reduce((acc, item) => acc + item.stock, 0);
+        const totalItems = allItems.length;
+
+        // 6. Paginate results
+        const paginatedItems = allItems.slice((page - 1) * limit, page * limit);
+        
+        set({
+            valuationReport: {
+                allItems,
+                paginatedItems,
+                summary: { totalItems, totalStock, totalValue },
+                totalProducts: allItems.length,
+            },
+            isFetching: false,
+            total: allItems.length
+        });
+    } catch (error) {
+        console.error("Failed to fetch stock valuation report:", error);
+        toast({ variant: "destructive", title: "Gagal Membuat Laporan", description: "Terjadi kesalahan." });
+        set({ isFetching: false, valuationReport: null });
+    }
+  },
+
+}));
