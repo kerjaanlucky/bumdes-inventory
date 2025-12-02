@@ -8,6 +8,18 @@ import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { useCategoryStore } from './category-store';
 import { useUnitStore } from './unit-store';
+import { toast } from '@/hooks/use-toast';
+
+
+type ParsedProduct = {
+  nama_produk: string;
+  kode_produk: string;
+  nama_kategori: string;
+  nama_satuan: string;
+  stok: number;
+  harga_modal: number;
+  harga_jual: number;
+};
 
 type ProductState = {
   products: Product[];
@@ -29,6 +41,7 @@ type ProductState = {
   deleteProduct: (productId: string) => Promise<void>;
   deleteAllProducts: () => Promise<void>;
   getProductById: (productId: string) => Promise<Product | undefined>;
+  importProducts: (products: ParsedProduct[]) => Promise<void>;
 };
 
 export const useProductStore = create<ProductState>((set, get) => ({
@@ -217,4 +230,76 @@ export const useProductStore = create<ProductState>((set, get) => ({
       set({ isFetching: false });
     }
   },
+
+  importProducts: async (productsToImport) => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
+    set({ isSubmitting: true });
+    toast({ title: 'Memulai Impor', description: 'Memproses kategori dan satuan...' });
+
+    try {
+      const batch = writeBatch(firestore);
+      const categoriesRef = collection(firestore, 'categories');
+      const unitsRef = collection(firestore, 'units');
+      const productsRef = collection(firestore, 'products');
+
+      // 1. Fetch existing categories and units for the branch
+      const existingCategoriesQuery = query(categoriesRef, where('branchId', '==', branchId));
+      const existingUnitsQuery = query(unitsRef, where('branchId', '==', branchId));
+      const [categoriesSnapshot, unitsSnapshot] = await Promise.all([getDocs(existingCategoriesQuery), getDocs(existingUnitsQuery)]);
+      const categoryMap = new Map(categoriesSnapshot.docs.map(doc => [doc.data().nama_kategori.toLowerCase(), doc.id]));
+      const unitMap = new Map(unitsSnapshot.docs.map(doc => [doc.data().nama_satuan.toLowerCase(), doc.id]));
+
+      // 2. Identify and create new categories/units
+      for (const product of productsToImport) {
+        const categoryName = product.nama_kategori.toLowerCase();
+        if (!categoryMap.has(categoryName)) {
+          const newCategoryRef = doc(categoriesRef);
+          batch.set(newCategoryRef, { nama_kategori: product.nama_kategori, branchId });
+          categoryMap.set(categoryName, newCategoryRef.id); // Add to map to prevent duplicates in this batch
+        }
+
+        const unitName = product.nama_satuan.toLowerCase();
+        if (!unitMap.has(unitName)) {
+          const newUnitRef = doc(unitsRef);
+          batch.set(newUnitRef, { nama_satuan: product.nama_satuan, branchId });
+          unitMap.set(unitName, newUnitRef.id);
+        }
+      }
+
+      toast({ title: 'Memproses Impor', description: 'Menyiapkan data produk...' });
+
+      // 3. Prepare products for batch write
+      for (const product of productsToImport) {
+        const productDocRef = doc(productsRef);
+        const newProduct: Omit<Product, 'id'> = {
+          nama_produk: product.nama_produk,
+          kode_produk: product.kode_produk,
+          stok: product.stok,
+          harga_modal: product.harga_modal,
+          harga_jual: product.harga_jual,
+          kategori_id: categoryMap.get(product.nama_kategori.toLowerCase())!,
+          satuan_id: unitMap.get(product.nama_satuan.toLowerCase())!,
+          branchId: branchId,
+          status: 'Tersedia',
+        };
+        batch.set(productDocRef, newProduct);
+      }
+
+      // 4. Commit the batch
+      await batch.commit();
+      
+      toast({ title: 'Impor Selesai', description: `${productsToImport.length} produk berhasil diimpor.` });
+      await get().fetchProducts(); // Refresh product list
+
+    } catch (error) {
+      console.error("Failed to import products:", error);
+      toast({ variant: 'destructive', title: 'Impor Gagal', description: 'Terjadi kesalahan saat menyimpan data.' });
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+
 }));
