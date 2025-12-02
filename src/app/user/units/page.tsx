@@ -133,7 +133,7 @@ export default function UnitsPage() {
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>ID</TableHead>
+                    <TableHead className="w-[80px]">No.</TableHead>
                     <TableHead>Nama Satuan</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
@@ -147,9 +147,9 @@ export default function UnitsPage() {
                       <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : units.map(unit => (
+                ) : units.map((unit, index) => (
                     <TableRow key={unit.id}>
-                        <TableCell className="font-mono text-xs">{unit.id}</TableCell>
+                        <TableCell>{(page - 1) * limit + index + 1}</TableCell>
                         <TableCell className="font-medium">{unit.nama_satuan}</TableCell>
                         <TableCell className="text-right">
                           <TooltipProvider>
