@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -25,6 +26,9 @@ export default function ExpenseCategoriesPage() {
   const router = useRouter();
   const { 
     expenseCategories,
+    isFetching,
+    isSubmitting,
+    isDeleting,
     fetchExpenseCategories,
     addExpenseCategory,
     editExpenseCategory,
@@ -32,20 +36,12 @@ export default function ExpenseCategoriesPage() {
   } = useExpenseCategoryStore();
   const { toast } = useToast();
   
-  const [isFetching, setIsFetching] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
-        setIsFetching(true);
-        await fetchExpenseCategories();
-        setIsFetching(false);
-    }
-    loadData();
+    fetchExpenseCategories();
   }, [fetchExpenseCategories]);
 
   const handleDeleteClick = (category: ExpenseCategory) => {
@@ -55,12 +51,10 @@ export default function ExpenseCategoriesPage() {
 
   const handleConfirmDelete = async () => {
     if (selectedCategory) {
-      setIsDeleting(true);
       await deleteExpenseCategory(selectedCategory.id);
-      setIsDeleting(false);
+      toast({ title: "Kategori Dihapus" });
       setDeleteDialogOpen(false);
       setSelectedCategory(null);
-      toast({ title: "Kategori Dihapus" });
     }
   };
 
@@ -75,7 +69,6 @@ export default function ExpenseCategoriesPage() {
   };
   
   const handleFormSubmit = async (values: { nama_kategori: string }) => {
-    setIsSubmitting(true);
     if (selectedCategory) {
       await editExpenseCategory({ ...selectedCategory, nama_kategori: values.nama_kategori });
       toast({ title: "Kategori Diperbarui" });
@@ -83,7 +76,6 @@ export default function ExpenseCategoriesPage() {
       await addExpenseCategory(values);
       toast({ title: "Kategori Ditambahkan" });
     }
-    setIsSubmitting(false);
     setFormModalOpen(false);
     setSelectedCategory(null);
   }

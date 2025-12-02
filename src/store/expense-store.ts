@@ -1,3 +1,6 @@
+
+"use client";
+
 import { create } from 'zustand';
 import { Expense, ExpenseCategory } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
@@ -21,6 +24,9 @@ import { startOfDay, endOfDay } from 'date-fns';
 // == CATEGORY STATE ==
 type ExpenseCategoryState = {
   expenseCategories: ExpenseCategory[];
+  isFetching: boolean;
+  isSubmitting: boolean;
+  isDeleting: boolean;
   fetchExpenseCategories: () => Promise<void>;
   addExpenseCategory: (category: { nama_kategori: string }) => Promise<void>;
   editExpenseCategory: (category: ExpenseCategory) => Promise<void>;
@@ -29,51 +35,65 @@ type ExpenseCategoryState = {
 
 export const useExpenseCategoryStore = create<ExpenseCategoryState>((set, get) => ({
   expenseCategories: [],
+  isFetching: false,
+  isSubmitting: false,
+  isDeleting: false,
   fetchExpenseCategories: async () => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
+    set({ isFetching: true });
     try {
       const categoriesRef = collection(firestore, 'expenseCategories');
       const q = query(categoriesRef, where("branchId", "==", branchId), orderBy("nama_kategori"));
       const querySnapshot = await getDocs(q);
       const categories = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExpenseCategory));
-      set({ expenseCategories: categories });
+      set({ expenseCategories: categories, isFetching: false });
     } catch (error) {
       console.error("Failed to fetch expense categories:", error);
+      set({ isFetching: false });
     }
   },
   addExpenseCategory: async (category) => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
-
+    
+    set({ isSubmitting: true });
     try {
       await addDoc(collection(firestore, 'expenseCategories'), { ...category, branchId });
-      get().fetchExpenseCategories();
+      await get().fetchExpenseCategories();
     } catch (error) {
       console.error("Failed to add expense category:", error);
+    } finally {
+      set({ isSubmitting: false });
     }
   },
   editExpenseCategory: async (category) => {
     const { firestore } = useFirebaseStore.getState();
     if (!firestore) return;
+    set({ isSubmitting: true });
     try {
       await setDoc(doc(firestore, 'expenseCategories', category.id), category, { merge: true });
-      get().fetchExpenseCategories();
+      await get().fetchExpenseCategories();
     } catch (error) {
       console.error("Failed to edit expense category:", error);
+    } finally {
+      set({ isSubmitting: false });
     }
   },
   deleteExpenseCategory: async (categoryId) => {
     const { firestore } = useFirebaseStore.getState();
     if (!firestore) return;
+    set({ isDeleting: true });
     try {
       await deleteDoc(doc(firestore, 'expenseCategories', categoryId));
-      get().fetchExpenseCategories();
+      await get().fetchExpenseCategories();
     } catch (error) {
       console.error("Failed to delete expense category:", error);
+    } finally {
+      set({ isDeleting: false });
     }
   },
 }));
