@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'InventoryFlow',
+  title: 'Bumdes App',
   description: 'Streamline Your Stock Management Across All Branches.',
 };
 

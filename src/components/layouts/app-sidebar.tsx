@@ -25,7 +25,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
          <Link href="#" className="flex items-center gap-2 font-semibold text-primary">
             <Icons.logo className="h-6 w-6" />
-            <span className="group-data-[collapsible=icon]:hidden">InventoryFlow</span>
+            <span className="group-data-[collapsible=icon]:hidden">Bumdes App</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>

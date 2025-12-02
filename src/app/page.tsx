@@ -8,23 +8,15 @@ export default function Home() {
       <header className="px-4 lg:px-6 h-16 flex items-center border-b">
         <Link href="#" className="flex items-center justify-center" prefetch={false}>
           <Combine className="h-6 w-6 text-primary" />
-          <span className="ml-2 text-lg font-semibold">InventoryFlow</span>
+          <span className="ml-2 text-lg font-semibold">Bumdes App</span>
         </Link>
       </header>
-      <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
+      <main className="flex-1 flex items-center justify-center">
+        <section className="w-full">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none font-headline">
-                  Sederhanakan Manajemen Stok Anda
-                </h1>
-                <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                  InventoryFlow menyediakan solusi komprehensif untuk mengelola barang, melacak stok, dan menangani pembelian dan penjualan di semua cabang Anda.
-                </p>
-              </div>
               <div className="space-x-4">
-                <Button asChild>
+                <Button asChild size="lg">
                   <Link href="/login">Mulai</Link>
                 </Button>
               </div>
@@ -32,17 +24,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 InventoryFlow. Hak cipta dilindungi undang-undang.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Ketentuan Layanan
-          </Link>
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Privasi
-          </Link>
-        </nav>
-      </footer>
     </div>
   );
 }

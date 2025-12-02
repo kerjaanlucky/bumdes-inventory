@@ -85,7 +85,7 @@ export default function LoginPage() {
             <Icons.logo className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl text-center font-headline">
-            Masuk ke InventoryFlow
+            Masuk ke Bumdes App
           </CardTitle>
           <CardDescription className="text-center">
             Gunakan email dan password atau penyedia lain untuk masuk.
