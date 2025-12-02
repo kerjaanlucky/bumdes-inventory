@@ -2,7 +2,7 @@
 "use client";
 
 import { create } from 'zustand';
-import { Sale, CogsItem, Product } from '@/lib/types';
+import { Sale, CogsItem, Product, Expense } from '@/lib/types';
 import { DateRange } from 'react-day-picker';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
@@ -15,6 +15,7 @@ export type DashboardSummary = {
   todayProfit: number;
   todayTransactions: number;
   lowStockItems: number;
+  todayExpenses: number;
 };
 
 export type DashboardChartData = {
@@ -63,7 +64,7 @@ type ReportState = {
   fetchSalesReport: () => Promise<void>;
   fetchProfitAndLossReport: () => Promise<void>;
   fetchCogsReport: () => Promise<void>;
-  fetchDashboardData: (timeRange: '7d' | '30d') => Promise<void>;
+  fetchDashboardData: (timeRange: '1d' | '7d' | '30d') => Promise<void>;
 };
 
 const initialSummary: SalesReportSummary = {
@@ -93,6 +94,7 @@ const initialDashboardData: DashboardData = {
         todayProfit: 0,
         todayTransactions: 0,
         lowStockItems: 0,
+        todayExpenses: 0,
     },
     topProducts: [],
     chartData: [],
@@ -123,26 +125,43 @@ export const useReportStore = create<ReportState>((set, get) => ({
     try {
         const today = new Date();
         const yesterday = subDays(today, 1);
-        const startDate = subDays(today, timeRange === '7d' ? 6 : 29);
+        
+        let daysToFetch;
+        if (timeRange === '1d') daysToFetch = 0;
+        else if (timeRange === '7d') daysToFetch = 6;
+        else daysToFetch = 29;
 
+        const startDate = subDays(today, daysToFetch);
+        const startDateString = format(startDate, 'yyyy-MM-dd');
+        
         // --- Queries ---
         const salesRef = collection(firestore, 'sales');
         const salesQuery = query(
             salesRef,
             where('branchId', '==', branchId),
             where('status', 'in', ['LUNAS', 'DIKIRIM']),
-            where('tanggal_penjualan', '>=', format(startDate, 'yyyy-MM-dd'))
+            where('tanggal_penjualan', '>=', startDateString)
         );
+        
+        const expensesRef = collection(firestore, 'expenses');
+        const expensesQuery = query(
+            expensesRef,
+            where('branchId', '==', branchId),
+            where('tanggal', '>=', startOfDay(startDate))
+        );
+
         const productsRef = collection(firestore, 'products');
         const productsQuery = query(productsRef, where('branchId', '==', branchId));
 
-        const [salesSnapshot, productsSnapshot] = await Promise.all([
+        const [salesSnapshot, productsSnapshot, expensesSnapshot] = await Promise.all([
             getDocs(salesQuery),
-            getDocs(productsQuery)
+            getDocs(productsQuery),
+            getDocs(expensesQuery)
         ]);
         
         const sales = salesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
         const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        const expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
         const productsMap = new Map(products.map(p => [p.id, p]));
 
         // --- Calculations ---
@@ -155,6 +174,15 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
         const todayStr = format(today, 'yyyy-MM-dd');
         const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+        
+        let todayExpenses = 0;
+        for (const expense of expenses) {
+            const expenseDate = format((expense.tanggal as any).toDate(), 'yyyy-MM-dd');
+            if (expenseDate === todayStr) {
+                todayExpenses += expense.jumlah;
+            }
+        }
+
 
         for (const sale of sales) {
             const saleDate = sale.tanggal_penjualan;
@@ -173,7 +201,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
             }
 
             // For chart
-            const formattedDate = format(new Date(saleDate), 'dd/MM');
+            const chartDateFormat = timeRange === '1d' ? 'HH:00' : 'dd/MM';
+            const formattedDate = format(new Date(sale.created_at), chartDateFormat);
             const dayData = chartDataMap.get(formattedDate) || { penjualan: 0, laba: 0 };
             dayData.penjualan += sale.total_harga;
             for (const item of sale.items) {
@@ -197,19 +226,31 @@ export const useReportStore = create<ReportState>((set, get) => ({
                 };
             });
             
-        const chartData = Array.from({ length: timeRange === '7d' ? 7 : 30 }, (_, i) => {
-            const date = subDays(today, i);
-            const formattedDate = format(date, 'dd/MM');
-            return {
-                date: formattedDate,
-                penjualan: chartDataMap.get(formattedDate)?.penjualan || 0,
-                laba: chartDataMap.get(formattedDate)?.laba || 0,
-            };
-        }).reverse();
+        let chartData: DashboardChartData[] = [];
+        if (timeRange === '1d') {
+             chartData = Array.from({ length: 24 }, (_, i) => {
+                const hour = String(i).padStart(2, '0') + ':00';
+                return {
+                    date: hour,
+                    penjualan: chartDataMap.get(hour)?.penjualan || 0,
+                    laba: chartDataMap.get(hour)?.laba || 0,
+                };
+            });
+        } else {
+             chartData = Array.from({ length: daysToFetch + 1 }, (_, i) => {
+                const date = subDays(today, i);
+                const formattedDate = format(date, 'dd/MM');
+                return {
+                    date: formattedDate,
+                    penjualan: chartDataMap.get(formattedDate)?.penjualan || 0,
+                    laba: chartDataMap.get(formattedDate)?.laba || 0,
+                };
+            }).reverse();
+        }
 
         set({
             dashboardData: {
-                summary: { todayRevenue, yesterdayRevenue, todayProfit, todayTransactions, lowStockItems },
+                summary: { todayRevenue, yesterdayRevenue, todayProfit, todayTransactions, lowStockItems, todayExpenses },
                 topProducts,
                 chartData,
             },
@@ -430,3 +471,5 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
   },
 }));
+
+    

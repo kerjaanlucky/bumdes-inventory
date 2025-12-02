@@ -27,6 +27,7 @@ import {
   Hand,
   Sparkles,
   Crown,
+  Landmark,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
@@ -36,7 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
-type ChartTimeRange = '7d' | '30d';
+type ChartTimeRange = '1d' | '7d' | '30d';
 
 export default function UserDashboardPage() {
   const { 
@@ -46,7 +47,7 @@ export default function UserDashboardPage() {
   } = useReportStore();
   const { user } = useAuthStore();
   
-  const [timeRange, setTimeRange] = useState<ChartTimeRange>('7d');
+  const [timeRange, setTimeRange] = useState<ChartTimeRange>('1d');
 
   useEffect(() => {
     fetchDashboardData(timeRange);
@@ -55,31 +56,42 @@ export default function UserDashboardPage() {
   const { summary, topProducts, chartData } = dashboardData || {};
   
   const greetingDate = format(new Date(), "eeee, dd MMMM yyyy", { locale: id });
+  
+  const getChartLabel = () => {
+    switch (timeRange) {
+        case '1d': return 'hari ini';
+        case '7d': return '7 hari terakhir';
+        case '30d': return '30 hari terakhir';
+        default: return '';
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6 py-4">
       
       {/* Greeting Header */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-2xl font-bold font-headline">
-          <Hand className="h-7 w-7 text-yellow-400 -rotate-12" />
-          <h1>Selamat Datang Kembali, {user?.displayName?.split(' ')[0] || 'Pengguna'}!</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-2xl font-bold font-headline">
+            <Hand className="h-7 w-7 text-yellow-400 -rotate-12" />
+            <h1>Selamat Datang Kembali, {user?.displayName?.split(' ')[0] || 'Pengguna'}!</h1>
+            </div>
+            <p className="text-muted-foreground">{greetingDate}. Semangat untuk mencapai target hari ini! ✨</p>
         </div>
-        <p className="text-muted-foreground">{greetingDate}. Semangat untuk mencapai target hari ini! ✨</p>
+         <div className="flex justify-end">
+            <Select value={timeRange} onValueChange={(value: ChartTimeRange) => setTimeRange(value)}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Pilih rentang waktu" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="1d">Hari Ini</SelectItem>
+                    <SelectItem value="7d">7 Hari Terakhir</SelectItem>
+                    <SelectItem value="30d">30 Hari Terakhir</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
       </div>
       
-      {/* Filters */}
-       <div className="flex justify-end">
-        <Select value={timeRange} onValueChange={(value: ChartTimeRange) => setTimeRange(value)}>
-            <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Pilih rentang waktu" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="7d">7 Hari Terakhir</SelectItem>
-                <SelectItem value="30d">30 Hari Terakhir</SelectItem>
-            </SelectContent>
-        </Select>
-      </div>
       
       {/* Main Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -115,7 +127,18 @@ export default function UserDashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
+         <Card className="bg-red-500/10 border-red-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Biaya Hari Ini</CardTitle>
+            <Landmark className="h-5 w-5 text-red-500" />
+          </CardHeader>
+          <CardContent>
+             {isFetching ? <Loader2 className="h-8 w-8 animate-spin"/> : (
+                 <div className="text-3xl font-bold">Rp{summary?.todayExpenses.toLocaleString('id-ID') || 0}</div>
+             )}
+          </CardContent>
+        </Card>
+         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transaksi Hari Ini</CardTitle>
             <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -126,17 +149,6 @@ export default function UserDashboardPage() {
              )}
           </CardContent>
         </Card>
-         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Rendah</CardTitle>
-            <Package className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-             {isFetching ? <Loader2 className="h-8 w-8 animate-spin"/> : (
-                <div className="text-3xl font-bold">{summary?.lowStockItems || 0}</div>
-             )}
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid gap-6 md:gap-8 lg:grid-cols-3">
@@ -144,7 +156,7 @@ export default function UserDashboardPage() {
           <CardHeader>
             <CardTitle>Ikhtisar Penjualan & Laba</CardTitle>
             <CardDescription>
-              Pendapatan dan laba kotor selama {timeRange === '7d' ? '7' : '30'} hari terakhir.
+              Pendapatan dan laba kotor selama {getChartLabel()}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -184,7 +196,7 @@ export default function UserDashboardPage() {
                     <Crown className="h-5 w-5 text-amber-500" />
                     Produk Terlaris Hari Ini
                 </CardTitle>
-                <CardDescription>Top 5 produk terjual hari ini.</CardDescription>
+                <CardDescription>Top 5 produk terjual hari ini berdasarkan kuantitas.</CardDescription>
             </CardHeader>
             <CardContent>
                {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
@@ -214,3 +226,5 @@ export default function UserDashboardPage() {
     </div>
   );
 }
+
+    
