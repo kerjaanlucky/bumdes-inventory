@@ -151,12 +151,15 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     set({ isSubmitting: true });
     try {
       const purchasesRef = collection(firestore, 'purchases');
-      const poNumber = `PO-${Date.now()}`; 
+      const poNumber = `PO-${Date.now()}`;
+      const supplierName = useSupplierStore.getState().suppliers.find(s => s.id === purchase.supplier_id)?.nama_supplier || 'N/A';
       
       const newPurchaseData = {
         ...purchase,
         branchId,
         nomor_pembelian: poNumber,
+        no_faktur_supplier: purchase.no_faktur_supplier || `PO-${purchase.supplier_id}-${Date.now()}`,
+        nama_supplier: supplierName,
         status: 'DRAFT' as PurchaseStatus,
         created_at: new Date().toISOString(),
         history: [{ status: 'DRAFT' as PurchaseStatus, tanggal: new Date().toISOString(), oleh: 'System' }]
@@ -165,8 +168,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       const docRef = await addDoc(purchasesRef, newPurchaseData);
       toast({ title: "Pembelian Ditambahkan", description: "Draft pembelian baru telah berhasil dibuat." });
       
-      const supplierName = useSupplierStore.getState().suppliers.find(s => s.id === purchase.supplier_id)?.nama_supplier || 'N/A';
-      const purchaseWithSupplierName = { id: docRef.id, ...newPurchaseData, nama_supplier: supplierName };
+      const purchaseWithSupplierName = { id: docRef.id, ...newPurchaseData };
 
       set(state => ({
         purchases: [purchaseWithSupplierName, ...state.purchases],
