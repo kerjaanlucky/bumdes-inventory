@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -14,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Calendar as CalendarIcon, Save, PlusCircle } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Save, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -230,11 +231,12 @@ export default function NewStockOpnamePage() {
                             <TableHead className="w-40 text-center">Stok Fisik</TableHead>
                             <TableHead className="text-center">Selisih</TableHead>
                             <TableHead className="w-[25%]">Keterangan</TableHead>
+                            <TableHead className="text-right w-[50px]">Aksi</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {fields.length === 0 ? (
-                            <TableRow><TableCell colSpan={5} className="h-48 text-center">Belum ada produk yang ditambahkan.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="h-48 text-center">Belum ada produk yang ditambahkan.</TableCell></TableRow>
                         ) : fields.map((item, index) => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.nama_produk}</TableCell>
@@ -255,6 +257,11 @@ export default function NewStockOpnamePage() {
                                         name={`items.${index}.keterangan`}
                                         render={({ field }) => <Input placeholder="Contoh: Barang rusak" {...field} />}
                                     />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
