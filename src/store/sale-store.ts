@@ -1,5 +1,4 @@
 
-
 "use client";
 import { create } from 'zustand';
 import { Sale, PaginatedResponse, SaleItem, SaleStatus, SaleStatusHistory } from '@/lib/types';
@@ -16,6 +15,7 @@ import {
   deleteDoc,
   getDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
@@ -39,6 +39,7 @@ type SaleState = {
   addSale: (sale: Omit<Sale, 'id' | 'nomor_penjualan' | 'created_at' | 'status' | 'branchId' | 'history'> & { items: SaleItem[] }) => Promise<Sale | undefined>;
   editSale: (sale: Sale) => Promise<void>;
   deleteSale: (saleId: string) => Promise<void>;
+  deleteAllSales: () => Promise<void>;
   updateSaleStatus: (saleId: string, status: SaleStatus, note?: string) => Promise<void>;
 };
 
@@ -114,7 +115,6 @@ export const useSaleStore = create<SaleState>((set, get) => ({
       const docSnap = await getDoc(saleRef);
       if(docSnap.exists() && docSnap.data().branchId === branchId) {
         const saleData = { id: docSnap.id, ...docSnap.data() } as Sale;
-        // Fetch customer name if not present
         if(saleData.customer_id && !saleData.nama_customer) {
             const customerRef = doc(firestore, 'customers', saleData.customer_id);
             const customerSnap = await getDoc(customerRef);
@@ -182,7 +182,6 @@ export const useSaleStore = create<SaleState>((set, get) => ({
     try {
       await setDoc(saleRef, saleToSave, { merge: true });
       toast({ title: "Penjualan Diperbarui", description: "Perubahan pada penjualan telah berhasil disimpan." });
-      // Optimistically update local state
       set(state => ({
         sales: state.sales.map(s => s.id === updatedSale.id ? updatedSale : s)
       }));
@@ -209,6 +208,29 @@ export const useSaleStore = create<SaleState>((set, get) => ({
          toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus penjualan." });
       })
       .finally(() => set({ isDeleting: false }));
+  },
+
+  deleteAllSales: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const salesRef = collection(firestore, 'sales');
+        const q = query(salesRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchSales();
+    } catch(err) {
+        console.error("Failed to delete all sales:", err);
+    } finally {
+        set({ isDeleting: false });
+    }
   },
 
   updateSaleStatus: async (saleId, status, note) => {

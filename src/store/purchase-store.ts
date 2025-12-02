@@ -15,6 +15,7 @@ import {
   deleteDoc,
   getDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
@@ -42,6 +43,7 @@ type PurchaseState = {
   addPurchase: (purchase: Omit<Purchase, 'id' | 'nomor_pembelian' | 'created_at' | 'status' | 'branchId'>) => Promise<Purchase | undefined>;
   editPurchase: (purchase: Purchase) => Promise<void>;
   deletePurchase: (purchaseId: string) => Promise<void>;
+  deleteAllPurchases: () => Promise<void>;
   updatePurchaseStatus: (purchaseId: string, status: PurchaseStatus, note?: string) => Promise<void>;
   receiveItems: (purchaseId: string, receivedItems: PurchaseItem[]) => Promise<void>;
   finalizePurchase: (purchaseId: string) => Promise<void>;
@@ -224,6 +226,29 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
         set({ isDeleting: false });
     }
   },
+
+  deleteAllPurchases: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const purchasesRef = collection(firestore, 'purchases');
+        const q = query(purchasesRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchPurchases();
+    } catch(err) {
+        console.error("Failed to delete all purchases:", err);
+    } finally {
+        set({ isDeleting: false });
+    }
+  },
   
   updatePurchaseStatus: async (purchaseId, status, note) => {
     const currentPurchase = get().purchases.find(p => p.id === purchaseId) 
@@ -274,7 +299,6 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
           const product = await getProductById(receivedItem.produk_id);
           if (product) {
             const newStock = product.stok + quantityReceivedNow;
-            // Ensure product object has nama_satuan before creating stock movement
             const productWithUnit = product.nama_satuan ? product : {...product, nama_satuan: receivedItem.nama_satuan};
 
             await editProduct({ ...productWithUnit, stok: newStock }, true);
@@ -320,5 +344,3 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     await get().updatePurchaseStatus(purchaseId, 'DITERIMA_PENUH', 'Pesanan diselesaikan secara manual oleh pengguna.');
   },
 }));
-
-    

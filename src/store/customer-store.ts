@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { Customer } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where, writeBatch } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -25,6 +25,7 @@ type CustomerState = {
   addCustomer: (customer: Omit<Customer, 'id' | 'branchId'>) => Promise<Customer | undefined>;
   editCustomer: (customer: Customer) => Promise<void>;
   deleteCustomer: (customerId: string) => Promise<void>;
+  deleteAllCustomers: () => Promise<void>;
 };
 
 export const useCustomerStore = create<CustomerState>((set, get) => ({
@@ -54,9 +55,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       const { searchTerm, page, limit } = get();
       if (searchTerm) {
         // Firestore doesn't support case-insensitive `contains` search natively.
-        // A common practice is to store a lowercased version of the field.
-        // For now, we will filter client-side after fetching all. For large datasets,
-        // a more robust solution like Algolia or a different database structure is needed.
       }
       
       const q = query(customersRef, ...queryConstraints);
@@ -164,5 +162,28 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
          toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pelanggan." });
       })
       .finally(() => set({ isDeleting: false }));
+  },
+
+  deleteAllCustomers: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const customersRef = collection(firestore, 'customers');
+        const q = query(customersRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchCustomers();
+    } catch(err) {
+        console.error("Failed to delete all customers:", err);
+    } finally {
+        set({ isDeleting: false });
+    }
   },
 }));

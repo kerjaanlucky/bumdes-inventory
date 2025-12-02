@@ -1,8 +1,9 @@
+
 "use client";
 import { create } from 'zustand';
 import { Supplier } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where, or } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, getDoc, where, or, writeBatch } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -24,6 +25,7 @@ type SupplierState = {
   addSupplier: (supplier: Omit<Supplier, 'id' | 'branchId'>) => Promise<void>;
   editSupplier: (supplier: Supplier) => Promise<void>;
   deleteSupplier: (supplierId: string) => Promise<void>;
+  deleteAllSuppliers: () => Promise<void>;
 };
 
 export const useSupplierStore = create<SupplierState>((set, get) => ({
@@ -82,11 +84,9 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
-    // First check if the supplier is already in the local state
     const supplierInState = get().suppliers.find(s => s.id === supplierId);
     if(supplierInState) return supplierInState;
 
-    // If not, fetch from Firestore
     try {
       const supplierRef = doc(firestore, 'suppliers', supplierId);
       const docSnap = await getDoc(supplierRef);
@@ -164,5 +164,28 @@ export const useSupplierStore = create<SupplierState>((set, get) => ({
         toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pemasok." });
       })
       .finally(() => set({ isDeleting: false }));
+  },
+
+  deleteAllSuppliers: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const suppliersRef = collection(firestore, 'suppliers');
+        const q = query(suppliersRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchSuppliers();
+    } catch(err) {
+        console.error("Failed to delete all suppliers:", err);
+    } finally {
+        set({ isDeleting: false });
+    }
   },
 }));
