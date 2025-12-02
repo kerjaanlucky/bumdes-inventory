@@ -10,11 +10,14 @@ import { useCustomerStore } from "@/store/customer-store";
 import { useSupplierStore } from "@/store/supplier-store";
 import { useSaleStore } from "@/store/sale-store";
 import { usePurchaseStore } from "@/store/purchase-store";
+import { useCategoryStore } from "@/store/category-store";
+import { useUnitStore } from "@/store/unit-store";
+import { useExpenseStore, useExpenseCategoryStore } from "@/store/expense-store";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
-type ActionType = 'products' | 'customers' | 'suppliers' | 'sales' | 'purchases' | 'all';
+type ActionType = 'products' | 'customers' | 'suppliers' | 'sales' | 'purchases' | 'categories' | 'units' | 'expenseCategories' | 'expenses' | 'all';
 
 interface ActionConfig {
   title: string;
@@ -33,8 +36,12 @@ export function DangerZone() {
   const { deleteAllSuppliers, isDeleting: isDeletingSuppliers } = useSupplierStore();
   const { deleteAllSales, isDeleting: isDeletingSales } = useSaleStore();
   const { deleteAllPurchases, isDeleting: isDeletingPurchases } = usePurchaseStore();
+  const { deleteAllCategories, isDeleting: isDeletingCategories } = useCategoryStore();
+  const { deleteAllUnits, isDeleting: isDeletingUnits } = useUnitStore();
+  const { deleteAllExpenses, isDeleting: isDeletingExpenses } = useExpenseStore();
+  const { deleteAllExpenseCategories, isDeleting: isDeletingExpenseCategories } = useExpenseCategoryStore();
   
-  const isAnyTaskRunning = isDeletingProducts || isDeletingCustomers || isDeletingSuppliers || isDeletingSales || isDeletingPurchases;
+  const isAnyTaskRunning = isDeletingProducts || isDeletingCustomers || isDeletingSuppliers || isDeletingSales || isDeletingPurchases || isDeletingCategories || isDeletingUnits || isDeletingExpenses || isDeletingExpenseCategories;
 
   const actions: Record<ActionType, ActionConfig> = {
     products: {
@@ -67,15 +74,43 @@ export function DangerZone() {
       action: deleteAllPurchases,
       isSubmitting: isDeletingPurchases,
     },
+    expenses: {
+        title: "Hapus Semua Biaya?",
+        description: "Tindakan ini akan menghapus semua data biaya operasional secara permanen.",
+        action: deleteAllExpenses,
+        isSubmitting: isDeletingExpenses,
+    },
+    categories: {
+        title: "Hapus Semua Kategori Produk?",
+        description: "Tindakan ini akan menghapus semua data kategori produk secara permanen.",
+        action: deleteAllCategories,
+        isSubmitting: isDeletingCategories,
+    },
+    units: {
+        title: "Hapus Semua Satuan?",
+        description: "Tindakan ini akan menghapus semua data satuan produk secara permanen.",
+        action: deleteAllUnits,
+        isSubmitting: isDeletingUnits,
+    },
+    expenseCategories: {
+        title: "Hapus Semua Kategori Biaya?",
+        description: "Tindakan ini akan menghapus semua data kategori biaya secara permanen.",
+        action: deleteAllExpenseCategories,
+        isSubmitting: isDeletingExpenseCategories,
+    },
     all: {
-      title: "Hapus Semua Data Transaksional?",
-      description: "PERINGATAN: Ini akan menjalankan semua tindakan penghapusan di atas. Semua produk, pelanggan, pemasok, penjualan, dan pembelian akan dihapus.",
+      title: "Hapus Semua Data?",
+      description: "PERINGATAN: Ini akan menghapus SEMUA data master dan transaksional. Tindakan ini tidak dapat dibatalkan.",
       action: async () => {
+          await deleteAllSales();
+          await deleteAllPurchases();
+          await deleteAllExpenses();
           await deleteAllProducts();
           await deleteAllCustomers();
           await deleteAllSuppliers();
-          await deleteAllSales();
-          await deleteAllPurchases();
+          await deleteAllCategories();
+          await deleteAllUnits();
+          await deleteAllExpenseCategories();
       },
       isSubmitting: isAnyTaskRunning,
     },
@@ -88,14 +123,34 @@ export function DangerZone() {
 
   const handleConfirm = async () => {
     if (selectedAction) {
+      if (confirmationInput !== 'HAPUS') {
+        toast({ variant: 'destructive', title: "Konfirmasi Gagal", description: "Anda harus mengetik 'HAPUS' untuk melanjutkan." });
+        return;
+      }
       const config = actions[selectedAction];
       await config.action();
-      toast({ title: "Data Dihapus", description: `Semua ${selectedAction === 'all' ? 'data transaksional' : selectedAction} telah berhasil dihapus.` });
+      toast({ title: "Data Dihapus", description: `Semua ${selectedAction === 'all' ? 'data' : selectedAction} telah berhasil dihapus.` });
       setDialogOpen(false);
       setSelectedAction(null);
       setConfirmationInput("");
     }
   };
+  
+  const getActionKeyName = (key: ActionType) => {
+      switch(key) {
+        case 'products': return 'Produk';
+        case 'customers': return 'Pelanggan';
+        case 'suppliers': return 'Pemasok';
+        case 'sales': return 'Penjualan';
+        case 'purchases': return 'Pembelian';
+        case 'expenses': return 'Biaya';
+        case 'categories': return 'Kategori Produk';
+        case 'units': return 'Satuan';
+        case 'expenseCategories': return 'Kategori Biaya';
+        default: return '';
+      }
+  }
+
 
   return (
     <>
@@ -110,11 +165,12 @@ export function DangerZone() {
           {Object.keys(actions).map((key) => {
             const actionKey = key as ActionType;
             if(actionKey === 'all') return null; // handle 'all' separately
-            const { title, description, isSubmitting } = actions[actionKey];
+            const { description, isSubmitting } = actions[actionKey];
+            const name = getActionKeyName(actionKey);
             return (
               <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <h4 className="font-semibold">{title.replace('?', '')}</h4>
+                  <h4 className="font-semibold">Hapus Semua {name}</h4>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
                 <Button variant="destructive" onClick={() => openDialog(actionKey)} disabled={isSubmitting || isAnyTaskRunning}>
@@ -126,7 +182,7 @@ export function DangerZone() {
           })}
            <div className="flex items-center justify-between p-4 border border-destructive bg-destructive/10 rounded-lg">
             <div>
-                <h4 className="font-semibold text-destructive">Hapus Semua Data Transaksional</h4>
+                <h4 className="font-semibold text-destructive">Hapus Semua Data</h4>
                 <p className="text-sm text-destructive/80">Menjalankan semua tindakan penghapusan data master dan transaksi.</p>
             </div>
             <Button variant="destructive" onClick={() => openDialog('all')} disabled={isAnyTaskRunning}>

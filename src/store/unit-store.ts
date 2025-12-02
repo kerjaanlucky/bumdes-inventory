@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Unit } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, where, writeBatch } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -22,6 +22,7 @@ type UnitState = {
   addUnit: (unit: { nama_satuan: string }) => Promise<void>;
   editUnit: (unit: Unit) => Promise<void>;
   deleteUnit: (unitId: string) => Promise<void>;
+  deleteAllUnits: () => Promise<void>;
 };
 
 export const useUnitStore = create<UnitState>((set, get) => ({
@@ -103,6 +104,29 @@ export const useUnitStore = create<UnitState>((set, get) => ({
     } catch (error) {
       console.error("Failed to delete unit:", error);
       toast({ variant: "destructive", title: "Gagal Menghapus", description: "Tidak dapat menghapus satuan. Mungkin sedang digunakan oleh produk." });
+    } finally {
+        set({ isDeleting: false });
+    }
+  },
+  
+  deleteAllUnits: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const unitsRef = collection(firestore, 'units');
+        const q = query(unitsRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchUnits();
+    } catch(err) {
+        console.error("Failed to delete all units:", err);
     } finally {
         set({ isDeleting: false });
     }

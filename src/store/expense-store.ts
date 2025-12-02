@@ -14,7 +14,8 @@ import {
   deleteDoc,
   where,
   orderBy,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
@@ -31,6 +32,7 @@ type ExpenseCategoryState = {
   addExpenseCategory: (category: { nama_kategori: string }) => Promise<void>;
   editExpenseCategory: (category: ExpenseCategory) => Promise<void>;
   deleteExpenseCategory: (categoryId: string) => Promise<void>;
+  deleteAllExpenseCategories: () => Promise<void>;
 };
 
 export const useExpenseCategoryStore = create<ExpenseCategoryState>((set, get) => ({
@@ -98,6 +100,26 @@ export const useExpenseCategoryStore = create<ExpenseCategoryState>((set, get) =
         set({ isDeleting: false });
     }
   },
+  deleteAllExpenseCategories: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const ref = collection(firestore, 'expenseCategories');
+        const q = query(ref, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        get().fetchExpenseCategories();
+    } catch(err) {
+        console.error("Failed to delete all expense categories:", err);
+    } finally {
+        set({ isDeleting: false });
+    }
+  },
 }));
 
 // == EXPENSE STATE ==
@@ -119,6 +141,7 @@ type ExpenseState = {
   addExpense: (expense: Omit<Expense, 'id' | 'branchId'>) => Promise<void>;
   editExpense: (expense: Expense) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
+  deleteAllExpenses: () => Promise<void>;
 };
 
 export const useExpenseStore = create<ExpenseState>((set, get) => ({
@@ -237,6 +260,27 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
       toast({ variant: "destructive", title: "Gagal Menghapus" });
     } finally {
       set({ isDeleting: false });
+    }
+  },
+
+  deleteAllExpenses: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const ref = collection(firestore, 'expenses');
+        const q = query(ref, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        get().fetchExpenses();
+    } catch(err) {
+        console.error("Failed to delete all expenses:", err);
+    } finally {
+        set({ isDeleting: false });
     }
   },
 }));

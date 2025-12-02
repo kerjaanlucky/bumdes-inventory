@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Category } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, deleteDoc, where, writeBatch } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
@@ -22,6 +22,7 @@ type CategoryState = {
   addCategory: (category: { nama_kategori: string }) => Promise<void>;
   editCategory: (category: Category) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
+  deleteAllCategories: () => Promise<void>;
 };
 
 export const useCategoryStore = create<CategoryState>((set, get) => ({
@@ -103,6 +104,29 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     } catch (error) {
       console.error("Failed to delete category:", error);
       toast({ variant: "destructive", title: "Gagal Menghapus", description: "Tidak dapat menghapus kategori. Mungkin sedang digunakan oleh produk." });
+    } finally {
+        set({ isDeleting: false });
+    }
+  },
+  
+  deleteAllCategories: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+    
+    set({ isDeleting: true });
+    try {
+        const categoriesRef = collection(firestore, 'categories');
+        const q = query(categoriesRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchCategories();
+    } catch(err) {
+        console.error("Failed to delete all categories:", err);
     } finally {
         set({ isDeleting: false });
     }
