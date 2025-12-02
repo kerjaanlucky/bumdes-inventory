@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, PlusCircle } from "lucide-react";
 import { Category, Unit, Product } from "@/lib/types";
-import { MasterDataSheet } from "../new/master-data-sheet";
+import { MasterDataSheet } from "../../new/master-data-sheet";
 import { useCategoryStore } from "@/store/category-store";
 import { useUnitStore } from "@/store/unit-store";
 

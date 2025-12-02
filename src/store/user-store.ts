@@ -1,8 +1,9 @@
+
 import { create } from 'zustand';
 import { UserProfile } from '@/lib/types';
 import { useFirebaseStore } from './firebase-store';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth, updateProfile } from 'firebase/auth';
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -76,40 +77,37 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   addUser: async (user) => {
-    const { firestore, auth } = useFirebaseStore.getState();
+    const { firestore } = useFirebaseStore.getState();
+    const auth = useAuthStore.getState().user?.providerId ? useFirebaseStore.getState().auth : null;
     if (!firestore || !auth) return;
 
     set({ isSubmitting: true });
     try {
-      console.warn("addUser function is for demonstration. Secure user creation requires a backend.");
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, user.email, user.password!);
+      const firebaseUser = userCredential.user;
       
-      const tempUid = `TEMP_${Date.now()}`;
-      
+      // Update display name in Auth
+      await updateProfile(firebaseUser, { displayName: user.name });
+
+      // Create user profile in Firestore
       const userProfile: UserProfile = {
-        uid: tempUid, // This will be overwritten by the real UID in a real scenario
+        uid: firebaseUser.uid,
         name: user.name,
         email: user.email,
         role: user.role,
         branchId: user.branchId,
       };
-
-      const userDocRef = doc(firestore, `users`, tempUid);
       
-      setDoc(userDocRef, userProfile).then(async () => {
-         await get().fetchUsers();
-         set({ isSubmitting: false });
-      }).catch(error => {
-        console.log("Error in setDoc for addUser", error);
-         errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: userDocRef.path,
-              operation: 'create',
-              requestResourceData: userProfile
-         }));
-         set({ isSubmitting: false });
-      });
+      const userDocRef = doc(firestore, `users`, firebaseUser.uid);
+      await setDoc(userDocRef, userProfile);
+      
+      await get().fetchUsers();
 
     } catch (error) {
-      console.error("Outer error in addUser:", error);
+      console.error("Error in addUser:", error);
+      // Handle specific auth errors if needed
+    } finally {
       set({ isSubmitting: false });
     }
   },
@@ -163,6 +161,8 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (!firestore) return;
     set({ isDeleting: true });
     try {
+      // Note: This only deletes the Firestore record. For a full deletion,
+      // you would need a Firebase Function to delete the Auth user.
       const userDocRef = doc(firestore, 'users', userId);
       await deleteDoc(userDocRef);
       set((state) => ({
