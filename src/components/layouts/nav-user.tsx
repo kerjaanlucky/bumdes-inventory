@@ -65,10 +65,6 @@ const inventoryLinks = [
         href: "/user/inventory/stock-opname",
     },
     {
-        label: "Laporan Nilai Stok",
-        href: "/user/inventory/valuation-report",
-    },
-    {
         label: "Movement",
         href: "/user/stock",
     },
@@ -110,6 +106,10 @@ const reportLinks = [
     {
         label: "Laba & Rugi",
         href: "/user/reports/profit-loss",
+    },
+    {
+        label: "Laporan Persediaan",
+        href: "/user/reports/inventory-valuation",
     },
 ];
 

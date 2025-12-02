@@ -10,7 +10,7 @@ import {
   TableRow,
   TableFooter,
 } from "@/components/ui/table";
-import { Download, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Download, Calendar as CalendarIcon, Loader2, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,10 +41,6 @@ export default function StockValuationReportPage() {
     const [isAlertOpen, setAlertOpen] = useState(false);
     const [selectedLimit, setSelectedLimit] = useState(limit);
 
-    useEffect(() => {
-        fetchStockValuationReport();
-    }, [reportDate, page, limit, fetchStockValuationReport]);
-
     const handleLimitChange = (value: string) => {
         const newLimit = value === 'all' ? total : Number(value);
         if (value === 'all') {
@@ -62,6 +58,10 @@ export default function StockValuationReportPage() {
     }
 
     const totalPages = Math.ceil((valuationReport?.totalProducts || 0) / limit);
+
+    const handleGenerateReport = () => {
+      fetchStockValuationReport();
+    };
 
     const handleDownloadExcel = () => {
         if (!valuationReport?.paginatedItems) return;
@@ -92,11 +92,15 @@ export default function StockValuationReportPage() {
     return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Nilai Stok</h1>
+        <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Persediaan</h1>
         <div className="ml-auto flex items-center gap-2">
             <Button onClick={handleDownloadExcel} variant="outline" disabled={isFetching || !valuationReport?.paginatedItems.length}>
                 <Download className="mr-2 h-4 w-4" />
                 Download Excel
+            </Button>
+            <Button onClick={handleGenerateReport} disabled={isFetching}>
+                {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />}
+                Generate Laporan
             </Button>
         </div>
       </div>
@@ -105,7 +109,7 @@ export default function StockValuationReportPage() {
         <CardHeader>
             <CardTitle>Filter Laporan</CardTitle>
             <div className="flex items-center justify-between">
-                <CardDescription>Pilih tanggal akhir untuk melihat nilai persediaan Anda.</CardDescription>
+                <CardDescription>Pilih tanggal akhir untuk melihat nilai persediaan Anda, lalu klik "Generate Laporan".</CardDescription>
                  <div className='flex items-center gap-4'>
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">Tampilkan</p>
@@ -190,7 +194,7 @@ export default function StockValuationReportPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={5} className="h-48 text-center text-muted-foreground">
-                             {isFetching ? <Loader2 className="h-8 w-8 animate-spin mx-auto"/> : 'Tidak ada data produk untuk ditampilkan.'}
+                             {isFetching ? <Loader2 className="h-8 w-8 animate-spin mx-auto"/> : 'Silakan generate laporan untuk melihat data.'}
                         </TableCell>
                     </TableRow>
                 )}
@@ -206,24 +210,26 @@ export default function StockValuationReportPage() {
                     </TableFooter>
                  )}
             </Table>
-             <div className="flex items-center justify-end space-x-2 py-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(page - 1)}
-                    disabled={page <= 1 || isFetching}
-                >
-                    Sebelumnya
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(page + 1)}
-                    disabled={page >= totalPages || isFetching}
-                >
-                    Berikutnya
-                </Button>
-            </div>
+             {valuationReport && valuationReport.paginatedItems.length > 0 && (
+                <div className="flex items-center justify-end space-x-2 py-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page - 1)}
+                        disabled={page <= 1 || isFetching}
+                    >
+                        Sebelumnya
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page + 1)}
+                        disabled={page >= totalPages || isFetching}
+                    >
+                        Berikutnya
+                    </Button>
+                </div>
+            )}
         </CardContent>
        </Card>
         <ConfirmationDialog
