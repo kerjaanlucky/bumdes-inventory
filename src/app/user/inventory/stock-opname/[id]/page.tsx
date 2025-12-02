@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -104,7 +105,10 @@ export default function StockOpnameDetailPage() {
                         <TableBody>
                             {opname.items?.map(item => (
                                 <TableRow key={item.produk_id}>
-                                    <TableCell>{item.nama_produk}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{item.nama_produk}</div>
+                                        <div className="text-xs text-muted-foreground font-mono">{item.kode_produk}</div>
+                                    </TableCell>
                                     <TableCell className="text-center">{item.stok_sistem}</TableCell>
                                     <TableCell className="text-center">{item.stok_fisik}</TableCell>
                                     <TableCell className={cn("text-center font-bold", item.selisih > 0 ? 'text-green-600' : item.selisih < 0 ? 'text-red-600' : '')}>

@@ -27,6 +27,7 @@ import { useDebounce } from 'use-debounce';
 const stockOpnameItemSchema = z.object({
   produk_id: z.string(),
   nama_produk: z.string(),
+  kode_produk: z.string(),
   nama_satuan: z.string(),
   stok_sistem: z.number(),
   stok_fisik: z.coerce.number().min(0, "Stok tidak boleh negatif"),
@@ -112,6 +113,7 @@ export default function NewStockOpnamePage() {
       append({
         produk_id: product.id,
         nama_produk: product.nama_produk,
+        kode_produk: product.kode_produk,
         nama_satuan: product.nama_satuan || 'N/A',
         stok_sistem: product.stok,
         stok_fisik: product.stok, // Default physical to system stock
@@ -247,7 +249,10 @@ export default function NewStockOpnamePage() {
                             <TableRow><TableCell colSpan={6} className="h-48 text-center">Belum ada produk yang ditambahkan.</TableCell></TableRow>
                         ) : fields.map((item, index) => (
                             <TableRow key={item.id}>
-                                <TableCell className="font-medium">{item.nama_produk}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{item.nama_produk}</div>
+                                  <div className="text-xs text-muted-foreground font-mono">{item.kode_produk}</div>
+                                </TableCell>
                                 <TableCell className="text-center">{item.stok_sistem} {item.nama_satuan}</TableCell>
                                 <TableCell>
                                     <FormField

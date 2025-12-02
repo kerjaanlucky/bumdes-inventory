@@ -223,6 +223,7 @@ export type StockOpnameStatus = 'DRAFT' | 'SELESAI';
 export interface StockOpnameItem {
   produk_id: string;
   nama_produk: string;
+  kode_produk: string;
   nama_satuan: string;
   stok_sistem: number;
   stok_fisik: number;
