@@ -211,10 +211,11 @@ export interface ExpenseCategory {
 
 export interface Expense {
   id: string;
-  tanggal: string;
+  tanggal: Date;
   jumlah: number;
   kategori_id: string;
   nama_kategori?: string; // Joined from category
   deskripsi: string;
   branchId: string;
 }
+
