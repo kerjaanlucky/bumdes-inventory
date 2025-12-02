@@ -152,6 +152,35 @@
         "branchId": { "type": "string", "description": "The ID of the branch where the expense occurred." }
       },
       "required": ["tanggal", "jumlah", "kategori_id", "deskripsi", "branchId"]
+    },
+    "StockOpname": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StockOpname",
+      "type": "object",
+      "description": "Represents a stock opname (physical inventory count) event.",
+      "properties": {
+        "tanggal": { "type": "string", "format": "date-time", "description": "Date of the stock opname." },
+        "nomor_referensi": { "type": "string", "description": "Unique reference number for the event." },
+        "status": { "type": "string", "enum": ["DRAFT", "SELESAI"], "description": "Status of the stock opname." },
+        "catatan": { "type": "string", "description": "General notes for the event." },
+        "branchId": { "type": "string", "description": "The ID of the branch where the opname occurred." }
+      },
+      "required": ["tanggal", "nomor_referensi", "status", "branchId"]
+    },
+    "StockOpnameItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StockOpnameItem",
+      "type": "object",
+      "description": "Represents a single item within a stock opname event.",
+      "properties": {
+        "produk_id": { "type": "string" },
+        "nama_produk": { "type": "string" },
+        "stok_sistem": { "type": "number", "description": "Stock count according to the system before the opname." },
+        "stok_fisik": { "type": "number", "description": "Actual physical stock count." },
+        "selisih": { "type": "number", "description": "The difference between physical and system stock." },
+        "keterangan": { "type": "string", "description": "Notes for the adjustment (e.g., 'damaged goods')." }
+      },
+      "required": ["produk_id", "stok_sistem", "stok_fisik", "selisih"]
     }
   },
   "auth": {
@@ -169,6 +198,8 @@
     "/sales/{saleId}": { "schema": { "$ref": "#/entities/Sale" }, "description": "Stores sales transactions." },
     "/sales/{saleId}/saleItems/{saleItemId}": { "schema": { "$ref": "#/entities/SaleItem" }, "description": "Stores items for a specific sale." },
     "/expenseCategories/{expenseCategoryId}": { "schema": { "$ref": "#/entities/ExpenseCategory"}, "description": "Stores expense categories."},
-    "/expenses/{expenseId}": { "schema": { "$ref": "#/entities/Expense"}, "description": "Stores operational expenses."}
+    "/expenses/{expenseId}": { "schema": { "$ref": "#/entities/Expense"}, "description": "Stores operational expenses."},
+    "/stockOpnames/{stockOpnameId}": { "schema": { "$ref": "#/entities/StockOpname"}, "description": "Stores stock opname events."},
+    "/stockOpnames/{stockOpnameId}/items/{itemId}": { "schema": { "$ref": "#/entities/StockOpnameItem"}, "description": "Stores items for a specific stock opname event."}
   }
 }

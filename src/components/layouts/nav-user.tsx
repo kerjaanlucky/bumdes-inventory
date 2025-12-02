@@ -60,6 +60,10 @@ const inventoryLinks = [
         href: "/user/inventory/stock-report",
     },
     {
+        label: "Stock Opname",
+        href: "/user/inventory/stock-opname",
+    },
+    {
         label: "Movement",
         href: "/user/stock",
     },

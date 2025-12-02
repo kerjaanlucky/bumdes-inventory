@@ -116,5 +116,11 @@ service cloud.firestore {
         allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
         allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
     }
+
+    match /stockOpnames/{docId} {
+        allow read: if isSignedIn() && canAccessBranchData(resource.data.branchId);
+        allow create: if isSignedIn() && isAssignedToBranch(request.resource.data.branchId);
+        allow update, delete: if isSignedIn() && canWriteBranchData(resource.data.branchId);
+    }
   }
 }

@@ -173,7 +173,6 @@ export type StockMovement = {
   searchable_keywords?: string[];
 };
 
-
 export type PaginatedResponse<T> = {
   data: T[];
   total: number;
@@ -219,3 +218,24 @@ export interface Expense {
   branchId: string;
 }
 
+export type StockOpnameStatus = 'DRAFT' | 'SELESAI';
+
+export interface StockOpnameItem {
+  produk_id: string;
+  nama_produk: string;
+  nama_satuan: string;
+  stok_sistem: number;
+  stok_fisik: number;
+  selisih: number;
+  keterangan: string;
+}
+
+export interface StockOpname {
+  id: string;
+  tanggal: string;
+  nomor_referensi: string;
+  status: StockOpnameStatus;
+  catatan?: string;
+  items: StockOpnameItem[];
+  branchId: string;
+}
