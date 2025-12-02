@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from 'zustand';
@@ -16,6 +17,7 @@ import {
   doc,
   getCountFromServer,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
@@ -56,6 +58,7 @@ type StockState = {
   searchTerm: string;
   dateRange?: DateRange;
   isFetching: boolean;
+  isDeleting: boolean;
   
   // New state for valuation report
   valuationReport: StockValuationReport | null;
@@ -71,6 +74,7 @@ type StockState = {
   addStockMovement: (movement: Omit<StockMovement, 'id' | 'branchId'>) => Promise<void>;
   fetchStockReport: (productId: string, dateRange: DateRange) => Promise<StockReport | null>;
   fetchStockValuationReport: () => Promise<void>;
+  deleteAllStockMovements: () => Promise<void>;
 };
 
 export const useStockStore = create<StockState>((set, get) => ({
@@ -81,6 +85,7 @@ export const useStockStore = create<StockState>((set, get) => ({
   searchTerm: '',
   dateRange: undefined,
   isFetching: false,
+  isDeleting: false,
   valuationReport: null,
   reportDate: new Date(),
 
@@ -295,5 +300,26 @@ export const useStockStore = create<StockState>((set, get) => ({
         set({ isFetching: false, valuationReport: null });
     }
   },
+  deleteAllStockMovements: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
 
+    set({ isDeleting: true });
+    try {
+        const stocksRef = collection(firestore, 'stocks');
+        const q = query(stocksRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchMovements();
+    } catch(err) {
+        console.error("Failed to delete all stock movements:", err);
+    } finally {
+        set({ isDeleting: false });
+    }
+  },
 }));

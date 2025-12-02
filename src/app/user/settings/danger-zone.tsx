@@ -16,8 +16,10 @@ import { useExpenseStore, useExpenseCategoryStore } from "@/store/expense-store"
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useStockStore } from "@/store/stock-store";
+import { useStockOpnameStore } from "@/store/stock-opname-store";
 
-type ActionType = 'products' | 'customers' | 'suppliers' | 'sales' | 'purchases' | 'categories' | 'units' | 'expenseCategories' | 'expenses' | 'all';
+type ActionType = 'products' | 'customers' | 'suppliers' | 'sales' | 'purchases' | 'categories' | 'units' | 'expenseCategories' | 'expenses' | 'stockMovements' | 'stockOpnames' | 'all';
 
 interface ActionConfig {
   title: string;
@@ -40,8 +42,10 @@ export function DangerZone() {
   const { deleteAllUnits, isDeleting: isDeletingUnits } = useUnitStore();
   const { deleteAllExpenses, isDeleting: isDeletingExpenses } = useExpenseStore();
   const { deleteAllExpenseCategories, isDeleting: isDeletingExpenseCategories } = useExpenseCategoryStore();
+  const { deleteAllStockMovements, isDeleting: isDeletingStockMovements } = useStockStore();
+  const { deleteAllStockOpnames, isDeleting: isDeletingStockOpnames } = useStockOpnameStore();
   
-  const isAnyTaskRunning = isDeletingProducts || isDeletingCustomers || isDeletingSuppliers || isDeletingSales || isDeletingPurchases || isDeletingCategories || isDeletingUnits || isDeletingExpenses || isDeletingExpenseCategories;
+  const isAnyTaskRunning = isDeletingProducts || isDeletingCustomers || isDeletingSuppliers || isDeletingSales || isDeletingPurchases || isDeletingCategories || isDeletingUnits || isDeletingExpenses || isDeletingExpenseCategories || isDeletingStockMovements || isDeletingStockOpnames;
 
   const actions: Record<ActionType, ActionConfig> = {
     products: {
@@ -98,6 +102,18 @@ export function DangerZone() {
         action: deleteAllExpenseCategories,
         isSubmitting: isDeletingExpenseCategories,
     },
+    stockMovements: {
+        title: "Hapus Semua Riwayat Stok?",
+        description: "Tindakan ini akan menghapus semua catatan pergerakan stok (masuk/keluar).",
+        action: deleteAllStockMovements,
+        isSubmitting: isDeletingStockMovements,
+    },
+    stockOpnames: {
+        title: "Hapus Semua Stock Opname?",
+        description: "Tindakan ini akan menghapus semua riwayat kegiatan stock opname.",
+        action: deleteAllStockOpnames,
+        isSubmitting: isDeletingStockOpnames,
+    },
     all: {
       title: "Hapus Semua Data?",
       description: "PERINGATAN: Ini akan menghapus SEMUA data master dan transaksional. Tindakan ini tidak dapat dibatalkan.",
@@ -105,6 +121,8 @@ export function DangerZone() {
           await deleteAllSales();
           await deleteAllPurchases();
           await deleteAllExpenses();
+          await deleteAllStockMovements();
+          await deleteAllStockOpnames();
           await deleteAllProducts();
           await deleteAllCustomers();
           await deleteAllSuppliers();
@@ -129,7 +147,7 @@ export function DangerZone() {
       }
       const config = actions[selectedAction];
       await config.action();
-      toast({ title: "Data Dihapus", description: `Semua ${selectedAction === 'all' ? 'data' : selectedAction} telah berhasil dihapus.` });
+      toast({ title: "Data Dihapus", description: `Semua ${selectedAction === 'all' ? 'data' : getActionKeyName(selectedAction)} telah berhasil dihapus.` });
       setDialogOpen(false);
       setSelectedAction(null);
       setConfirmationInput("");
@@ -147,6 +165,8 @@ export function DangerZone() {
         case 'categories': return 'Kategori Produk';
         case 'units': return 'Satuan';
         case 'expenseCategories': return 'Kategori Biaya';
+        case 'stockMovements': return 'Riwayat Stok';
+        case 'stockOpnames': return 'Stock Opname';
         default: return '';
       }
   }

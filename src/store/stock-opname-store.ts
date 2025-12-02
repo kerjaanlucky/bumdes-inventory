@@ -1,9 +1,10 @@
+
 "use client";
 
 import { create } from 'zustand';
 import { StockOpname, StockOpnameItem, StockOpnameStatus } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
-import { collection, query, getDocs, addDoc, doc, setDoc, getDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, doc, setDoc, getDoc, where, writeBatch } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
 import { useFirebaseStore } from './firebase-store';
 import { useProductStore } from './product-store';
@@ -14,6 +15,7 @@ type StockOpnameState = {
   stockOpnames: StockOpname[];
   isFetching: boolean;
   isSubmitting: boolean;
+  isDeleting: boolean;
   total: number;
   page: number;
   limit: number;
@@ -25,12 +27,14 @@ type StockOpnameState = {
   getStockOpnameById: (id: string) => Promise<StockOpname | undefined>;
   addStockOpname: (opnameData: Omit<StockOpname, 'id' | 'branchId' | 'status' | 'nomor_referensi'>) => Promise<void>;
   finalizeStockOpname: (id: string) => Promise<void>;
+  deleteAllStockOpnames: () => Promise<void>;
 };
 
 export const useStockOpnameStore = create<StockOpnameState>((set, get) => ({
   stockOpnames: [],
   isFetching: false,
   isSubmitting: false,
+  isDeleting: false,
   total: 0,
   page: 1,
   limit: 10,
@@ -160,6 +164,28 @@ export const useStockOpnameStore = create<StockOpnameState>((set, get) => ({
       toast({ variant: "destructive", title: "Gagal", description: "Terjadi kesalahan saat finalisasi." });
     } finally {
       set({ isSubmitting: false });
+    }
+  },
+  deleteAllStockOpnames: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
+    set({ isDeleting: true });
+    try {
+        const opnamesRef = collection(firestore, 'stockOpnames');
+        const q = query(opnamesRef, where("branchId", "==", branchId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        get().fetchStockOpnames();
+    } catch(err) {
+        console.error("Failed to delete all stock opnames:", err);
+    } finally {
+        set({ isDeleting: false });
     }
   },
 }));
