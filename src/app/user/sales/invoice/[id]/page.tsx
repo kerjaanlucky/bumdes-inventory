@@ -7,11 +7,14 @@ import { useSaleStore } from '@/store/sale-store';
 import { useBranchStore } from '@/store/branch-store';
 import { useAuthStore } from '@/store/auth-store';
 import { Sale, Branch } from '@/lib/types';
-import { Loader2, Printer, FileText } from 'lucide-react';
+import { Loader2, Printer, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { SuratJalanModal } from './surat-jalan-modal';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
 
 type DocumentType = 'invoice' | 'suratJalan';
 
@@ -29,6 +32,11 @@ export default function InvoicePage() {
   const [documentType, setDocumentType] = useState<DocumentType>('invoice');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [vehicleNumber, setVehicleNumber] = useState('');
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const printAreaRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     async function fetchData() {
@@ -49,10 +57,12 @@ export default function InvoicePage() {
   }, [saleId, getSaleById, getBranchById, userProfile, router]);
   
   const handlePrint = (type: DocumentType) => {
+    setIsPrinting(true);
     setDocumentType(type);
     // Use timeout to ensure state is updated before print dialog opens
     setTimeout(() => {
         window.print();
+        setIsPrinting(false);
     }, 100);
   };
   
@@ -64,6 +74,46 @@ export default function InvoicePage() {
     setVehicleNumber(vehicle);
     setIsModalOpen(false);
     handlePrint('suratJalan');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printAreaRef.current) return;
+    setIsDownloading(true);
+    setDocumentType('invoice'); // Ensure it's invoice format
+    
+    // Slight delay to allow UI to re-render if documentType changes
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    const canvas = await html2canvas(printAreaRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const ratio = canvasWidth / canvasHeight;
+    
+    let newCanvasWidth = pdfWidth;
+    let newCanvasHeight = newCanvasWidth / ratio;
+
+    if (newCanvasHeight > pdfHeight) {
+        newCanvasHeight = pdfHeight;
+        newCanvasWidth = newCanvasHeight * ratio;
+    }
+    
+    const x = (pdfWidth - newCanvasWidth) / 2;
+    const y = (pdfHeight - newCanvasHeight) / 2;
+
+    pdf.addImage(imgData, 'PNG', x, y, newCanvasWidth, newCanvasHeight);
+    pdf.save(`invoice-${sale?.nomor_penjualan}.pdf`);
+
+    setIsDownloading(false);
   };
 
 
@@ -101,18 +151,22 @@ export default function InvoicePage() {
           <div className="flex justify-between items-center mb-6 print:hidden">
             <h1 className="text-2xl font-bold">Dokumen Penjualan</h1>
             <div className="flex gap-2">
-              <Button onClick={() => handlePrint('invoice')} variant="outline">
-                <Printer className="mr-2 h-4 w-4" />
+              <Button onClick={handleDownloadPdf} variant="outline" disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Download PDF
+              </Button>
+              <Button onClick={() => handlePrint('invoice')} variant="outline" disabled={isPrinting}>
+                {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                 Cetak Faktur
               </Button>
-               <Button onClick={handleSuratJalanClick}>
+               <Button onClick={handleSuratJalanClick} disabled={isPrinting}>
                 <FileText className="mr-2 h-4 w-4" />
                 Cetak Surat Jalan
               </Button>
             </div>
           </div>
 
-          <div className="bg-card border rounded-lg p-8 print:border-none print:shadow-none print:p-0">
+          <div ref={printAreaRef} className="bg-card border rounded-lg p-8 print:border-none print:shadow-none print:p-0">
             <header className="flex justify-between items-start pb-6 border-b">
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold text-primary">{branch?.name}</h2>
