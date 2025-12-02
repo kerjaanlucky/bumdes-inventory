@@ -79,13 +79,12 @@ export default function InvoicePage() {
   const handleDownloadPdf = async () => {
     if (!printAreaRef.current) return;
     setIsDownloading(true);
-    setDocumentType('invoice'); // Ensure it's invoice format
+    setDocumentType('invoice');
     
-    // Slight delay to allow UI to re-render if documentType changes
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    const canvas = await html2canvas(printAreaRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
+    const canvas = await html2canvas(printAreaRef.current, { scale: 1 });
+    const imgData = canvas.toDataURL('image/jpeg', 0.7);
     
     const pdf = new jsPDF({
         orientation: 'portrait',
@@ -95,22 +94,22 @@ export default function InvoicePage() {
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    const ratio = canvasWidth / canvasHeight;
-    
-    let newCanvasWidth = pdfWidth;
-    let newCanvasHeight = newCanvasWidth / ratio;
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = imgWidth / imgHeight;
 
-    if (newCanvasHeight > pdfHeight) {
-        newCanvasHeight = pdfHeight;
-        newCanvasWidth = newCanvasHeight * ratio;
+    let widthInPdf = pdfWidth;
+    let heightInPdf = widthInPdf / ratio;
+
+    if (heightInPdf > pdfHeight) {
+        heightInPdf = pdfHeight;
+        widthInPdf = heightInPdf * ratio;
     }
     
-    const x = (pdfWidth - newCanvasWidth) / 2;
-    const y = (pdfHeight - newCanvasHeight) / 2;
+    const x = (pdfWidth - widthInPdf) / 2;
+    const y = 0;
 
-    pdf.addImage(imgData, 'PNG', x, y, newCanvasWidth, newCanvasHeight);
+    pdf.addImage(imgData, 'JPEG', x, y, widthInPdf, heightInPdf);
     pdf.save(`invoice-${sale?.nomor_penjualan}.pdf`);
 
     setIsDownloading(false);
