@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -12,13 +13,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
-import { Loader2, Calendar as CalendarIcon, Save } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Loader2, Calendar as CalendarIcon, Save, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProductStore } from "@/store/product-store";
 import { useStockOpnameStore } from "@/store/stock-opname-store";
+import SearchableSelect from "@/components/ui/searchable-select";
+import { useDebounce } from 'use-debounce';
 
 const stockOpnameItemSchema = z.object({
   produk_id: z.string(),
@@ -33,7 +36,7 @@ const stockOpnameItemSchema = z.object({
 const stockOpnameSchema = z.object({
   tanggal: z.date({ required_error: "Tanggal wajib diisi" }),
   catatan: z.string().optional(),
-  items: z.array(stockOpnameItemSchema),
+  items: z.array(stockOpnameItemSchema).min(1, "Minimal harus ada 1 item untuk di-opname"),
 });
 
 type StockOpnameFormValues = z.infer<typeof stockOpnameSchema>;
@@ -41,8 +44,12 @@ type StockOpnameFormValues = z.infer<typeof stockOpnameSchema>;
 export default function NewStockOpnamePage() {
   const router = useRouter();
   const { addStockOpname, isSubmitting } = useStockOpnameStore();
-  const { products, fetchProducts, isFetching: isProductsFetching } = useProductStore();
+  const { products, fetchProducts, isFetching: isProductsFetching, setSearchTerm } = useProductStore();
   const { toast } = useToast();
+  
+  const [productQuery, setProductQuery] = useState('');
+  const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
+  const [debouncedProductSearch] = useDebounce(productQuery, 300);
 
   const form = useForm<StockOpnameFormValues>({
     resolver: zodResolver(stockOpnameSchema),
@@ -54,25 +61,16 @@ export default function NewStockOpnamePage() {
   });
 
   useEffect(() => {
+    setSearchTerm(debouncedProductSearch);
     fetchProducts();
-  }, [fetchProducts]);
+  }, [fetchProducts, debouncedProductSearch, setSearchTerm]);
 
-  useEffect(() => {
-    if (products.length > 0 && form.getValues('items').length === 0) {
-      const opnameItems = products.map(p => ({
-        produk_id: p.id,
-        nama_produk: p.nama_produk,
-        nama_satuan: p.nama_satuan || 'N/A',
-        stok_sistem: p.stok,
-        stok_fisik: p.stok, // Default physical to system stock
-        selisih: 0,
-        keterangan: "",
-      }));
-      form.setValue('items', opnameItems);
-    }
-  }, [products, form]);
+  const productOptions = useMemo(() => 
+    products.map(p => ({ value: p.id, label: `${p.kode_produk} - ${p.nama_produk}` })), 
+    [products]
+  );
 
-  const { fields } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -87,6 +85,34 @@ export default function NewStockOpnamePage() {
       }
     });
   }, [watchItems, form]);
+
+  const handleAddProduct = () => {
+    if (!selectedProductToAdd) {
+        toast({ variant: "destructive", title: "Produk belum dipilih" });
+        return;
+    };
+    
+    const isAlreadyAdded = fields.some(field => field.produk_id === selectedProductToAdd);
+    if (isAlreadyAdded) {
+        toast({ variant: "destructive", title: "Produk sudah ada", description: "Produk ini sudah ada dalam daftar opname." });
+        return;
+    }
+
+    const product = products.find(p => p.id === selectedProductToAdd);
+    if (product) {
+      append({
+        produk_id: product.id,
+        nama_produk: product.nama_produk,
+        nama_satuan: product.nama_satuan || 'N/A',
+        stok_sistem: product.stok,
+        stok_fisik: product.stok, // Default physical to system stock
+        selisih: 0,
+        keterangan: "",
+      });
+      setSelectedProductToAdd('');
+      setProductQuery('');
+    }
+  };
 
 
   const onSubmit: SubmitHandler<StockOpnameFormValues> = async (data) => {
@@ -105,8 +131,8 @@ export default function NewStockOpnamePage() {
                 <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit" disabled={isSubmitting || isProductsFetching}>
-                  {(isSubmitting || isProductsFetching) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Save className="mr-2 h-4 w-4" />
                   Simpan sebagai Draft
                 </Button>
@@ -178,7 +204,24 @@ export default function NewStockOpnamePage() {
               <CardTitle>Daftar Item</CardTitle>
                <CardDescription>Isi kolom 'Stok Fisik' dengan hasil hitungan Anda. Selisih akan terhitung otomatis.</CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
+            <CardContent className="overflow-visible">
+                 <div className="flex gap-2 mb-4">
+                    <div className="flex-grow">
+                        <SearchableSelect
+                            options={productOptions}
+                            value={selectedProductToAdd}
+                            onChange={setSelectedProductToAdd}
+                            onSearchChange={setProductQuery}
+                            currentSearchQuery={productQuery}
+                            placeholder="Cari produk untuk ditambahkan..."
+                            isLoading={isProductsFetching}
+                        />
+                    </div>
+                    <Button type="button" variant="outline" onClick={handleAddProduct}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Tambah
+                    </Button>
+                </div>
+                <div className="overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -190,8 +233,8 @@ export default function NewStockOpnamePage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isProductsFetching ? (
-                            <TableRow><TableCell colSpan={5} className="h-48 text-center">Memuat produk...</TableCell></TableRow>
+                        {fields.length === 0 ? (
+                            <TableRow><TableCell colSpan={5} className="h-48 text-center">Belum ada produk yang ditambahkan.</TableCell></TableRow>
                         ) : fields.map((item, index) => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.nama_produk}</TableCell>
@@ -217,6 +260,10 @@ export default function NewStockOpnamePage() {
                         ))}
                     </TableBody>
                 </Table>
+                {form.formState.errors.items && (
+                    <p className="text-sm font-medium text-destructive mt-4">{form.formState.errors.items.root?.message || form.formState.errors.items.message}</p>
+                 )}
+                </div>
             </CardContent>
           </Card>
         </div>
@@ -224,3 +271,5 @@ export default function NewStockOpnamePage() {
     </Form>
   );
 }
+
+    
