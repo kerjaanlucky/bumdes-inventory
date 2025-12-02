@@ -78,14 +78,22 @@ export default function NewStockOpnamePage() {
   
   const watchItems = form.watch("items");
 
+  // This useEffect will now correctly calculate the difference in real-time
   useEffect(() => {
-    watchItems.forEach((item, index) => {
-      const selisih = (item.stok_fisik || 0) - item.stok_sistem;
-      if (form.getValues(`items.${index}.selisih`) !== selisih) {
-        form.setValue(`items.${index}.selisih`, selisih);
+    const subscription = form.watch((value, { name, type }) => {
+      if (name && name.startsWith('items') && name.endsWith('stok_fisik')) {
+        const parts = name.split('.');
+        const index = parseInt(parts[1], 10);
+        const item = value.items?.[index];
+        if (item) {
+          const selisih = (item.stok_fisik || 0) - item.stok_sistem;
+          form.setValue(`items.${index}.selisih`, selisih, { shouldValidate: true });
+        }
       }
     });
-  }, [watchItems, form]);
+    return () => subscription.unsubscribe();
+  }, [form]);
+
 
   const handleAddProduct = () => {
     if (!selectedProductToAdd) {
@@ -248,14 +256,14 @@ export default function NewStockOpnamePage() {
                                         render={({ field }) => <Input type="number" {...field} className="text-center" />}
                                     />
                                 </TableCell>
-                                <TableCell className={cn("text-center font-medium", form.getValues(`items.${index}.selisih`) > 0 ? 'text-green-600' : form.getValues(`items.${index}.selisih`) < 0 ? 'text-red-600' : '')}>
-                                    {form.getValues(`items.${index}.selisih`)}
+                                <TableCell className={cn("text-center font-medium", watchItems[index]?.selisih > 0 ? 'text-green-600' : watchItems[index]?.selisih < 0 ? 'text-red-600' : '')}>
+                                    {watchItems[index]?.selisih ?? 0}
                                 </TableCell>
                                 <TableCell>
                                      <FormField
                                         control={form.control}
                                         name={`items.${index}.keterangan`}
-                                        render={({ field }) => <Input placeholder="Contoh: Barang rusak" {...field} />}
+                                        render={({ field }) => <Input placeholder="Contoh: Barang rusak" {...field} value={field.value || ''} />}
                                     />
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -278,5 +286,3 @@ export default function NewStockOpnamePage() {
     </Form>
   );
 }
-
-    
