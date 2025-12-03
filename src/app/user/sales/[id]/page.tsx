@@ -117,10 +117,10 @@ export default function SaleDetailPage() {
     let taxAmount = 0;
 
     if (taxType === 'inclusive') {
-        taxAmount = dpp - (dpp / (1 + (taxPercent / 100)));
+        taxAmount = dpp - (dpp / (1 + ((taxPercent || 0) / 100)));
         dpp = dpp - taxAmount;
     } else { // exclusive
-        taxAmount = dpp * (taxPercent / 100);
+        taxAmount = dpp * ((taxPercent || 0) / 100);
     }
 
     return (
@@ -193,18 +193,24 @@ export default function SaleDetailPage() {
                                     <Table>
                                         <TableHeader>
                                         <TableRow>
-                                            <TableHead>Produk</TableHead>
-                                            <TableHead>Jumlah</TableHead>
-                                            <TableHead className="text-right">Harga Satuan</TableHead>
+                                            <TableHead className="w-[50px]">#</TableHead>
+                                            <TableHead>Kode Produk</TableHead>
+                                            <TableHead>Nama Produk</TableHead>
+                                            <TableHead className="text-center">Jumlah</TableHead>
+                                            <TableHead className="text-right">Harga</TableHead>
+                                            <TableHead className="text-right">Diskon</TableHead>
                                             <TableHead className="text-right">Subtotal</TableHead>
                                         </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {sale.items?.map(item => (
+                                            {sale.items?.map((item, index) => (
                                                 <TableRow key={item.id}>
+                                                    <TableCell>{index + 1}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{item.kode_produk}</TableCell>
                                                     <TableCell>{item.nama_produk}</TableCell>
-                                                    <TableCell>{item.jumlah} {item.nama_satuan}</TableCell>
+                                                    <TableCell className="text-center">{item.jumlah} {item.nama_satuan}</TableCell>
                                                     <TableCell className="text-right">Rp{item.harga_jual_satuan.toLocaleString('id-ID')}</TableCell>
+                                                     <TableCell className="text-right">{item.diskon}%</TableCell>
                                                     <TableCell className="text-right">Rp{item.subtotal.toLocaleString('id-ID')}</TableCell>
                                                 </TableRow>
                                             ))}
@@ -334,5 +340,5 @@ export default function SaleDetailPage() {
             </ConfirmationDialog>
         </div>
     );
-}
 
+    
