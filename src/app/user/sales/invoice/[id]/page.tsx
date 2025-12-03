@@ -195,7 +195,7 @@ export default function InvoicePage() {
             <div className="grid grid-cols-2 gap-4 mt-4 text-xs sm:text-sm">
               <div>
                 <div className="grid grid-cols-[100px_auto]">
-                  <span className="text-gray-600">Nama Pelanggan</span>
+                  <span className="text-gray-600">Nama</span>
                   <span>: {sale.nama_customer}</span>
                 </div>
                  <div className="grid grid-cols-[100px_auto]">
