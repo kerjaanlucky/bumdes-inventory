@@ -170,7 +170,7 @@ export default function InvoicePage() {
           <div ref={printAreaRef} className="bg-card border rounded-lg p-6 print:border-none print:shadow-none print:p-0 text-gray-800 relative">
              {sale.status === 'DRAFT' && documentType === 'invoice' && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                    <div className="text-[10rem] font-bold text-gray-200/80 -rotate-45 select-none">
+                    <div className="text-[8rem] sm:text-[10rem] font-bold text-gray-200/80 -rotate-45 select-none">
                         DRAFT
                     </div>
                 </div>
@@ -178,21 +178,21 @@ export default function InvoicePage() {
             
             {/* Header */}
             <div className="flex justify-between items-start pb-4 border-b">
-              <div className="space-y-1 text-sm">
-                <h2 className="text-xl font-bold">{branch?.name.toUpperCase()}</h2>
-                <p>{branch?.location}</p>
+              <div className="space-y-1 text-xs sm:text-sm">
+                <h2 className="text-base sm:text-lg font-bold">{branch?.name.toUpperCase()}</h2>
+                <p className="max-w-[250px]">{branch?.location}</p>
                 <p>Telp: {branch?.phone || "-"}</p>
                 <p>Email: {branch?.email || "-"}</p>
               </div>
               <div className="text-right">
-                <h1 className="text-2xl font-bold">
+                <h1 className="text-xl sm:text-2xl font-bold">
                     {documentType === 'invoice' ? 'Faktur Penjualan' : 'Surat Jalan'}
                 </h1>
               </div>
             </div>
 
             {/* Customer Info */}
-            <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 mt-4 text-xs sm:text-sm">
               <div>
                 <div className="grid grid-cols-[100px_auto]">
                   <span className="text-gray-600">Nama Pelanggan</span>
@@ -205,11 +205,11 @@ export default function InvoicePage() {
               </div>
                <div className="text-left">
                 <div className="grid grid-cols-[100px_auto]">
-                  <span className="text-gray-600">Nomor Dokumen</span>
+                  <span className="text-gray-600">Nomor Faktur</span>
                   <span>: {sale.nomor_penjualan}</span>
                 </div>
                  <div className="grid grid-cols-[100px_auto]">
-                  <span className="text-gray-600">Tanggal</span>
+                  <span className="text-gray-600">Tanggal Faktur</span>
                   <span>: {format(new Date(sale.tanggal_penjualan), 'dd MMMM yyyy', { locale: id })}</span>
                 </div>
                  {documentType === 'suratJalan' && vehicleNumber && (
@@ -223,7 +223,7 @@ export default function InvoicePage() {
 
             {/* Items Table */}
             <div className="mt-6">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-gray-100">
                   <tr className="border-y border-gray-300">
                     <th className="p-2 text-left font-semibold">#</th>
@@ -243,10 +243,10 @@ export default function InvoicePage() {
                       <td className="p-2">{item.kode_produk}</td>
                       <td className="p-2">{item.nama_produk}</td>
                       <td className="p-2 text-center">{item.nama_satuan}</td>
-                      {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.harga_jual_satuan.toLocaleString('id-ID')}</td>}
-                      <td className="p-2 text-center">{item.jumlah}</td>
-                      {documentType === 'invoice' && <td className="p-2 text-right">Rp {(item.subtotal * (item.diskon / 100)).toLocaleString('id-ID')}</td>}
-                      {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.subtotal.toLocaleString('id-ID')}</td>}
+                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.harga_jual_satuan.toLocaleString('id-ID')}</td>}
+                       <td className="p-2 text-center">{item.jumlah}</td>
+                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {(item.subtotal * (item.diskon / 100)).toLocaleString('id-ID')}</td>}
+                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.subtotal.toLocaleString('id-ID')}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -254,7 +254,7 @@ export default function InvoicePage() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-between mt-4 text-sm">
+            <div className="flex justify-between mt-4 text-xs sm:text-sm">
                 {/* Signature */}
                 <div className="w-1/2">
                     <p>Hormat Kami,</p>
