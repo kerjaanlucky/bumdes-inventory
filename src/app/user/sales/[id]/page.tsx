@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -144,6 +145,9 @@ export default function SaleDetailPage() {
                             </Button>
                             <Button size="sm" onClick={() => handleActionClick('DIKONFIRMASI', 'Konfirmasi Penjualan?', 'Tindakan ini akan mengunci penjualan dari pengeditan lebih lanjut.')}>
                                 <CheckCircle className="mr-2 h-4 w-4" /> Konfirmasi
+                            </Button>
+                             <Button variant="outline" size="sm" onClick={() => router.push(`/user/sales/invoice/${sale.id}`)}>
+                                <FileText className="mr-2 h-4 w-4" /> Lihat Faktur
                             </Button>
                              <Button variant="destructive" size="sm" onClick={() => handleActionClick('DIBATALKAN', 'Batalkan Penjualan?', 'Penjualan yang dibatalkan tidak dapat diproses lebih lanjut.')}>
                                 <Ban className="mr-2 h-4 w-4" /> Batalkan
@@ -342,3 +346,4 @@ export default function SaleDetailPage() {
     );
 
     
+}

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -166,7 +167,15 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          <div ref={printAreaRef} className="bg-card border-none rounded-lg p-6 print:border-none print:shadow-none print:p-0 text-gray-800">
+          <div ref={printAreaRef} className="bg-card border-none rounded-lg p-6 print:border-none print:shadow-none print:p-0 text-gray-800 relative">
+             {sale.status === 'DRAFT' && documentType === 'invoice' && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <div className="text-[12rem] font-bold text-gray-200/80 -rotate-45 select-none">
+                        DRAFT
+                    </div>
+                </div>
+            )}
+            
             {/* Header */}
             <div className="flex justify-between items-start pb-4 border-b">
               <div className="space-y-1 text-sm">
