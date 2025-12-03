@@ -20,6 +20,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const returnSchema = z.object({
@@ -194,32 +195,34 @@ export default function SaleDetailPage() {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[50px]">#</TableHead>
-                                            <TableHead>Kode Produk</TableHead>
-                                            <TableHead>Nama Produk</TableHead>
-                                            <TableHead className="text-center">Jumlah</TableHead>
-                                            <TableHead className="text-right">Harga</TableHead>
-                                            <TableHead className="text-right">Diskon</TableHead>
-                                            <TableHead className="text-right">Subtotal</TableHead>
-                                        </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {sale.items?.map((item, index) => (
-                                                <TableRow key={item.id}>
-                                                    <TableCell>{index + 1}</TableCell>
-                                                    <TableCell className="font-mono text-xs">{item.kode_produk}</TableCell>
-                                                    <TableCell>{item.nama_produk}</TableCell>
-                                                    <TableCell className="text-center">{item.jumlah} {item.nama_satuan}</TableCell>
-                                                    <TableCell className="text-right">Rp{item.harga_jual_satuan.toLocaleString('id-ID')}</TableCell>
-                                                     <TableCell className="text-right">{item.diskon}%</TableCell>
-                                                    <TableCell className="text-right">Rp{item.subtotal.toLocaleString('id-ID')}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                    <ScrollArea className="max-h-[calc(100vh-450px)]">
+                                        <Table>
+                                            <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-[50px]">#</TableHead>
+                                                <TableHead>Kode Produk</TableHead>
+                                                <TableHead>Nama Produk</TableHead>
+                                                <TableHead className="text-center">Jumlah</TableHead>
+                                                <TableHead className="text-right">Harga</TableHead>
+                                                <TableHead className="text-right">Diskon</TableHead>
+                                                <TableHead className="text-right">Subtotal</TableHead>
+                                            </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {sale.items?.map((item, index) => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell>{index + 1}</TableCell>
+                                                        <TableCell className="font-mono text-xs">{item.kode_produk}</TableCell>
+                                                        <TableCell>{item.nama_produk}</TableCell>
+                                                        <TableCell className="text-center">{item.jumlah} {item.nama_satuan}</TableCell>
+                                                        <TableCell className="text-right">Rp{item.harga_jual_satuan.toLocaleString('id-ID')}</TableCell>
+                                                         <TableCell className="text-right">{item.diskon}%</TableCell>
+                                                        <TableCell className="text-right">Rp{item.subtotal.toLocaleString('id-ID')}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -230,21 +233,23 @@ export default function SaleDetailPage() {
                                     <CardDescription>Lacak semua perubahan status untuk penjualan ini.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="text-sm">
-                                    <ul className="space-y-4">
-                                        {sale.history?.map((h, index) => (
-                                        <li key={index} className="flex flex-col items-start gap-1">
-                                            <div className='flex items-center gap-2'>
-                                                <Badge variant={getStatusVariant(h.status)}>{h.status.replace(/_/g, ' ')}</Badge>
-                                                <span className='text-xs text-muted-foreground'>{format(new Date(h.tanggal), "dd MMM yyyy, HH:mm")} oleh <strong>{h.oleh}</strong></span>
-                                            </div>
-                                            {h.catatan && (
-                                                <p className="pl-2 border-l-2 border-muted ml-2 text-muted-foreground text-xs italic">
-                                                    "{h.catatan}"
-                                                </p>
-                                            )}
-                                        </li>
-                                        ))}
-                                    </ul>
+                                    <ScrollArea className="max-h-[calc(100vh-450px)]">
+                                        <ul className="space-y-4">
+                                            {sale.history?.map((h, index) => (
+                                            <li key={index} className="flex flex-col items-start gap-1">
+                                                <div className='flex items-center gap-2'>
+                                                    <Badge variant={getStatusVariant(h.status)}>{h.status.replace(/_/g, ' ')}</Badge>
+                                                    <span className='text-xs text-muted-foreground'>{format(new Date(h.tanggal), "dd MMM yyyy, HH:mm")} oleh <strong>{h.oleh}</strong></span>
+                                                </div>
+                                                {h.catatan && (
+                                                    <p className="pl-2 border-l-2 border-muted ml-2 text-muted-foreground text-xs italic">
+                                                        "{h.catatan}"
+                                                    </p>
+                                                )}
+                                            </li>
+                                            ))}
+                                        </ul>
+                                    </ScrollArea>
                                 </CardContent>
                             </Card>
                         </TabsContent>

@@ -35,6 +35,7 @@ export default function InvoicePage() {
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [customerAddress, setCustomerAddress] = useState('N/A');
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +50,10 @@ export default function InvoicePage() {
             const branchData = getBranchById(userProfile.branchId);
             setBranch(branchData || null);
           }
+          // Assuming customer details are needed, this should be fetched properly.
+          // This is a placeholder as customer data is not directly on the sale object.
+          // In a real app, you might fetch customer details here.
+          setCustomerAddress(saleData.customer_id ? "Alamat Pelanggan..." : "N/A");
         } else {
           router.push('/user/sales');
         }
@@ -57,34 +62,24 @@ export default function InvoicePage() {
     fetchData();
   }, [saleId, getSaleById, getBranchById, userProfile, router]);
   
-  const handlePrint = (type: DocumentType) => {
+  const handlePrint = () => {
     setIsPrinting(true);
-    setDocumentType(type);
     setTimeout(() => {
         window.print();
         setIsPrinting(false);
     }, 100);
   };
   
-  const handleSuratJalanClick = () => {
-      setIsModalOpen(true);
-  }
-
-  const handleSuratJalanSubmit = (vehicle: string) => {
-    setVehicleNumber(vehicle);
-    setIsModalOpen(false);
-    handlePrint('suratJalan');
-  };
-
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (type: DocumentType) => {
     if (!printAreaRef.current) return;
     setIsDownloading(true);
-    setDocumentType('invoice');
+    setDocumentType(type); // Set document type before rendering for PDF
     
+    // Allow state to update and re-render
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    const canvas = await html2canvas(printAreaRef.current, { scale: 1 });
-    const imgData = canvas.toDataURL('image/jpeg', 0.7);
+    const canvas = await html2canvas(printAreaRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL('image/jpeg', 0.8);
     
     const pdf = new jsPDF({
         orientation: 'portrait',
@@ -110,11 +105,20 @@ export default function InvoicePage() {
     const y = 0;
 
     pdf.addImage(imgData, 'JPEG', x, y, widthInPdf, heightInPdf);
-    pdf.save(`invoice-${sale?.nomor_penjualan}.pdf`);
+    pdf.save(`${type}-${sale?.nomor_penjualan}.pdf`);
 
     setIsDownloading(false);
   };
 
+  const handleSuratJalanClick = () => {
+      setIsModalOpen(true);
+  }
+
+  const handleSuratJalanSubmit = (vehicle: string) => {
+    setVehicleNumber(vehicle);
+    setIsModalOpen(false);
+    handleDownloadPdf('suratJalan');
+  };
 
   const isLoading = isSaleFetching || isBranchFetching || !sale || !branch;
 
@@ -152,25 +156,21 @@ export default function InvoicePage() {
           <div className="flex justify-between items-center mb-6 print:hidden">
             <h1 className="text-2xl font-bold">Dokumen Penjualan</h1>
             <div className="flex gap-2">
-              <Button onClick={handleDownloadPdf} variant="outline" disabled={isDownloading}>
+              <Button onClick={() => handleDownloadPdf('invoice')} variant="outline" disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                Download PDF
+                Download PDF Faktur
               </Button>
-              <Button onClick={() => handlePrint('invoice')} variant="outline" disabled={isPrinting}>
-                {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
-                Cetak Faktur
-              </Button>
-               <Button onClick={handleSuratJalanClick} disabled={isPrinting}>
+               <Button onClick={handleSuratJalanClick} disabled={isDownloading}>
                 <FileText className="mr-2 h-4 w-4" />
-                Cetak Surat Jalan
+                Buat PDF Surat Jalan
               </Button>
             </div>
           </div>
 
-          <div ref={printAreaRef} className="bg-card border-none rounded-lg p-6 print:border-none print:shadow-none print:p-0 text-gray-800 relative">
+          <div ref={printAreaRef} className="bg-card border rounded-lg p-6 print:border-none print:shadow-none print:p-0 text-gray-800 relative">
              {sale.status === 'DRAFT' && documentType === 'invoice' && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                    <div className="text-[12rem] font-bold text-gray-200/80 -rotate-45 select-none">
+                    <div className="text-[10rem] font-bold text-gray-200/80 -rotate-45 select-none">
                         DRAFT
                     </div>
                 </div>
@@ -200,16 +200,16 @@ export default function InvoicePage() {
                 </div>
                  <div className="grid grid-cols-[100px_auto]">
                   <span className="text-gray-600">Alamat</span>
-                  <span>: {sale.items.find(item => item.id === sale.customer_id)?.stok_tersedia || 'N/A'}</span>
+                  <span>: {customerAddress}</span>
                 </div>
               </div>
                <div className="text-left">
                 <div className="grid grid-cols-[100px_auto]">
-                  <span className="text-gray-600">Nomor Faktur</span>
+                  <span className="text-gray-600">Nomor Dokumen</span>
                   <span>: {sale.nomor_penjualan}</span>
                 </div>
                  <div className="grid grid-cols-[100px_auto]">
-                  <span className="text-gray-600">Tanggal Faktur</span>
+                  <span className="text-gray-600">Tanggal</span>
                   <span>: {format(new Date(sale.tanggal_penjualan), 'dd MMMM yyyy', { locale: id })}</span>
                 </div>
                  {documentType === 'suratJalan' && vehicleNumber && (
@@ -259,7 +259,7 @@ export default function InvoicePage() {
                 <div className="w-1/2">
                     <p>Hormat Kami,</p>
                     <div className="h-20"></div>
-                    <p className="font-semibold border-t border-gray-400 pt-1 inline-block">{documentType === 'suratJalan' ? userProfile?.name : 'PEGAWAI 1'}</p>
+                    <p className="font-semibold border-t border-gray-400 pt-1 inline-block">{documentType === 'suratJalan' ? userProfile?.name : 'Admin Penjualan'}</p>
                 </div>
 
                 {/* Totals */}
