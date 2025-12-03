@@ -9,8 +9,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { Sale, Branch } from '@/lib/types';
 import { Loader2, Printer, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { SuratJalanModal } from './surat-jalan-modal';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -59,7 +59,6 @@ export default function InvoicePage() {
   const handlePrint = (type: DocumentType) => {
     setIsPrinting(true);
     setDocumentType(type);
-    // Use timeout to ensure state is updated before print dialog opens
     setTimeout(() => {
         window.print();
         setIsPrinting(false);
@@ -129,6 +128,7 @@ export default function InvoicePage() {
   const subtotal = sale.items.reduce((acc, item) => acc + item.subtotal, 0);
   const totalItemDiscount = sale.items.reduce((acc, item) => acc + (item.subtotal * (item.diskon / 100)), 0);
   const invoiceDiscount = sale.diskon_invoice || 0;
+  const totalDiscount = totalItemDiscount + invoiceDiscount;
   
   const dppBeforeTax = subtotal - totalItemDiscount - invoiceDiscount;
 
@@ -141,7 +141,8 @@ export default function InvoicePage() {
   } else { // exclusive
     taxAmount = dppBeforeTax * ((sale.pajak || 0) / 100);
   }
-
+  
+  const ongkosKirim = sale.ongkos_kirim || 0;
 
   return (
     <>
@@ -165,160 +166,126 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          <div ref={printAreaRef} className="bg-card border rounded-lg p-8 print:border-none print:shadow-none print:p-0">
-            <header className="flex justify-between items-start pb-6 border-b">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-bold text-primary">{branch?.name}</h2>
-                <p className="text-muted-foreground text-sm">{branch?.location}</p>
-                <p className="text-muted-foreground text-sm">Email: {branch?.email}</p>
-                <p className="text-muted-foreground text-sm">Telepon: {branch?.phone}</p>
+          <div ref={printAreaRef} className="bg-card border-none rounded-lg p-6 print:border-none print:shadow-none print:p-0 text-gray-800">
+            {/* Header */}
+            <div className="flex justify-between items-start pb-4 border-b">
+              <div className="space-y-1 text-sm">
+                <h2 className="text-xl font-bold">{branch?.name.toUpperCase()}</h2>
+                <p>{branch?.location}</p>
+                <p>Telp: {branch?.phone || "-"}</p>
+                <p>Email: {branch?.email || "-"}</p>
               </div>
               <div className="text-right">
-                <h1 className="text-4xl font-bold uppercase tracking-wider text-primary">
-                    {documentType === 'invoice' ? 'FAKTUR' : 'SURAT JALAN'}
+                <h1 className="text-2xl font-bold">
+                    {documentType === 'invoice' ? 'Faktur Penjualan' : 'Surat Jalan'}
                 </h1>
-                <p className="text-muted-foreground">#{sale.nomor_penjualan}</p>
               </div>
-            </header>
+            </div>
 
-            <section className="grid grid-cols-2 gap-4 my-6">
+            {/* Customer Info */}
+            <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
               <div>
-                <h3 className="font-semibold mb-2">Ditujukan Kepada:</h3>
-                <p className="font-bold">{sale.nama_customer}</p>
-                <p className="text-sm text-muted-foreground">{sale.items.find(item => item.id === sale.customer_id)?.stok_tersedia}</p>
+                <div className="grid grid-cols-[100px_auto]">
+                  <span className="text-gray-600">Nama Pelanggan</span>
+                  <span>: {sale.nama_customer}</span>
+                </div>
+                 <div className="grid grid-cols-[100px_auto]">
+                  <span className="text-gray-600">Alamat</span>
+                  <span>: {sale.items.find(item => item.id === sale.customer_id)?.stok_tersedia || 'N/A'}</span>
+                </div>
               </div>
-              <div className="text-right space-y-1">
-                <p>
-                  <span className="font-semibold">Tanggal Dokumen: </span>
-                  {format(new Date(sale.tanggal_penjualan), 'dd MMMM yyyy')}
-                </p>
-                {documentType === 'invoice' && (
-                    <p>
-                    <span className="font-semibold">Tanggal Jatuh Tempo: </span>
-                    {format(new Date(sale.tanggal_penjualan).setDate(new Date(sale.tanggal_penjualan).getDate() + 30), 'dd MMMM yyyy')}
-                    </p>
-                )}
+               <div className="text-left">
+                <div className="grid grid-cols-[100px_auto]">
+                  <span className="text-gray-600">Nomor Faktur</span>
+                  <span>: {sale.nomor_penjualan}</span>
+                </div>
+                 <div className="grid grid-cols-[100px_auto]">
+                  <span className="text-gray-600">Tanggal Faktur</span>
+                  <span>: {format(new Date(sale.tanggal_penjualan), 'dd MMMM yyyy', { locale: id })}</span>
+                </div>
                  {documentType === 'suratJalan' && vehicleNumber && (
-                    <p>
-                        <span className="font-semibold">No. Kendaraan: </span>
-                        {vehicleNumber}
-                    </p>
+                    <div className="grid grid-cols-[100px_auto]">
+                        <span className="text-gray-600">No. Kendaraan</span>
+                        <span>: {vehicleNumber}</span>
+                    </div>
                 )}
               </div>
-            </section>
+            </div>
 
-            <section>
+            {/* Items Table */}
+            <div className="mt-6">
               <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-2 text-left font-semibold">Deskripsi</th>
-                    <th className="p-2 text-center font-semibold">Jumlah</th>
-                    {documentType === 'invoice' && (
-                        <>
-                            <th className="p-2 text-right font-semibold">Harga Satuan</th>
-                            <th className="p-2 text-right font-semibold">Total</th>
-                        </>
-                    )}
+                <thead className="bg-gray-100">
+                  <tr className="border-y border-gray-300">
+                    <th className="p-2 text-left font-semibold">#</th>
+                    <th className="p-2 text-left font-semibold">Kode Barang</th>
+                    <th className="p-2 text-left font-semibold">Nama Barang</th>
+                    <th className="p-2 text-center font-semibold">Satuan</th>
+                    {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Harga</th>}
+                    <th className="p-2 text-center font-semibold">Qty</th>
+                    {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Diskon</th>}
+                    {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Total</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {sale.items.map((item) => (
-                    <tr key={item.id} className="border-b">
+                  {sale.items.map((item, index) => (
+                    <tr key={item.id} className="border-b border-gray-200">
+                      <td className="p-2">{index + 1}</td>
+                      <td className="p-2">{item.produk_id.substring(0, 7)}</td>
                       <td className="p-2">{item.nama_produk}</td>
-                      <td className="p-2 text-center">{item.jumlah} {item.nama_satuan}</td>
-                       {documentType === 'invoice' && (
-                        <>
-                            <td className="p-2 text-right">Rp{item.harga_jual_satuan.toLocaleString('id-ID')}</td>
-                            <td className="p-2 text-right">Rp{item.subtotal.toLocaleString('id-ID')}</td>
-                        </>
-                       )}
+                      <td className="p-2 text-center">{item.nama_satuan}</td>
+                      {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.harga_jual_satuan.toLocaleString('id-ID')}</td>}
+                      <td className="p-2 text-center">{item.jumlah}</td>
+                      {documentType === 'invoice' && <td className="p-2 text-right">Rp {(item.subtotal * (item.diskon / 100)).toLocaleString('id-ID')}</td>}
+                      {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.subtotal.toLocaleString('id-ID')}</td>}
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </section>
+            </div>
 
-            {documentType === 'invoice' && (
-                <section className="flex justify-end mt-6">
-                    <div className="w-full max-w-sm space-y-2 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>Rp{subtotal.toLocaleString('id-ID')}</span>
-                    </div>
-                    {totalItemDiscount > 0 && (
+            {/* Footer */}
+            <div className="flex justify-between mt-4 text-sm">
+                {/* Signature */}
+                <div className="w-1/2">
+                    <p>Hormat Kami,</p>
+                    <div className="h-20"></div>
+                    <p className="font-semibold border-t border-gray-400 pt-1 inline-block">{documentType === 'suratJalan' ? userProfile?.name : 'PEGAWAI 1'}</p>
+                </div>
+
+                {/* Totals */}
+                {documentType === 'invoice' && (
+                    <div className="w-1/2 max-w-xs space-y-1">
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Diskon Item</span>
-                            <span className="text-red-500">- Rp{totalItemDiscount.toLocaleString('id-ID')}</span>
+                            <span>Sub Total</span>
+                            <span className="text-right">Rp {subtotal.toLocaleString('id-ID')}</span>
                         </div>
-                    )}
-                    {invoiceDiscount > 0 && (
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Diskon Invoice</span>
-                            <span className="text-red-500">- Rp{invoiceDiscount.toLocaleString('id-ID')}</span>
-                        </div>
-                    )}
-                    <Separator />
-                    {sale.taxType === 'inclusive' ? (
-                        <>
-                            <div className="flex justify-between">
-                                <span>DPP</span>
-                                <span>Rp{dpp.toLocaleString('id-ID')}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Pajak Termasuk ({sale.pajak}%)</span>
-                                <span>Rp{taxAmount.toLocaleString('id-ID')}</span>
-                            </div>
-                        </>
-                    ) : (
                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Pajak ({sale.pajak}%)</span>
-                            <span>+ Rp{taxAmount.toLocaleString('id-ID')}</span>
+                            <span>Diskon</span>
+                            <span className="text-right">(Rp {totalDiscount.toLocaleString('id-ID')})</span>
                         </div>
-                    )}
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ongkos Kirim</span>
-                        <span>Rp{sale.ongkos_kirim.toLocaleString('id-ID')}</span>
+                        <div className="flex justify-between">
+                            <span>Pajak (PPN {sale.pajak}%)</span>
+                            <span className="text-right">Rp {taxAmount.toLocaleString('id-ID')}</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Ongkos Kirim</span>
+                            <span className="text-right">Rp {ongkosKirim.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-base border-t border-gray-400 pt-1 mt-1">
+                            <span>Grand Total</span>
+                            <span className="text-right">Rp {sale.total_harga.toLocaleString('id-ID')}</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Biaya Lain-lain</span>
-                        <span>Rp{sale.biaya_lain.toLocaleString('id-ID')}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold text-base">
-                        <span>TOTAL</span>
-                        <span>Rp{sale.total_harga.toLocaleString('id-ID')}</span>
-                    </div>
-                    </div>
-                </section>
-            )}
+                )}
+            </div>
 
-            <footer className="mt-24 pt-6">
-                <div className="grid grid-cols-2 gap-4 text-center text-sm">
-                     <div>
-                        <p>Dibuat Oleh,</p>
-                        <div className="h-20"></div>
-                        <p className="font-semibold border-t pt-2">{userProfile?.name}</p>
-                        <p className="text-xs text-muted-foreground">Kasir</p>
-                    </div>
-                    {documentType === 'suratJalan' ? (
-                        <div>
-                            <p>Diterima Oleh,</p>
-                            <div className="h-20"></div>
-                            <p className="font-semibold border-t pt-2">( . . . . . . . . . . . . . . . . )</p>
-                            <p className="text-xs text-muted-foreground">Driver</p>
-                        </div>
-                    ) : (
-                         <div>
-                            <p>Hormat Kami,</p>
-                            <div className="h-20"></div>
-                             <p className="font-semibold border-t pt-2">{branch.name}</p>
-                        </div>
-                    )}
-                </div>
-                 <div className="mt-12 text-center text-xs text-muted-foreground">
-                    <p>{branch.invoiceNotes || "Terima kasih atas bisnis Anda. Silakan hubungi kami jika ada pertanyaan mengenai dokumen ini."}</p>
-                </div>
-            </footer>
+             {/* Notes */}
+            <div className="mt-6 pt-4 border-t text-xs">
+                <p className="font-semibold">Note:</p>
+                <p>{branch?.invoiceNotes || "Harga sudah Termasuk PPN."}</p>
+            </div>
+
           </div>
         </div>
       </div>
@@ -332,21 +299,21 @@ export default function InvoicePage() {
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            background-color: #ffffff !important;
           }
-          .print\:hidden {
-            display: none;
-          }
-          .print\:p-0 {
-            padding: 0;
-          }
-           .print\:border-none {
-            border: none;
-          }
-           .print\:shadow-none {
-            box-shadow: none;
-          }
+          .print\:hidden { display: none; }
+          .print\:p-0 { padding: 0; }
+          .print\:border-none { border: none !important; }
+          .print\:shadow-none { box-shadow: none !important; }
+          .text-gray-800 { color: #1f2937 !important; }
+          .bg-gray-100 { background-color: #f3f4f6 !important; }
+          .border-gray-300 { border-color: #d1d5db !important; }
+          .border-gray-200 { border-color: #e5e7eb !important; }
+          .border-gray-400 { border-color: #9ca3af !important; }
         }
       `}</style>
     </>
   );
 }
+
+    
