@@ -82,6 +82,7 @@ export type SaleStatus = 'DRAFT' | 'DIKONFIRMASI' | 'DIKIRIM' | 'LUNAS' | 'DIRET
 export interface SaleItem {
   id: any;
   produk_id: string;
+  kode_produk: string;
   nama_produk: string;
   stok_tersedia: number; // To hold the available stock when item is added
   nama_satuan: string;

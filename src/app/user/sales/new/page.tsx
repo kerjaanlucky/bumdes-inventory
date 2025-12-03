@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const saleItemSchema = z.object({
   id: z.string(),
   produk_id: z.string().min(1, "Produk harus dipilih"),
+  kode_produk: z.string(),
   nama_produk: z.string(),
   nama_satuan: z.string(),
   stok_tersedia: z.number(),
@@ -227,6 +228,7 @@ export default function NewSalePage() {
       append({
         id: `new-${fields.length}`,
         produk_id: product.id,
+        kode_produk: product.kode_produk,
         nama_produk: product.nama_produk,
         nama_satuan: product.nama_satuan || 'N/A',
         stok_tersedia: product.stok,

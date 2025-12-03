@@ -218,8 +218,8 @@ export default function InvoicePage() {
                 <thead className="bg-gray-100">
                   <tr className="border-y border-gray-300">
                     <th className="p-2 text-left font-semibold">#</th>
-                    <th className="p-2 text-left font-semibold">Kode Barang</th>
-                    <th className="p-2 text-left font-semibold">Nama Barang</th>
+                    <th className="p-2 text-left font-semibold">Kode Produk</th>
+                    <th className="p-2 text-left font-semibold">Nama Produk</th>
                     <th className="p-2 text-center font-semibold">Satuan</th>
                     {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Harga</th>}
                     <th className="p-2 text-center font-semibold">Qty</th>
@@ -231,7 +231,7 @@ export default function InvoicePage() {
                   {sale.items.map((item, index) => (
                     <tr key={item.id} className="border-b border-gray-200">
                       <td className="p-2">{index + 1}</td>
-                      <td className="p-2">{item.produk_id.substring(0, 7)}</td>
+                      <td className="p-2">{item.kode_produk}</td>
                       <td className="p-2">{item.nama_produk}</td>
                       <td className="p-2 text-center">{item.nama_satuan}</td>
                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.harga_jual_satuan.toLocaleString('id-ID')}</td>}
