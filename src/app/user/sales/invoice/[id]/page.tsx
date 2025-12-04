@@ -157,11 +157,11 @@ export default function InvoicePage() {
             <h1 className="text-2xl font-bold">Dokumen Penjualan</h1>
             <div className="flex gap-2">
               <Button onClick={() => handleDownloadPdf('invoice')} variant="outline" disabled={isDownloading}>
-                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {isDownloading && documentType === 'invoice' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 Download PDF Faktur
               </Button>
                <Button onClick={handleSuratJalanClick} disabled={isDownloading}>
-                <FileText className="mr-2 h-4 w-4" />
+                {isDownloading && documentType === 'suratJalan' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                 Buat PDF Surat Jalan
               </Button>
             </div>
@@ -195,7 +195,7 @@ export default function InvoicePage() {
             <div className="grid grid-cols-2 gap-4 mt-4 text-xs sm:text-sm">
               <div>
                 <div className="grid grid-cols-[100px_auto]">
-                  <span className="text-gray-600">Nama</span>
+                  <span className="text-gray-600">Nama Pelanggan</span>
                   <span>: {sale.nama_customer}</span>
                 </div>
                  <div className="grid grid-cols-[100px_auto]">
@@ -212,11 +212,17 @@ export default function InvoicePage() {
                   <span className="text-gray-600">Tanggal Faktur</span>
                   <span>: {format(new Date(sale.tanggal_penjualan), 'dd MMMM yyyy', { locale: id })}</span>
                 </div>
-                 {documentType === 'suratJalan' && vehicleNumber && (
+                {documentType === 'suratJalan' && (
+                  <>
                     <div className="grid grid-cols-[100px_auto]">
-                        <span className="text-gray-600">No. Kendaraan</span>
-                        <span>: {vehicleNumber}</span>
+                      <span className="text-gray-600">No Surat Jalan</span>
+                      <span>: {sale.nomor_penjualan}</span>
                     </div>
+                    <div className="grid grid-cols-[100px_auto]">
+                        <span className="text-gray-600">No Polisi</span>
+                        <span>: {vehicleNumber || '...'}</span>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -226,27 +232,49 @@ export default function InvoicePage() {
               <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-gray-100">
                   <tr className="border-y border-gray-300">
-                    <th className="p-2 text-left font-semibold">#</th>
-                    <th className="p-2 text-left font-semibold">Kode Produk</th>
-                    <th className="p-2 text-left font-semibold">Nama Produk</th>
-                    <th className="p-2 text-center font-semibold">Satuan</th>
-                    {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Harga</th>}
-                    <th className="p-2 text-center font-semibold">Qty</th>
-                    {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Diskon</th>}
-                    {documentType === 'invoice' && <th className="p-2 text-right font-semibold">Total</th>}
+                    {documentType === 'invoice' ? (
+                      <>
+                        <th className="p-2 text-left font-semibold">#</th>
+                        <th className="p-2 text-left font-semibold">Kode Produk</th>
+                        <th className="p-2 text-left font-semibold">Nama Produk</th>
+                        <th className="p-2 text-center font-semibold">Satuan</th>
+                        <th className="p-2 text-right font-semibold">Harga</th>
+                        <th className="p-2 text-center font-semibold">Qty</th>
+                        <th className="p-2 text-right font-semibold">Diskon</th>
+                        <th className="p-2 text-right font-semibold">Total</th>
+                      </>
+                    ) : (
+                       <>
+                        <th className="p-2 text-left font-semibold">Jumlah</th>
+                        <th className="p-2 text-left font-semibold">Satuan</th>
+                        <th className="p-2 text-left font-semibold">Nama Produk</th>
+                        <th className="p-2 text-left font-semibold w-[30%]">Keterangan</th>
+                       </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {sale.items.map((item, index) => (
                     <tr key={item.id} className="border-b border-gray-200">
-                      <td className="p-2">{index + 1}</td>
-                      <td className="p-2">{item.kode_produk}</td>
-                      <td className="p-2">{item.nama_produk}</td>
-                      <td className="p-2 text-center">{item.nama_satuan}</td>
-                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.harga_jual_satuan.toLocaleString('id-ID')}</td>}
-                       <td className="p-2 text-center">{item.jumlah}</td>
-                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {(item.subtotal * (item.diskon / 100)).toLocaleString('id-ID')}</td>}
-                       {documentType === 'invoice' && <td className="p-2 text-right">Rp {item.subtotal.toLocaleString('id-ID')}</td>}
+                      {documentType === 'invoice' ? (
+                        <>
+                          <td className="p-2">{index + 1}</td>
+                          <td className="p-2">{item.kode_produk}</td>
+                          <td className="p-2">{item.nama_produk}</td>
+                          <td className="p-2 text-center">{item.nama_satuan}</td>
+                          <td className="p-2 text-right">Rp {item.harga_jual_satuan.toLocaleString('id-ID')}</td>
+                          <td className="p-2 text-center">{item.jumlah}</td>
+                          <td className="p-2 text-right">Rp {(item.subtotal * (item.diskon / 100)).toLocaleString('id-ID')}</td>
+                          <td className="p-2 text-right">Rp {item.subtotal.toLocaleString('id-ID')}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-2">{item.jumlah}</td>
+                          <td className="p-2">{item.nama_satuan}</td>
+                          <td className="p-2">{item.nama_produk}</td>
+                          <td className="p-2"></td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -254,46 +282,64 @@ export default function InvoicePage() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-between mt-4 text-xs sm:text-sm">
-                {/* Signature */}
-                <div className="w-1/2">
-                    <p>Hormat Kami,</p>
-                    <div className="h-20"></div>
-                    <p className="font-semibold border-t border-gray-400 pt-1 inline-block">{documentType === 'suratJalan' ? userProfile?.name : 'Admin Penjualan'}</p>
+            {documentType === 'invoice' ? (
+              <div className="flex justify-between mt-4 text-xs sm:text-sm">
+                  <div className="w-1/2">
+                      <p>Hormat Kami,</p>
+                      <div className="h-20"></div>
+                      <p className="font-semibold border-t border-gray-400 pt-1 inline-block">Admin Penjualan</p>
+                  </div>
+                  <div className="w-1/2 max-w-xs space-y-1">
+                      <div className="flex justify-between">
+                          <span>Sub Total:</span>
+                          <span className="text-right">Rp {subtotal.toLocaleString('id-ID')}</span>
+                      </div>
+                       <div className="flex justify-between">
+                          <span>Diskon:</span>
+                          <span className="text-right">(Rp {totalDiscount.toLocaleString('id-ID')})</span>
+                      </div>
+                      <div className="flex justify-between">
+                          <span>Pajak (PPN {sale.pajak}%):</span>
+                          <span className="text-right">Rp {taxAmount.toLocaleString('id-ID')}</span>
+                      </div>
+                       <div className="flex justify-between">
+                          <span>Ongkos Kirim:</span>
+                          <span className="text-right">Rp {ongkosKirim.toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-base border-t border-gray-400 pt-1 mt-1">
+                          <span>Grand Total:</span>
+                          <span className="text-right">Rp {sale.total_harga.toLocaleString('id-ID')}</span>
+                      </div>
+                  </div>
+              </div>
+            ) : (
+              <div className="mt-8 grid grid-cols-3 gap-4 text-center text-xs sm:text-sm">
+                <div>
+                  <p>Supir</p>
+                  <div className="h-20"></div>
+                  <p>( . . . . . . . . . . . . . . . )</p>
                 </div>
+                <div>
+                  <p>Gudang</p>
+                  <div className="h-20"></div>
+                  <p>( . . . . . . . . . . . . . . . )</p>
+                </div>
+                <div>
+                  <p>Diterima Oleh</p>
+                  <div className="h-20"></div>
+                  <p>( . . . . . . . . . . . . . . . )</p>
+                </div>
+              </div>
+            )}
 
-                {/* Totals */}
-                {documentType === 'invoice' && (
-                    <div className="w-1/2 max-w-xs space-y-1">
-                        <div className="flex justify-between">
-                            <span>Sub Total</span>
-                            <span className="text-right">Rp {subtotal.toLocaleString('id-ID')}</span>
-                        </div>
-                         <div className="flex justify-between">
-                            <span>Diskon</span>
-                            <span className="text-right">(Rp {totalDiscount.toLocaleString('id-ID')})</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Pajak (PPN {sale.pajak}%)</span>
-                            <span className="text-right">Rp {taxAmount.toLocaleString('id-ID')}</span>
-                        </div>
-                         <div className="flex justify-between">
-                            <span>Ongkos Kirim</span>
-                            <span className="text-right">Rp {ongkosKirim.toLocaleString('id-ID')}</span>
-                        </div>
-                        <div className="flex justify-between font-bold text-base border-t border-gray-400 pt-1 mt-1">
-                            <span>Grand Total</span>
-                            <span className="text-right">Rp {sale.total_harga.toLocaleString('id-ID')}</span>
-                        </div>
-                    </div>
-                )}
-            </div>
 
              {/* Notes */}
-            <div className="mt-6 pt-4 border-t text-xs">
-                <p className="font-semibold">Note:</p>
-                <p>{branch?.invoiceNotes || "Harga sudah Termasuk PPN."}</p>
-            </div>
+             {documentType === 'invoice' && (
+                <div className="mt-6 pt-4 border-t text-xs">
+                    <p className="font-semibold">Note:</p>
+                    <p>{branch?.invoiceNotes || "Harga sudah Termasuk PPN."}</p>
+                </div>
+             )}
 
           </div>
         </div>
@@ -324,5 +370,3 @@ export default function InvoicePage() {
     </>
   );
 }
-
-    
