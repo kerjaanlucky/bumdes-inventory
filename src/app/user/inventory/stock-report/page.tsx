@@ -45,6 +45,7 @@ export default function StockReportPage() {
         products, 
         fetchProducts,
         isFetching: isProductsFetching,
+        setSearchTerm: setProductSearchTerm,
     } = useProductStore();
 
     const [productSearch, setProductSearch] = useState('');
@@ -59,8 +60,9 @@ export default function StockReportPage() {
     const totalPages = Math.ceil(total / limit);
 
     useEffect(() => {
-        fetchProducts({ all: true });
-    }, [fetchProducts, debouncedProductSearch]);
+        setProductSearchTerm(debouncedProductSearch);
+        fetchProducts();
+    }, [fetchProducts, debouncedProductSearch, setProductSearchTerm]);
 
     useEffect(() => {
         if (selectedProductId) {

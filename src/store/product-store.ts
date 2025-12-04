@@ -35,7 +35,7 @@ type ProductState = {
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   setFilterCategoryId: (categoryId: string) => void;
-  fetchProducts: () => Promise<void>;
+  fetchProducts: (options?: { all?: boolean }) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'branchId'>) => Promise<void>;
   editProduct: (product: Product, isStockUpdate?: boolean) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
@@ -59,7 +59,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
   setFilterCategoryId: (categoryId) => set({ filterCategoryId: categoryId, page: 1 }),
   
-  fetchProducts: async () => {
+  fetchProducts: async (options = { all: false }) => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
@@ -115,7 +115,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
       }
       
       const total = productsData.length;
-      const paginatedProducts = productsData.slice((page - 1) * limit, page * limit);
+      const paginatedProducts = options.all ? productsData : productsData.slice((page - 1) * limit, page * limit);
 
       set({ 
         products: paginatedProducts,
