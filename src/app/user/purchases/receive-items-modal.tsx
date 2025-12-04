@@ -80,12 +80,21 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
             tanggal_diterima: receivedItem && receivedItem.jumlah_diterima_sekarang > 0 ? new Date().toISOString() : originalItem.tanggal_diterima,
         };
     });
-    await onSubmit(updatedItems);
-    setIsSubmitting(false);
+    try {
+        await onSubmit(updatedItems);
+    } catch(error) {
+        console.error("Error submitting received items:", error);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!isSubmitting && !open) {
+            onClose();
+        }
+    }}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Proses Penerimaan Barang</DialogTitle>
@@ -118,7 +127,7 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input type="number" {...field} max={item.jumlah - item.jumlah_diterima_sebelumnya} />
+                                <Input type="number" {...field} max={item.jumlah - item.jumlah_diterima_sebelumnya} disabled={isSubmitting} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
