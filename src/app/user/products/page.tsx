@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -45,7 +46,8 @@ export default function ProductsPage() {
       setPage,
       setLimit,
       deleteProduct,
-      editProduct
+      editProduct,
+      resetFilters,
     } = useProductStore();
 
     const { categories, fetchCategories } = useCategoryStore();
@@ -56,14 +58,19 @@ export default function ProductsPage() {
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
     useEffect(() => {
+      // Reset filters when component mounts
+      resetFilters();
+      
+      // Fetch all categories for the filter dropdown
+      useCategoryStore.setState({ limit: 1000 }); // Hack to get all categories
+      fetchCategories();
+    }, [resetFilters, fetchCategories]);
+
+
+    useEffect(() => {
       fetchProducts();
     }, [fetchProducts, debouncedSearch, page, limit, filterCategoryId]);
     
-    useEffect(() => {
-        // Fetch all categories for the filter dropdown
-        useCategoryStore.setState({ limit: 1000 }); // Hack to get all categories
-        fetchCategories();
-    }, [fetchCategories]);
 
 
     const getStockStatus = (stock: number): { text: string; variant: "default" | "secondary" | "destructive" } => {

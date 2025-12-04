@@ -35,6 +35,7 @@ type ProductState = {
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
   setFilterCategoryId: (categoryId: string) => void;
+  resetFilters: () => void;
   fetchProducts: (options?: { all?: boolean }) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'branchId'>) => Promise<void>;
   editProduct: (product: Product, isStockUpdate?: boolean) => Promise<void>;
@@ -42,6 +43,7 @@ type ProductState = {
   deleteAllProducts: () => Promise<void>;
   getProductById: (productId: string) => Promise<Product | undefined>;
   importProducts: (products: ParsedProduct[]) => Promise<void>;
+  resetAllStock: () => Promise<void>;
 };
 
 export const useProductStore = create<ProductState>((set, get) => ({
@@ -58,6 +60,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
   setLimit: (limit) => set({ limit, page: 1 }),
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1 }),
   setFilterCategoryId: (categoryId) => set({ filterCategoryId: categoryId, page: 1 }),
+  resetFilters: () => set({ searchTerm: '', filterCategoryId: '', page: 1 }),
   
   fetchProducts: async (options = { all: false }) => {
     const { firestore } = useFirebaseStore.getState();
@@ -302,4 +305,55 @@ export const useProductStore = create<ProductState>((set, get) => ({
     }
   },
 
+  resetAllStock: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return;
+
+    set({ isDeleting: true }); // Use isDeleting state for this action
+    try {
+      const productsRef = collection(firestore, 'products');
+      const q = query(productsRef, where("branchId", "==", branchId));
+      const productsSnapshot = await getDocs(q);
+
+      if (productsSnapshot.empty) {
+        toast({ title: "Tidak Ada Produk", description: "Tidak ada produk untuk direset stoknya." });
+        return;
+      }
+      
+      const batch = writeBatch(firestore);
+      const stocksRef = collection(firestore, 'stocks');
+      
+      productsSnapshot.docs.forEach(productDoc => {
+        const product = { id: productDoc.id, ...productDoc.data() } as Product;
+        if (product.stok !== 0) {
+            const productRef = doc(firestore, 'products', product.id);
+            batch.update(productRef, { stok: 0 });
+
+            // Create a stock movement record
+            const movementRef = doc(stocksRef);
+            const movement: Omit<StockMovement, 'id' | 'branchId'> = {
+                tanggal: new Date().toISOString(),
+                produk_id: product.id,
+                nama_produk: product.nama_produk,
+                nama_satuan: product.nama_satuan || 'N/A',
+                tipe: 'Penyesuaian',
+                jumlah: -product.stok, // The change is the negative of the current stock
+                stok_akhir: 0,
+                referensi: 'RESET_ALL_STOCK',
+            };
+            batch.set(movementRef, { ...movement, branchId });
+        }
+      });
+
+      await batch.commit();
+      toast({ title: "Sukses", description: "Stok semua produk telah direset menjadi 0." });
+      get().fetchProducts(); // Refresh the product list to show updated stock
+    } catch (error) {
+      console.error("Failed to reset all stock:", error);
+      toast({ variant: "destructive", title: "Gagal", description: "Terjadi kesalahan saat mereset stok produk." });
+    } finally {
+      set({ isDeleting: false });
+    }
+  },
 }));

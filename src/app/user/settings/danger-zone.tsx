@@ -19,7 +19,7 @@ import { Loader2 } from "lucide-react";
 import { useStockStore } from "@/store/stock-store";
 import { useStockOpnameStore } from "@/store/stock-opname-store";
 
-type ActionType = 'products' | 'customers' | 'suppliers' | 'sales' | 'purchases' | 'categories' | 'units' | 'expenseCategories' | 'expenses' | 'stockMovements' | 'stockOpnames' | 'all';
+type ActionType = 'products' | 'customers' | 'suppliers' | 'sales' | 'purchases' | 'categories' | 'units' | 'expenseCategories' | 'expenses' | 'stockMovements' | 'stockOpnames' | 'resetStock' | 'all';
 
 interface ActionConfig {
   title: string;
@@ -33,7 +33,7 @@ export function DangerZone() {
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null);
   const [confirmationInput, setConfirmationInput] = useState("");
 
-  const { deleteAllProducts, isDeleting: isDeletingProducts } = useProductStore();
+  const { deleteAllProducts, resetAllStock, isDeleting: isDeletingProducts } = useProductStore();
   const { deleteAllCustomers, isDeleting: isDeletingCustomers } = useCustomerStore();
   const { deleteAllSuppliers, isDeleting: isDeletingSuppliers } = useSupplierStore();
   const { deleteAllSales, isDeleting: isDeletingSales } = useSaleStore();
@@ -53,6 +53,12 @@ export function DangerZone() {
       description: "Tindakan ini akan menghapus semua data master produk secara permanen. Ini tidak dapat dibatalkan.",
       action: deleteAllProducts,
       isSubmitting: isDeletingProducts,
+    },
+    resetStock: {
+      title: "Reset Semua Stok Produk?",
+      description: "Ini akan mengubah jumlah stok semua produk menjadi 0. Riwayat pergerakan stok akan dibuat untuk setiap penyesuaian.",
+      action: resetAllStock,
+      isSubmitting: isDeletingProducts, // Reuse the same flag for simplicity
     },
     customers: {
       title: "Hapus Semua Pelanggan?",
@@ -123,7 +129,7 @@ export function DangerZone() {
           await deleteAllExpenses();
           await deleteAllStockMovements();
           await deleteAllStockOpnames();
-          await deleteAllProducts();
+          await deleteAllProducts(); // Products should be deleted after transactions
           await deleteAllCustomers();
           await deleteAllSuppliers();
           await deleteAllCategories();
@@ -157,6 +163,7 @@ export function DangerZone() {
   const getActionKeyName = (key: ActionType) => {
       switch(key) {
         case 'products': return 'Produk';
+        case 'resetStock': return 'Stok Produk';
         case 'customers': return 'Pelanggan';
         case 'suppliers': return 'Pemasok';
         case 'sales': return 'Penjualan';
@@ -187,15 +194,18 @@ export function DangerZone() {
             if(actionKey === 'all') return null; // handle 'all' separately
             const { description, isSubmitting } = actions[actionKey];
             const name = getActionKeyName(actionKey);
+            const buttonLabel = actionKey === 'resetStock' ? 'Reset Stok' : 'Hapus';
+            const actionTitle = actionKey === 'resetStock' ? 'Reset Semua Stok Produk' : `Hapus Semua ${name}`;
+            
             return (
               <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <h4 className="font-semibold">Hapus Semua {name}</h4>
+                  <h4 className="font-semibold">{actionTitle}</h4>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
                 <Button variant="destructive" onClick={() => openDialog(actionKey)} disabled={isSubmitting || isAnyTaskRunning}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Hapus
+                    {buttonLabel}
                 </Button>
               </div>
             );
