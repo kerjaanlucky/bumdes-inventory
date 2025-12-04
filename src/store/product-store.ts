@@ -322,28 +322,10 @@ export const useProductStore = create<ProductState>((set, get) => ({
       }
       
       const batch = writeBatch(firestore);
-      const stocksRef = collection(firestore, 'stocks');
       
       productsSnapshot.docs.forEach(productDoc => {
-        const product = { id: productDoc.id, ...productDoc.data() } as Product;
-        if (product.stok !== 0) {
-            const productRef = doc(firestore, 'products', product.id);
-            batch.update(productRef, { stok: 0 });
-
-            // Create a stock movement record
-            const movementRef = doc(stocksRef);
-            const movement: Omit<StockMovement, 'id' | 'branchId'> = {
-                tanggal: new Date().toISOString(),
-                produk_id: product.id,
-                nama_produk: product.nama_produk,
-                nama_satuan: product.nama_satuan || 'N/A',
-                tipe: 'Penyesuaian',
-                jumlah: -product.stok, // The change is the negative of the current stock
-                stok_akhir: 0,
-                referensi: 'RESET_ALL_STOCK',
-            };
-            batch.set(movementRef, { ...movement, branchId });
-        }
+        const productRef = doc(firestore, 'products', productDoc.id);
+        batch.update(productRef, { stok: 0 });
       });
 
       await batch.commit();
