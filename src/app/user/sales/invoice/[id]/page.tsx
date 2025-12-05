@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSaleStore } from '@/store/sale-store';
 import { useBranchStore } from '@/store/branch-store';
 import { useAuthStore } from '@/store/auth-store';
-import { Sale, Branch } from '@/lib/types';
+import { Sale, Branch, Customer } from '@/lib/types';
 import { Loader2, Printer, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -15,6 +15,7 @@ import { id } from 'date-fns/locale';
 import { SuratJalanModal } from './surat-jalan-modal';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useCustomerStore } from '@/store/customer-store';
 
 
 type DocumentType = 'invoice' | 'suratJalan';
@@ -26,17 +27,18 @@ export default function InvoicePage() {
 
   const { getSaleById, isFetching: isSaleFetching } = useSaleStore();
   const { getBranchById, isFetching: isBranchFetching } = useBranchStore();
+  const { getCustomerById } = useCustomerStore();
   const { userProfile } = useAuthStore();
   
   const [sale, setSale] = useState<Sale | null>(null);
   const [branch, setBranch] = useState<Branch | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [documentType, setDocumentType] = useState<DocumentType>('invoice');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [customerAddress, setCustomerAddress] = useState('N/A');
-
+  
   const printAreaRef = useRef<HTMLDivElement>(null);
 
 
@@ -50,17 +52,17 @@ export default function InvoicePage() {
             const branchData = getBranchById(userProfile.branchId);
             setBranch(branchData || null);
           }
-          // Assuming customer details are needed, this should be fetched properly.
-          // This is a placeholder as customer data is not directly on the sale object.
-          // In a real app, you might fetch customer details here.
-          setCustomerAddress(saleData.customer_id ? "Alamat Pelanggan..." : "N/A");
+          if (saleData.customer_id) {
+            const customerData = await getCustomerById(saleData.customer_id);
+            setCustomer(customerData || null);
+          }
         } else {
           router.push('/user/sales');
         }
       }
     }
     fetchData();
-  }, [saleId, getSaleById, getBranchById, userProfile, router]);
+  }, [saleId, getSaleById, getBranchById, userProfile, router, getCustomerById]);
   
   const handlePrint = () => {
     setIsPrinting(true);
@@ -185,7 +187,7 @@ export default function InvoicePage() {
                 <p>Email: {branch?.email || "-"}</p>
               </div>
               <div className="text-right">
-                <h1 className="text-xl sm:text-2xl font-bold">
+                <h1 className="text-xl sm:text-2xl font-bold uppercase">
                     {documentType === 'invoice' ? 'Faktur Penjualan' : 'Surat Jalan'}
                 </h1>
               </div>
@@ -200,7 +202,7 @@ export default function InvoicePage() {
                 </div>
                  <div className="grid grid-cols-[100px_auto]">
                   <span className="text-gray-600">Alamat</span>
-                  <span>: {customerAddress}</span>
+                  <span>: {customer?.alamat || 'N/A'}</span>
                 </div>
               </div>
                <div className="text-left">
