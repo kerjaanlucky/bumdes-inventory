@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePurchaseStore } from '@/store/purchase-store';
 import { Purchase, PurchaseItem, PurchaseStatus } from '@/lib/types';
@@ -27,20 +27,20 @@ export default function PurchaseDetailPage() {
     const [isReceiveModalOpen, setReceiveModalOpen] = useState(false);
     const [isSendOrderModalOpen, setSendOrderModalOpen] = useState(false);
 
-    const fetchAndSetPurchase = async () => {
+    const fetchAndSetPurchase = useCallback(async () => {
         const data = await getPurchaseById(purchaseId);
         if (data) {
             setPurchase(data);
         } else {
             router.push('/user/purchases');
         }
-    };
+    }, [purchaseId, getPurchaseById, router]);
 
     useEffect(() => {
         if (purchaseId) {
             fetchAndSetPurchase();
         }
-    }, [purchaseId]);
+    }, [purchaseId, fetchAndSetPurchase]);
     
     const getStatusVariant = (status: PurchaseStatus): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
