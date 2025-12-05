@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -45,13 +46,13 @@ export default function PurchasesPage() {
     
     const [debouncedSearch] = useDebounce(searchTerm, 300);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedPurchase, setSelectedPurchase] = useState<number | null>(null);
+    const [selectedPurchase, setSelectedPurchase] = useState<string | null>(null);
 
     useEffect(() => {
       fetchPurchases();
     }, [fetchPurchases, debouncedSearch, page, limit]);
 
-    const handleDeleteClick = (purchaseId: number) => {
+    const handleDeleteClick = (purchaseId: string) => {
       setSelectedPurchase(purchaseId);
       setDialogOpen(true);
     };
@@ -116,7 +117,8 @@ export default function PurchasesPage() {
                 <TableRow>
                     <TableHead>No. Pembelian</TableHead>
                     <TableHead>Pemasok</TableHead>
-                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Tanggal Invoice</TableHead>
+                    <TableHead>Dibuat Tanggal</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>
@@ -131,6 +133,7 @@ export default function PurchasesPage() {
                       <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
@@ -141,6 +144,7 @@ export default function PurchasesPage() {
                         <TableCell className="font-medium font-mono text-xs">{purchase.nomor_pembelian}</TableCell>
                         <TableCell>{purchase.nama_supplier}</TableCell>
                         <TableCell>{format(new Date(purchase.tanggal_pembelian), "dd MMM yyyy")}</TableCell>
+                        <TableCell>{format(new Date(purchase.created_at), "dd MMM yyyy, HH:mm")}</TableCell>
                         <TableCell>Rp{purchase.total_harga.toLocaleString('id-ID')}</TableCell>
                         <TableCell>
                           <Badge variant={getStatusVariant(purchase.status)}>{purchase.status.replace(/_/g, ' ')}</Badge>

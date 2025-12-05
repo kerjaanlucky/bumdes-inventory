@@ -104,6 +104,13 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
         });
       }
       
+      // Sort: drafts first, then by creation date descending
+      purchases.sort((a, b) => {
+        if (a.status === 'DRAFT' && b.status !== 'DRAFT') return -1;
+        if (a.status !== 'DRAFT' && b.status === 'DRAFT') return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
       const total = purchases.length;
       const paginatedPurchases = purchases.slice((page - 1) * limit, page * limit);
       
