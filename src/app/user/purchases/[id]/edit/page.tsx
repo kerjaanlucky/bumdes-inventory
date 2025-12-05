@@ -63,6 +63,7 @@ export default function EditPurchasePage() {
 
   const [productSearch, setProductSearch] = useState('');
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
   const [debouncedSupplierSearch] = useDebounce(setSupplierSearchTerm, 300);
   const [debouncedProductSearch] = useDebounce(productSearch, 300);
@@ -89,6 +90,7 @@ export default function EditPurchasePage() {
                 ...purchaseData,
                 tanggal_pembelian: new Date(purchaseData.tanggal_pembelian),
             });
+            setIsDataLoaded(true);
         } else {
             router.push('/user/purchases');
         }
@@ -190,7 +192,7 @@ export default function EditPurchasePage() {
     router.push(`/user/purchases/${purchaseId}`);
   };
 
-  if (isFetching || !form.formState.isDirty) {
+  if (isFetching || !isDataLoaded) {
     return <div>Memuat data pembelian...</div>;
   }
 
