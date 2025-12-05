@@ -1,4 +1,5 @@
 
+
 "use client";
 import { create } from 'zustand';
 import { Purchase, PaginatedResponse, PurchaseStatus, PurchaseItem, Supplier } from '@/lib/types';
@@ -35,6 +36,7 @@ type PurchaseState = {
   isFetching: boolean;
   isSubmitting: boolean;
   isDeleting: boolean;
+  isReceiving: boolean; // New state to lock receiving process
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
@@ -58,6 +60,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
   isFetching: false,
   isSubmitting: false,
   isDeleting: false,
+  isReceiving: false, // Initial value for the new state
 
   setPage: (page) => set({ page, purchases: [] }),
   setLimit: (limit) => set({ limit, page: 1, purchases: [] }),
@@ -251,15 +254,16 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
   },
   
   updatePurchaseStatus: async (purchaseId, status, note) => {
+    set({ isSubmitting: true });
     const currentPurchase = get().purchases.find(p => p.id === purchaseId) 
       || await get().getPurchaseById(purchaseId);
 
     if (!currentPurchase) {
       toast({ variant: "destructive", title: "Gagal", description: "Pembelian tidak ditemukan." });
+      set({ isSubmitting: false });
       return;
     }
 
-    set({ isSubmitting: true });
     const updatedPurchase = { 
       ...currentPurchase, 
       status,
@@ -273,14 +277,14 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
   },
 
   receiveItems: async (purchaseId, receivedItems) => {
-    set({ isSubmitting: true });
+    set({ isReceiving: true }); // Lock the process
     const { getProductById, editProduct } = useProductStore.getState();
     const { addStockMovement } = useStockStore.getState();
 
     const purchase = await get().getPurchaseById(purchaseId);
     if (!purchase) {
       toast({ variant: "destructive", title: "Gagal", description: "Pembelian tidak ditemukan." });
-      set({ isSubmitting: false });
+      set({ isReceiving: false });
       return;
     }
 
@@ -336,7 +340,7 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
       console.error("Failed to receive items:", error);
       toast({ variant: "destructive", title: "Gagal Menerima Barang", description: "Terjadi kesalahan." });
     } finally {
-      set({ isSubmitting: false });
+      set({ isReceiving: false }); // Unlock the process
     }
   },
   

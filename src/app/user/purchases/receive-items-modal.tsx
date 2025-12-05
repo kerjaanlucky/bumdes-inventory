@@ -11,8 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { usePurchaseStore } from "@/store/purchase-store";
 
 const receiveItemSchema = z.object({
   id: z.any(),
@@ -46,7 +46,7 @@ interface ReceiveItemsModalProps {
 }
 
 export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNumber }: ReceiveItemsModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isReceiving = usePurchaseStore((state) => state.isReceiving);
   
   const form = useForm<ReceiveFormValues>({
     resolver: zodResolver(receiveSchema),
@@ -70,7 +70,6 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
   });
   
   const handleFormSubmit = async (data: ReceiveFormValues) => {
-    setIsSubmitting(true);
     const updatedItems = items.map(originalItem => {
         const receivedItem = data.items.find(i => i.id === originalItem.id);
         const jumlahDiterimaBaru = (originalItem.jumlah_diterima || 0) + (receivedItem ? receivedItem.jumlah_diterima_sekarang : 0);
@@ -80,18 +79,12 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
             tanggal_diterima: receivedItem && receivedItem.jumlah_diterima_sekarang > 0 ? new Date().toISOString() : originalItem.tanggal_diterima,
         };
     });
-    try {
-        await onSubmit(updatedItems);
-    } catch(error) {
-        console.error("Error submitting received items:", error);
-    } finally {
-        setIsSubmitting(false);
-    }
+    await onSubmit(updatedItems);
   };
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!isSubmitting && !open) {
+        if (!isReceiving && !open) {
             onClose();
         }
     }}>
@@ -127,7 +120,7 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input type="number" {...field} max={item.jumlah - item.jumlah_diterima_sebelumnya} disabled={isSubmitting} />
+                                <Input type="number" {...field} max={item.jumlah - item.jumlah_diterima_sebelumnya} disabled={isReceiving} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -143,11 +136,11 @@ export function ReceiveItemsModal({ isOpen, onClose, items, onSubmit, purchaseNu
               <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.items.root.message}</p>
             )}
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isReceiving}>
                 Batal
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isReceiving}>
+                {isReceiving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Konfirmasi Penerimaan
               </Button>
             </DialogFooter>

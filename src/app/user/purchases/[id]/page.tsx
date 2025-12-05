@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -20,7 +21,7 @@ export default function PurchaseDetailPage() {
     const router = useRouter();
     const params = useParams();
     const purchaseId = params.id as string;
-    const { getPurchaseById, isFetching, updatePurchaseStatus, receiveItems, finalizePurchase } = usePurchaseStore();
+    const { getPurchaseById, isFetching, updatePurchaseStatus, receiveItems, finalizePurchase, isSubmitting } = usePurchaseStore();
     
     const [purchase, setPurchase] = useState<Purchase | null>(null);
     const [isReceiveModalOpen, setReceiveModalOpen] = useState(false);
@@ -53,8 +54,8 @@ export default function PurchaseDetailPage() {
     }
     
     const handleSendOrderConfirm = async (note?: string) => {
-        await updatePurchaseStatus(purchaseId, 'DIPESAN', note);
         setSendOrderModalOpen(false);
+        await updatePurchaseStatus(purchaseId, 'DIPESAN', note);
         await fetchAndSetPurchase(); // Re-fetch data
     }
     
@@ -98,23 +99,30 @@ export default function PurchaseDetailPage() {
                 <div className="hidden items-center gap-2 md:ml-auto md:flex">
                      {purchase.status === 'DRAFT' && (
                         <>
-                            <Button variant="outline" size="sm" onClick={() => router.push(`/user/purchases/${purchase.id}/edit`)}>
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/user/purchases/${purchase.id}/edit`)} disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                 <Edit className="mr-2 h-4 w-4" /> Ubah
                             </Button>
-                            <Button size="sm" onClick={() => setSendOrderModalOpen(true)}>Kirim Pesanan</Button>
+                            <Button size="sm" onClick={() => setSendOrderModalOpen(true)} disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                Kirim Pesanan
+                            </Button>
                         </>
                     )}
                     {purchase.status === 'DIPESAN' && (
-                        <Button size="sm" onClick={() => setReceiveModalOpen(true)}>
+                        <Button size="sm" onClick={() => setReceiveModalOpen(true)} disabled={isSubmitting}>
+                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                             <Truck className="mr-2 h-4 w-4" /> Proses Penerimaan Barang
                         </Button>
                     )}
                     {purchase.status === 'DITERIMA_SEBAGIAN' && (
                         <>
-                            <Button size="sm" variant="secondary" onClick={() => setReceiveModalOpen(true)}>
+                            <Button size="sm" variant="secondary" onClick={() => setReceiveModalOpen(true)} disabled={isSubmitting}>
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                 <Truck className="mr-2 h-4 w-4" /> Lanjutkan Penerimaan
                             </Button>
-                             <Button size="sm" variant="outline" onClick={handleFinalize}>
+                             <Button size="sm" variant="outline" onClick={handleFinalize} disabled={isSubmitting}>
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                 <CheckCircle className="mr-2 h-4 w-4" /> Selesaikan Kuitansi
                             </Button>
                         </>
@@ -242,7 +250,7 @@ export default function PurchaseDetailPage() {
                     onClose={() => setSendOrderModalOpen(false)}
                     onSubmit={handleSendOrderConfirm}
                     purchaseNumber={purchase.nomor_pembelian}
-                    isSubmitting={usePurchaseStore.getState().isSubmitting}
+                    isSubmitting={isSubmitting}
                 />
             )}
         </div>
