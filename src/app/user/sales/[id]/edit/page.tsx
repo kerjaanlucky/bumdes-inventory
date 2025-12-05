@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, Calendar as CalendarIcon, Trash2, PlusCircle, Building, Phone, AlertCircle } from "lucide-react";
-import { Customer, Product, Branch, SaleItem } from "@/lib/types";
+import { Customer, Product, Branch, SaleItem, Sale } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -92,8 +92,8 @@ export default function EditSalePage() {
   useEffect(() => {
     fetchBranches();
     fetchCustomerStore({ all: true });
-    fetchProducts();
-  }, [fetchBranches, fetchCustomerStore, fetchProducts]);
+    // fetchProducts is now called inside another useEffect
+  }, [fetchBranches, fetchCustomerStore]);
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -137,6 +137,10 @@ export default function EditSalePage() {
   useEffect(() => {
     setProductSearchTerm(debouncedProductSearch);
   }, [debouncedProductSearch, setProductSearchTerm]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [debouncedProductSearch, fetchProducts]);
 
   const customerOptions = useMemo(() => 
     customers.map(c => ({ value: c.id, label: c.nama_customer })), 

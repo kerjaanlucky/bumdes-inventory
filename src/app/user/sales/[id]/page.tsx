@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useSaleStore } from '@/store/sale-store';
-import { Sale, SaleStatus } from '@/lib/types';
+import { Sale, SaleStatus, SaleStatusHistory } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, Edit, Truck, CheckCircle, PackageCheck, FileText, Ban, Undo2 } from 'lucide-react';
