@@ -1,4 +1,5 @@
 
+
 import { create } from 'zustand';
 import { Product, PaginatedResponse, StockMovement, Category, Unit } from '@/lib/types';
 import { useStockStore } from './stock-store';
@@ -362,8 +363,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
         const productsToUpdate: Product[] = [];
         const batch = writeBatch(firestore);
 
-        productsSnapshot.forEach(doc => {
-            const product = { id: doc.id, ...doc.data() } as Product;
+        productsSnapshot.forEach(docSnap => {
+            const product = { id: docSnap.id, ...docSnap.data() } as Product;
             const unitName = product.nama_satuan?.toLowerCase();
             if (unitName && unitMap.has(unitName)) {
                 const correctUnitId = unitMap.get(unitName);
