@@ -44,6 +44,8 @@ export default function EditProductPage() {
   
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetType, setSheetType] = useState<'category' | 'unit'>('category');
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -65,6 +67,7 @@ export default function EditProductPage() {
             kategori_id: String(productData.kategori_id),
             satuan_id: String(productData.satuan_id),
           });
+          setIsDataLoaded(true);
         } else {
           router.push("/user/products"); // Redirect if not found
         }
@@ -87,8 +90,15 @@ export default function EditProductPage() {
     setSheetOpen(true);
   }
 
-  if (isFetching || !form.formState.isDirty) {
-    return <div>Memuat data produk...</div>;
+  if (isFetching || !isDataLoaded) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-muted-foreground">Memuat data produk...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
