@@ -44,6 +44,7 @@ type ProductState = {
   getProductById: (productId: string) => Promise<Product | undefined>;
   importProducts: (products: ParsedProduct[]) => Promise<void>;
   resetAllStock: () => Promise<void>;
+  reconcileUnitData: () => Promise<{ count: number; products: Product[] }>;
 };
 
 export const useProductStore = create<ProductState>((set, get) => ({
@@ -310,7 +311,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
-    set({ isDeleting: true }); // Use isDeleting state for this action
+    set({ isDeleting: true });
     try {
       const productsRef = collection(firestore, 'products');
       const q = query(productsRef, where("branchId", "==", branchId));
@@ -330,12 +331,62 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       await batch.commit();
       toast({ title: "Sukses", description: "Stok semua produk telah direset menjadi 0." });
-      get().fetchProducts(); // Refresh the product list to show updated stock
+      get().fetchProducts();
     } catch (error) {
       console.error("Failed to reset all stock:", error);
       toast({ variant: "destructive", title: "Gagal", description: "Terjadi kesalahan saat mereset stok produk." });
     } finally {
       set({ isDeleting: false });
+    }
+  },
+  
+  reconcileUnitData: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    if (!firestore || !branchId) return { count: 0, products: [] };
+
+    set({ isSubmitting: true });
+    try {
+        const unitsRef = collection(firestore, 'units');
+        const productsRef = collection(firestore, 'products');
+
+        const unitsQuery = query(unitsRef, where('branchId', '==', branchId));
+        const productsQuery = query(productsRef, where('branchId', '==', branchId));
+
+        const [unitsSnapshot, productsSnapshot] = await Promise.all([
+            getDocs(unitsQuery),
+            getDocs(productsQuery)
+        ]);
+
+        const unitMap = new Map(unitsSnapshot.docs.map(doc => [doc.data().nama_satuan.toLowerCase(), doc.id]));
+        const productsToUpdate: Product[] = [];
+        const batch = writeBatch(firestore);
+
+        productsSnapshot.forEach(doc => {
+            const product = { id: doc.id, ...doc.data() } as Product;
+            const unitName = product.nama_satuan?.toLowerCase();
+            if (unitName && unitMap.has(unitName)) {
+                const correctUnitId = unitMap.get(unitName);
+                if (product.satuan_id !== correctUnitId) {
+                    const productRef = doc(firestore, 'products', product.id);
+                    batch.update(productRef, { satuan_id: correctUnitId });
+                    productsToUpdate.push(product);
+                }
+            }
+        });
+        
+        if (productsToUpdate.length > 0) {
+            await batch.commit();
+        }
+
+        return { count: productsToUpdate.length, products: productsToUpdate };
+
+    } catch (error) {
+        console.error("Failed to reconcile unit data:", error);
+        toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan saat pemadanan data satuan.' });
+        return { count: 0, products: [] };
+    } finally {
+        set({ isSubmitting: false });
     }
   },
 }));
