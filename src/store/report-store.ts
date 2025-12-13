@@ -11,12 +11,12 @@ import { useFirebaseStore } from './firebase-store';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
 
 export type DashboardSummary = {
-  todayRevenue: number;
+  totalRevenue: number;
   yesterdayRevenue: number;
-  todayProfit: number;
-  todayTransactions: number;
+  totalProfit: number;
+  totalTransactions: number;
   lowStockItems: number;
-  todayExpenses: number;
+  totalExpenses: number;
 };
 
 export type DashboardChartData = {
@@ -90,12 +90,12 @@ const initialCogsSummary: CogsSummary = {
 
 const initialDashboardData: DashboardData = {
     summary: {
-        todayRevenue: 0,
+        totalRevenue: 0,
         yesterdayRevenue: 0,
-        todayProfit: 0,
-        todayTransactions: 0,
+        totalProfit: 0,
+        totalTransactions: 0,
         lowStockItems: 0,
-        todayExpenses: 0,
+        totalExpenses: 0,
     },
     topProducts: [],
     chartData: [],
@@ -136,11 +136,12 @@ export const useReportStore = create<ReportState>((set, get) => ({
         
         // --- Queries ---
         const salesRef = collection(firestore, 'sales');
+        // Fetch sales from start date to today, plus one extra day for yesterday's revenue comparison
         const salesQuery = query(
             salesRef,
             where('branchId', '==', branchId),
             where('status', 'in', ['LUNAS', 'DIKIRIM']),
-            where('tanggal_penjualan', '>=', format(startDate, 'yyyy-MM-dd'))
+            where('tanggal_penjualan', '>=', format(subDays(startDate, 1), 'yyyy-MM-dd'))
         );
         
         const expensesRef = collection(firestore, 'expenses');
@@ -159,55 +160,54 @@ export const useReportStore = create<ReportState>((set, get) => ({
             getDocs(expensesQuery)
         ]);
         
-        const sales = salesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+        const allSales = salesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
         const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
         const expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
         const productsMap = new Map(products.map(p => [p.id, p]));
 
         // --- Calculations ---
-        let todayRevenue = 0;
+        let totalRevenue = 0;
         let yesterdayRevenue = 0;
-        let todayProfit = 0;
-        let todayTransactions = 0;
+        let totalProfit = 0;
+        let totalTransactions = 0;
+        let totalExpenses = 0;
         const topProductsMap = new Map<string, number>();
         const chartDataMap = new Map<string, { penjualan: number, laba: number }>();
-
-        const todayStr = format(today, 'yyyy-MM-dd');
+        
         const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
         
-        let todayExpenses = 0;
+        // Calculate total expenses for the selected period
         for (const expense of expenses) {
-            const expenseDate = format((expense.tanggal as any).toDate(), 'yyyy-MM-dd');
-            if (expenseDate === todayStr) {
-                todayExpenses += expense.jumlah;
-            }
+            totalExpenses += expense.jumlah;
         }
 
+        for (const sale of allSales) {
+            const saleDate = new Date(sale.tanggal_penjualan);
 
-        for (const sale of sales) {
-            const saleDate = sale.tanggal_penjualan;
-            
-            // For summary cards
-            if (saleDate === todayStr) {
-                todayRevenue += sale.total_harga;
-                todayTransactions += 1;
-                for (const item of sale.items) {
-                    todayProfit += (item.harga_jual_satuan - item.harga_modal) * item.jumlah;
-                    topProductsMap.set(item.produk_id, (topProductsMap.get(item.produk_id) || 0) + item.jumlah);
-                }
-            } else if (saleDate === yesterdayStr) {
+            // Calculate yesterday's revenue separately
+            if (format(saleDate, 'yyyy-MM-dd') === yesterdayStr) {
                 yesterdayRevenue += sale.total_harga;
             }
 
-            // For chart
-            const chartDateFormat = timeRange === '1d' ? 'HH:00' : 'dd/MM';
-            const formattedDate = format(new Date(sale.created_at), chartDateFormat);
-            const dayData = chartDataMap.get(formattedDate) || { penjualan: 0, laba: 0 };
-            dayData.penjualan += sale.total_harga;
-            for (const item of sale.items) {
-                dayData.laba += (item.harga_jual_satuan - item.harga_modal) * item.jumlah;
+            // Process sales within the selected date range for cards and charts
+            if (saleDate >= startOfDay(startDate) && saleDate <= endOfDay(today)) {
+                totalRevenue += sale.total_harga;
+                totalTransactions += 1;
+                for (const item of sale.items) {
+                    totalProfit += (item.harga_jual_satuan - item.harga_modal) * item.jumlah;
+                    topProductsMap.set(item.produk_id, (topProductsMap.get(item.produk_id) || 0) + item.jumlah);
+                }
+
+                // For chart
+                const chartDateFormat = timeRange === '1d' ? 'HH:00' : 'dd/MM';
+                const formattedDate = format(new Date(sale.created_at), chartDateFormat);
+                const dayData = chartDataMap.get(formattedDate) || { penjualan: 0, laba: 0 };
+                dayData.penjualan += sale.total_harga;
+                for (const item of sale.items) {
+                    dayData.laba += (item.harga_jual_satuan - item.harga_modal) * item.jumlah;
+                }
+                chartDataMap.set(formattedDate, dayData);
             }
-            chartDataMap.set(formattedDate, dayData);
         }
 
         const lowStockItems = products.filter(p => p.stok > 0 && p.stok < 10).length;
@@ -248,7 +248,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
         set({
             dashboardData: {
-                summary: { todayRevenue, yesterdayRevenue, todayProfit, todayTransactions, lowStockItems, todayExpenses },
+                summary: { totalRevenue, yesterdayRevenue, totalProfit, totalTransactions, lowStockItems, totalExpenses },
                 topProducts,
                 chartData,
             },

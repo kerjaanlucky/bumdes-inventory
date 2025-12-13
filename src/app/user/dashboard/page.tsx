@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -57,11 +58,11 @@ export default function UserDashboardPage() {
   
   const greetingDate = format(new Date(), "eeee, dd MMMM yyyy", { locale: id });
   
-  const getChartLabel = () => {
+  const getCardTitle = () => {
     switch (timeRange) {
-        case '1d': return 'hari ini';
-        case '7d': return '7 hari terakhir';
-        case '30d': return '30 hari terakhir';
+        case '1d': return 'Hari Ini';
+        case '7d': return '7 Hari Terakhir';
+        case '30d': return '30 Hari Terakhir';
         default: return '';
     }
   }
@@ -97,13 +98,13 @@ export default function UserDashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-blue-500/10 border-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Penjualan Hari Ini</CardTitle>
+            <CardTitle className="text-sm font-medium">Penjualan ({getCardTitle()})</CardTitle>
             <DollarSign className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
             {isFetching ? <Loader2 className="h-8 w-8 animate-spin"/> : (
               <>
-                <div className="text-3xl font-bold">Rp{summary?.todayRevenue.toLocaleString('id-ID') || 0}</div>
+                <div className="text-3xl font-bold">Rp{summary?.totalRevenue.toLocaleString('id-ID') || 0}</div>
                 <p className="text-xs text-blue-400">
                   Kemarin: Rp{summary?.yesterdayRevenue.toLocaleString('id-ID') || 0}
                 </p>
@@ -113,13 +114,13 @@ export default function UserDashboardPage() {
         </Card>
         <Card className="bg-green-500/10 border-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Laba Kotor Hari Ini</CardTitle>
+            <CardTitle className="text-sm font-medium">Laba Kotor ({getCardTitle()})</CardTitle>
             <TrendingUp className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
              {isFetching ? <Loader2 className="h-8 w-8 animate-spin"/> : (
               <>
-                <div className="text-3xl font-bold">Rp{summary?.todayProfit.toLocaleString('id-ID') || 0}</div>
+                <div className="text-3xl font-bold">Rp{summary?.totalProfit.toLocaleString('id-ID') || 0}</div>
                 <p className="text-xs text-green-400">
                   Estimasi laba kotor dari penjualan
                 </p>
@@ -129,23 +130,23 @@ export default function UserDashboardPage() {
         </Card>
          <Card className="bg-red-500/10 border-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Biaya Hari Ini</CardTitle>
+            <CardTitle className="text-sm font-medium">Biaya ({getCardTitle()})</CardTitle>
             <Landmark className="h-5 w-5 text-red-500" />
           </CardHeader>
           <CardContent>
              {isFetching ? <Loader2 className="h-8 w-8 animate-spin"/> : (
-                 <div className="text-3xl font-bold">Rp{summary?.todayExpenses.toLocaleString('id-ID') || 0}</div>
+                 <div className="text-3xl font-bold">Rp{summary?.totalExpenses.toLocaleString('id-ID') || 0}</div>
              )}
           </CardContent>
         </Card>
          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transaksi Hari Ini</CardTitle>
+            <CardTitle className="text-sm font-medium">Transaksi ({getCardTitle()})</CardTitle>
             <CreditCard className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
              {isFetching ? <Loader2 className="h-8 w-8 animate-spin"/> : (
-                <div className="text-3xl font-bold">+{summary?.todayTransactions || 0}</div>
+                <div className="text-3xl font-bold">+{summary?.totalTransactions || 0}</div>
              )}
           </CardContent>
         </Card>
@@ -156,7 +157,7 @@ export default function UserDashboardPage() {
           <CardHeader>
             <CardTitle>Ikhtisar Penjualan & Laba</CardTitle>
             <CardDescription>
-              Pendapatan dan laba kotor selama {getChartLabel()}.
+              Pendapatan dan laba kotor selama {getCardTitle().toLowerCase()}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -194,9 +195,9 @@ export default function UserDashboardPage() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Crown className="h-5 w-5 text-amber-500" />
-                    Produk Terlaris Hari Ini
+                    Produk Terlaris ({getCardTitle()})
                 </CardTitle>
-                <CardDescription>Top 5 produk terjual hari ini berdasarkan kuantitas.</CardDescription>
+                <CardDescription>Top 5 produk terjual berdasarkan kuantitas.</CardDescription>
             </CardHeader>
             <CardContent>
                {isFetching ? <Loader2 className="h-6 w-6 animate-spin"/> : (
@@ -216,7 +217,7 @@ export default function UserDashboardPage() {
                  ) : (
                     <div className="text-sm text-muted-foreground text-center py-10">
                         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2"/>
-                        Belum ada penjualan hari ini. Waktu untuk bersinar!
+                        Belum ada penjualan. Waktu untuk bersinar!
                     </div>
                  )
                )}
