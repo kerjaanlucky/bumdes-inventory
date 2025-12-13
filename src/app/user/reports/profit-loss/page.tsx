@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -112,7 +113,7 @@ export default function ProfitLossReportPage() {
                     {/* Beban */}
                     <div className="font-semibold mt-4">Beban Operasional</div>
                      <div className="flex justify-between items-center pl-4">
-                        <span>Diskon & Biaya Lain</span>
+                        <span>Biaya Operasional & Lainnya</span>
                         <span className="text-red-500">(Rp{expenses.toLocaleString('id-ID')})</span>
                     </div>
                     <Separator />

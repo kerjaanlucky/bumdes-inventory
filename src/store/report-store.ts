@@ -42,7 +42,7 @@ type ProfitAndLoss = {
   revenue: number;
   cogs: number; // Cost of Goods Sold
   grossProfit: number;
-  expenses: number; // Discounts, shipping, etc.
+  expenses: number; // Discounts, shipping, etc. + operational expenses
   netProfit: number;
 };
 
@@ -133,7 +133,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
         else daysToFetch = 29;
 
         const startDate = subDays(today, daysToFetch);
-        const startDateString = format(startDate, 'yyyy-MM-dd');
         
         // --- Queries ---
         const salesRef = collection(firestore, 'sales');
@@ -141,7 +140,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
             salesRef,
             where('branchId', '==', branchId),
             where('status', 'in', ['LUNAS', 'DIKIRIM']),
-            where('tanggal_penjualan', '>=', startDateString)
+            where('tanggal_penjualan', '>=', format(startDate, 'yyyy-MM-dd'))
         );
         
         const expensesRef = collection(firestore, 'expenses');
@@ -327,22 +326,38 @@ export const useReportStore = create<ReportState>((set, get) => ({
             where('tanggal_penjualan', '>=', format(dateRange.from, 'yyyy-MM-dd')),
             where('tanggal_penjualan', '<=', format(dateRange.to || new Date(), 'yyyy-MM-dd'))
         );
+        
+        const expensesRef = collection(firestore, 'expenses');
+        const expensesQuery = query(
+            expensesRef,
+            where('branchId', '==', branchId),
+            where('tanggal', '>=', startOfDay(dateRange.from)),
+            where('tanggal', '<=', endOfDay(dateRange.to || new Date()))
+        );
 
-        const salesSnapshot = await getDocs(salesQuery);
+        const [salesSnapshot, expensesSnapshot] = await Promise.all([
+            getDocs(salesQuery),
+            getDocs(expensesQuery)
+        ]);
+
         const sales = salesSnapshot.docs.map(doc => doc.data() as Sale);
+        const expensesData = expensesSnapshot.docs.map(doc => doc.data() as Expense);
         
         let totalRevenue = 0;
         let totalCogs = 0;
-        let totalExpenses = 0;
+        let totalOtherCosts = 0; // Costs from sales docs (discounts, shipping)
 
         for (const sale of sales) {
             totalRevenue += sale.total_harga;
-            totalExpenses += (sale.diskon_invoice || 0) + (sale.ongkos_kirim || 0) + (sale.biaya_lain || 0);
+            totalOtherCosts += (sale.diskon_invoice || 0) + (sale.ongkos_kirim || 0) + (sale.biaya_lain || 0);
              for (const item of sale.items) {
                 totalCogs += item.harga_modal * item.jumlah;
             }
         }
         
+        const totalOperationalExpenses = expensesData.reduce((acc, expense) => acc + expense.jumlah, 0);
+        const totalExpenses = totalOtherCosts + totalOperationalExpenses;
+
         const grossProfit = totalRevenue - totalCogs;
         const netProfit = grossProfit - totalExpenses;
         
