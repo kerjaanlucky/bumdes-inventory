@@ -162,7 +162,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
         
         const allSales = salesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
         const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-        const expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+        const expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), tanggal: (doc.data().tanggal as Timestamp).toDate() } as Expense));
         const productsMap = new Map(products.map(p => [p.id, p]));
 
         // --- Calculations ---
@@ -178,7 +178,10 @@ export const useReportStore = create<ReportState>((set, get) => ({
         
         // Calculate total expenses for the selected period
         for (const expense of expenses) {
-            totalExpenses += expense.jumlah;
+            const expenseDate = expense.tanggal;
+             if (expenseDate >= startOfDay(startDate) && expenseDate <= endOfDay(today)) {
+                totalExpenses += expense.jumlah;
+            }
         }
 
         for (const sale of allSales) {

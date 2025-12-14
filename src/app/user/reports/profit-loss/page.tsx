@@ -1,10 +1,10 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DateRange } from "react-day-picker";
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, FileDown, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +14,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function ProfitLossReportPage() {
   const {
@@ -23,6 +25,9 @@ export default function ProfitLossReportPage() {
     fetchProfitAndLossReport,
     isFetching,
   } = useReportStore();
+  
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     fetchProfitAndLossReport();
@@ -31,42 +36,43 @@ export default function ProfitLossReportPage() {
   const { revenue, cogs, grossProfit, expenses, netProfit } = profitAndLoss;
 
   const handleDownloadExcel = () => {
-    // 1. Prepare data without boolean flags
     const data = [
       { Item: 'Pendapatan (Revenue)', Amount: revenue },
-      { Item: 'Harga Pokok Penjualan (HPP)', Amount: cogs },
+      { Item: 'Harga Pokok Penjualan (HPP)', Amount: -cogs }, // Negative for accounting format
       { Item: 'Laba Kotor', Amount: grossProfit },
-      { Item: 'Beban Operasional', Amount: expenses },
+      { Item: 'Beban Operasional', Amount: -expenses }, // Negative for accounting format
       { Item: 'Laba Bersih', Amount: netProfit },
     ];
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    const worksheet = XLSX.utils.json_to_sheet(data, { skipHeader: true });
 
-    // 2. Apply styling and formatting cell by cell
+    // Custom Header
+    XLSX.utils.sheet_add_aoa(worksheet, [
+        ["Laporan Laba Rugi"],
+        [`Periode: ${format(dateRange?.from || new Date(), "dd MMM yyyy")} - ${format(dateRange?.to || new Date(), "dd MMM yyyy")}`],
+        []
+    ], { origin: "A1" });
+    
+    // Add data starting from A4
+     XLSX.utils.sheet_add_json(worksheet, data, { origin: "A4", skipHeader: true });
+     
+
+    // Apply styling and formatting
     data.forEach((row, index) => {
-      const rowIndex = index + 2; // +1 for header, +1 for 1-based index
+      const rowIndex = index + 4; // Data starts at row 4
       const cellAddress = `B${rowIndex}`;
       const cell = worksheet[cellAddress];
 
       if (cell) {
-        // Apply number format
+        // Apply accounting number format
         cell.z = `_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)`;
         
-        // Style for negative impact items
-        if (row.Item.includes('HPP') || row.Item.includes('Beban')) {
-           cell.s = { ...cell.s, font: { ...cell.s?.font, color: { rgb: "FF9C0006" } } };
-           // Use parenthesis for negative format
-           cell.z = `_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)`;
-        }
-
-        // Style for bold items
         if (row.Item.includes('Laba Kotor') || row.Item.includes('Laba Bersih')) {
-          cell.s = { ...cell.s, font: { ...cell.s?.font, bold: true } };
           worksheet[`A${rowIndex}`].s = { font: { bold: true } };
+          cell.s = { ...cell.s, font: { ...cell.s?.font, bold: true } };
         }
       }
     });
 
-    // Set column widths
     worksheet['!cols'] = [{ wch: 30 }, { wch: 25 }];
     
     const workbook = XLSX.utils.book_new();
@@ -74,15 +80,62 @@ export default function ProfitLossReportPage() {
     
     XLSX.writeFile(workbook, `Laporan_Laba_Rugi_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
+  
+   const handleDownloadPdf = async () => {
+    if (!reportRef.current) return;
+    setIsDownloadingPdf(true);
+    
+    try {
+        const canvas = await html2canvas(reportRef.current, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'pt',
+            format: 'a4'
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = imgWidth / imgHeight;
+        
+        let widthInPdf = pdfWidth - 80; // Add some margin
+        let heightInPdf = widthInPdf / ratio;
+
+        if (heightInPdf > pdfHeight - 80) {
+            heightInPdf = pdfHeight - 80;
+            widthInPdf = heightInPdf * ratio;
+        }
+
+        const x = (pdfWidth - widthInPdf) / 2;
+        const y = 40;
+
+        pdf.addImage(imgData, 'PNG', x, y, widthInPdf, heightInPdf);
+        pdf.save(`Laporan_Laba_Rugi_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
+    } catch (error) {
+        console.error("Error generating PDF", error);
+        toast({ variant: 'destructive', title: 'Gagal Membuat PDF', description: 'Terjadi kesalahan saat membuat file PDF.'})
+    } finally {
+        setIsDownloadingPdf(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Laba Rugi</h1>
         <div className="ml-auto flex items-center gap-2">
-            <Button onClick={handleDownloadExcel} variant="outline" size="sm" disabled={isFetching}>
+            <Button onClick={handleDownloadExcel} variant="outline" size="sm" disabled={isFetching || isDownloadingPdf}>
                 <Download className="mr-2 h-4 w-4" />
                 Download Excel
+            </Button>
+            <Button onClick={handleDownloadPdf} variant="outline" size="sm" disabled={isFetching || isDownloadingPdf}>
+                {isDownloadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                Download PDF
             </Button>
            <Popover>
             <PopoverTrigger asChild>
@@ -123,7 +176,7 @@ export default function ProfitLossReportPage() {
         </div>
       </div>
 
-      <Card>
+      <Card ref={reportRef} className="p-2 sm:p-6">
         <CardHeader>
             <CardTitle>Laporan Laba Rugi</CardTitle>
             <CardDescription>
