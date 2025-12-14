@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -93,8 +92,11 @@ export default function ProfitLossReportPage() {
     setIsDownloadingPdf(true);
     
     try {
-        const canvas = await html2canvas(reportRef.current, { scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
+        const canvas = await html2canvas(reportRef.current, { 
+            scale: 2,
+            useCORS: true,
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.8);
 
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -119,7 +121,7 @@ export default function ProfitLossReportPage() {
         const x = (pdfWidth - widthInPdf) / 2;
         const y = 40;
 
-        pdf.addImage(imgData, 'PNG', x, y, widthInPdf, heightInPdf);
+        pdf.addImage(imgData, 'JPEG', x, y, widthInPdf, heightInPdf);
         pdf.save(`Laporan_Laba_Rugi_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 
     } catch (error) {

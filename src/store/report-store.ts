@@ -1,9 +1,8 @@
 
-
 "use client";
 
 import { create } from 'zustand';
-import { Sale, CogsItem, Product, Expense } from '@/lib/types';
+import { Sale, CogsItem, Product, Expense, ExpenseCategory } from '@/lib/types';
 import { DateRange } from 'react-day-picker';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuthStore } from './auth-store';
@@ -38,6 +37,10 @@ type SalesReportSummary = {
   averageTransactionValue: number;
 };
 
+type ExpenseReportSummary = {
+    totalExpenses: number;
+}
+
 type ProfitAndLoss = {
   revenue: number;
   cogs: number; // Cost of Goods Sold
@@ -54,7 +57,9 @@ export type CogsSummary = {
 
 type ReportState = {
   sales: Sale[];
+  expenses: Expense[];
   summary: SalesReportSummary;
+  expenseSummary: ExpenseReportSummary;
   profitAndLoss: ProfitAndLoss;
   cogsData: CogsItem[];
   cogsSummary: CogsSummary;
@@ -63,6 +68,7 @@ type ReportState = {
   dateRange?: DateRange;
   setDateRange: (dateRange?: DateRange) => void;
   fetchSalesReport: () => Promise<void>;
+  fetchExpensesReport: () => Promise<void>;
   fetchProfitAndLossReport: () => Promise<void>;
   fetchCogsReport: () => Promise<void>;
   fetchDashboardData: (timeRange: '1d' | '7d' | '30d') => Promise<void>;
@@ -72,6 +78,10 @@ const initialSummary: SalesReportSummary = {
   totalRevenue: 0,
   totalTransactions: 0,
   averageTransactionValue: 0,
+};
+
+const initialExpenseSummary: ExpenseReportSummary = {
+  totalExpenses: 0,
 };
 
 const initialProfitAndLoss: ProfitAndLoss = {
@@ -103,7 +113,9 @@ const initialDashboardData: DashboardData = {
 
 export const useReportStore = create<ReportState>((set, get) => ({
   sales: [],
+  expenses: [],
   summary: initialSummary,
+  expenseSummary: initialExpenseSummary,
   profitAndLoss: initialProfitAndLoss,
   cogsData: [],
   cogsSummary: initialCogsSummary,
@@ -320,6 +332,56 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
   },
   
+  fetchExpensesReport: async () => {
+    const { firestore } = useFirebaseStore.getState();
+    const { branchId } = useAuthStore.getState();
+    const { dateRange } = get();
+
+    if (!firestore || !branchId || !dateRange?.from) {
+      set({ expenses: [], expenseSummary: initialExpenseSummary });
+      return;
+    }
+
+    set({ isFetching: true });
+
+    try {
+      const expenseCatRef = collection(firestore, 'expenseCategories');
+      const expenseCatQuery = query(expenseCatRef, where('branchId', '==', branchId));
+      const catSnapshot = await getDocs(expenseCatQuery);
+      const categoriesMap = new Map(catSnapshot.docs.map(doc => [doc.id, doc.data().nama_kategori]));
+      
+      const expensesRef = collection(firestore, 'expenses');
+      const q = query(
+        expensesRef,
+        where('branchId', '==', branchId),
+        where('tanggal', '>=', startOfDay(dateRange.from)),
+        where('tanggal', '<=', endOfDay(dateRange.to || new Date()))
+      );
+
+      const querySnapshot = await getDocs(q);
+      const expenses: Expense[] = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id,
+            ...data,
+            tanggal: (data.tanggal as Timestamp).toDate(),
+            nama_kategori: categoriesMap.get(data.kategori_id) || 'Tanpa Kategori'
+        } as Expense
+      });
+
+      const totalExpenses = expenses.reduce((acc, expense) => acc + expense.jumlah, 0);
+      
+      set({
+        expenses,
+        expenseSummary: { totalExpenses },
+        isFetching: false,
+      });
+    } catch (error) {
+      console.error("Failed to fetch expenses report:", error);
+      set({ isFetching: false });
+    }
+  },
+
   fetchProfitAndLossReport: async () => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();

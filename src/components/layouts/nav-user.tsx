@@ -99,6 +99,10 @@ const reportLinks = [
         label: "Laporan Penjualan",
         href: "/user/reports/sales",
     },
+    {
+        label: "Laporan Biaya",
+        href: "/user/reports/expenses",
+    },
      {
         label: "Laporan HPP",
         href: "/user/reports/cogs",
