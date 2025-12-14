@@ -274,6 +274,11 @@ export const useReportStore = create<ReportState>((set, get) => ({
     set({ isFetching: true });
 
     try {
+      const customersRef = collection(firestore, 'customers');
+      const customersQuery = query(customersRef, where('branchId', '==', branchId));
+      const customersSnapshot = await getDocs(customersQuery);
+      const customersMap = new Map(customersSnapshot.docs.map(doc => [doc.id, doc.data().nama_customer]));
+      
       const salesRef = collection(firestore, 'sales');
       const q = query(
         salesRef,
@@ -284,7 +289,14 @@ export const useReportStore = create<ReportState>((set, get) => ({
       );
 
       const querySnapshot = await getDocs(q);
-      const sales: Sale[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
+      const sales: Sale[] = querySnapshot.docs.map(doc => {
+        const data = doc.data() as Sale;
+        return { 
+          id: doc.id, 
+          ...data,
+          nama_customer: customersMap.get(data.customer_id) || 'N/A'
+        };
+      });
 
       const totalRevenue = sales.reduce((acc, sale) => acc + sale.total_harga, 0);
       const totalTransactions = sales.length;
