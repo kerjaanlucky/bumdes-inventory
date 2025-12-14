@@ -43,17 +43,25 @@ export default function SalesReportPage() {
   }, [dateRange, fetchSalesReport]);
 
   const handleDownloadExcel = () => {
-    const dataToExport = sales.map(sale => ({
-      'Nomor Penjualan': sale.nomor_penjualan,
-      'Pelanggan': sale.nama_customer,
-      'Tanggal': format(new Date(sale.tanggal_penjualan), "dd MMM yyyy"),
-      'Total': sale.total_harga,
-      'Status': sale.status,
-    }));
+    const header = [
+      "Nomor Penjualan",
+      "Pelanggan",
+      "Tanggal",
+      "Total",
+      "Status",
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const dataToExport = sales.map(sale => [
+      sale.nomor_penjualan,
+      sale.nama_customer,
+      format(new Date(sale.tanggal_penjualan), "dd MMM yyyy"),
+      sale.total_harga,
+      sale.status,
+    ]);
 
-    // Add summary
+    const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataToExport]);
+    
+    // Add summary title and data
     const summaryData = [
       [],
       ["Ringkasan Laporan"],
@@ -62,6 +70,21 @@ export default function SalesReportPage() {
       ["Rata-rata Transaksi", summary.averageTransactionValue]
     ];
     XLSX.utils.sheet_add_aoa(worksheet, summaryData, { origin: -1 });
+
+    // Add Period
+    const period = `Periode: ${dateRange?.from ? format(dateRange.from, "dd MMM yyyy") : ''} - ${dateRange?.to ? format(dateRange.to, "dd MMM yyyy") : ''}`;
+    XLSX.utils.sheet_add_aoa(worksheet, [[period]], { origin: 'A1' });
+    
+    // Move header down
+     XLSX.utils.sheet_add_aoa(worksheet, [header], { origin: 'A3' });
+     XLSX.utils.sheet_add_json(worksheet, sales.map(sale => ({
+      'Nomor Penjualan': sale.nomor_penjualan,
+      'Pelanggan': sale.nama_customer,
+      'Tanggal': format(new Date(sale.tanggal_penjualan), "dd MMM yyyy"),
+      'Total': sale.total_harga,
+      'Status': sale.status,
+    })), { origin: 'A4', skipHeader: true });
+
 
     // Set column widths
     worksheet['!cols'] = [

@@ -49,7 +49,12 @@ export default function CogsReportPage() {
       'Total Margin': item.totalMargin,
     }));
     
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const worksheet = XLSX.utils.json_to_sheet([]);
+
+    const period = `Periode: ${dateRange?.from ? format(dateRange.from, "dd MMM yyyy") : ''} - ${dateRange?.to ? format(dateRange.to, "dd MMM yyyy") : ''}`;
+    XLSX.utils.sheet_add_aoa(worksheet, [[period]], { origin: 'A1' });
+    
+    XLSX.utils.sheet_add_json(worksheet, dataToExport, { origin: 'A3' });
 
     // Add totals
     const totalRow = [

@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DateRange } from "react-day-picker";
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Download, FileDown, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, FileDown, Loader2, ChevronsUpDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,13 @@ import { Separator } from '@/components/ui/separator';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from '@/hooks/use-toast';
 
 export default function ProfitLossReportPage() {
   const {
@@ -37,46 +44,46 @@ export default function ProfitLossReportPage() {
 
   const handleDownloadExcel = () => {
     const data = [
-      { Item: 'Pendapatan (Revenue)', Amount: revenue },
-      { Item: 'Harga Pokok Penjualan (HPP)', Amount: -cogs }, // Negative for accounting format
-      { Item: 'Laba Kotor', Amount: grossProfit },
-      { Item: 'Beban Operasional', Amount: -expenses }, // Negative for accounting format
-      { Item: 'Laba Bersih', Amount: netProfit },
+      { Category: 'Pendapatan (Revenue)', Amount: revenue },
+      { Category: 'Harga Pokok Penjualan (HPP)', Amount: -cogs },
+      { Category: 'Laba Kotor', Amount: grossProfit },
+      { Category: 'Beban Operasional', Amount: -expenses },
+      { Category: 'Laba Bersih', Amount: netProfit },
     ];
-    const worksheet = XLSX.utils.json_to_sheet(data, { skipHeader: true });
 
-    // Custom Header
-    XLSX.utils.sheet_add_aoa(worksheet, [
-        ["Laporan Laba Rugi"],
-        [`Periode: ${format(dateRange?.from || new Date(), "dd MMM yyyy")} - ${format(dateRange?.to || new Date(), "dd MMM yyyy")}`],
-        []
-    ], { origin: "A1" });
+    const worksheet = XLSX.utils.json_to_sheet([]);
+
+    // Period Header
+    const period = `Periode: ${dateRange?.from ? format(dateRange.from, "dd MMM yyyy") : ''} - ${dateRange?.to ? format(dateRange.to, "dd MMM yyyy") : ''}`;
+    XLSX.utils.sheet_add_aoa(worksheet, [["Laporan Laba Rugi"], [period], []], { origin: "A1" });
     
-    // Add data starting from A4
-     XLSX.utils.sheet_add_json(worksheet, data, { origin: "A4", skipHeader: true });
-     
+    // Add data with headers
+    XLSX.utils.sheet_add_json(worksheet, data, { origin: "A4" });
 
-    // Apply styling and formatting
+    // Apply formatting
     data.forEach((row, index) => {
-      const rowIndex = index + 4; // Data starts at row 4
-      const cellAddress = `B${rowIndex}`;
-      const cell = worksheet[cellAddress];
-
-      if (cell) {
-        // Apply accounting number format
-        cell.z = `_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)`;
+        const rowIndex = index + 5; // Data starts at row 5 after headers
         
-        if (row.Item.includes('Laba Kotor') || row.Item.includes('Laba Bersih')) {
-          worksheet[`A${rowIndex}`].s = { font: { bold: true } };
-          cell.s = { ...cell.s, font: { ...cell.s?.font, bold: true } };
+        // Bold for totals
+        if (row.Category.includes('Laba Kotor') || row.Category.includes('Laba Bersih')) {
+            worksheet[`A${rowIndex}`].s = { font: { bold: true } };
+            worksheet[`B${rowIndex}`].s = { font: { bold: true } };
         }
-      }
+
+        // Accounting format for numbers
+        const cell = worksheet[`B${rowIndex}`];
+        if (cell) {
+             cell.z = `_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)`;
+             if (cell.v < 0) {
+                 cell.s = { ...cell.s, font: { ...cell.s?.font, color: { rgb: "FF0000" } } };
+             }
+        }
     });
 
     worksheet['!cols'] = [{ wch: 30 }, { wch: 25 }];
     
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Laba Rugi");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laba Rugi");
     
     XLSX.writeFile(workbook, `Laporan_Laba_Rugi_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
@@ -129,14 +136,26 @@ export default function ProfitLossReportPage() {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Laba Rugi</h1>
         <div className="ml-auto flex items-center gap-2">
-            <Button onClick={handleDownloadExcel} variant="outline" size="sm" disabled={isFetching || isDownloadingPdf}>
-                <Download className="mr-2 h-4 w-4" />
-                Download Excel
-            </Button>
-            <Button onClick={handleDownloadPdf} variant="outline" size="sm" disabled={isFetching || isDownloadingPdf}>
-                {isDownloadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                Download PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isFetching || isDownloadingPdf}>
+                  {isDownloadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  Download Laporan
+                  <ChevronsUpDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleDownloadExcel}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  <span>Download Excel</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadPdf}>
+                   <FileDown className="mr-2 h-4 w-4" />
+                   <span>Download PDF</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
            <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -180,7 +199,8 @@ export default function ProfitLossReportPage() {
         <CardHeader>
             <CardTitle>Laporan Laba Rugi</CardTitle>
             <CardDescription>
-                Ringkasan pendapatan dan pengeluaran untuk periode yang dipilih.
+                Ringkasan pendapatan dan pengeluaran untuk periode 
+                <span className="font-semibold"> {dateRange?.from ? format(dateRange.from, "dd MMM yyyy") : ''} - {dateRange?.to ? format(dateRange.to, "dd MMM yyyy") : ''}</span>.
             </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -224,7 +244,7 @@ export default function ProfitLossReportPage() {
                      {/* Laba Bersih */}
                     <div className="flex justify-between items-center font-bold text-lg pt-4 bg-muted/50 p-4 rounded-md">
                         <span>Laba Bersih</span>
-                        <span>Rp{netProfit.toLocaleString('id-ID')}</span>
+                        <span className={cn(netProfit < 0 ? 'text-red-500' : '')}>Rp{netProfit.toLocaleString('id-ID')}</span>
                     </div>
 
                 </div>
