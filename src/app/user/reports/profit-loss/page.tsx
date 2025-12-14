@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import { DateRange } from "react-day-picker";
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Download } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import * as XLSX from 'xlsx';
 
 export default function ProfitLossReportPage() {
   const {
@@ -29,11 +30,35 @@ export default function ProfitLossReportPage() {
   
   const { revenue, cogs, grossProfit, expenses, netProfit } = profitAndLoss;
 
+  const handleDownloadExcel = () => {
+    const data = [
+      { Item: 'Pendapatan (Revenue)', Amount: revenue },
+      { Item: 'Harga Pokok Penjualan (HPP)', Amount: -cogs },
+      { Item: 'Laba Kotor', Amount: grossProfit, isBold: true },
+      { Item: 'Beban Operasional', Amount: -expenses },
+      { Item: 'Laba Bersih', Amount: netProfit, isBold: true, isTotal: true },
+    ];
+    
+    const worksheet = XLSX.utils.json_to_sheet(data, { skipHeader: true });
+
+    // Set column widths
+    worksheet['!cols'] = [{ wch: 30 }, { wch: 20 }];
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Laba Rugi");
+    
+    XLSX.writeFile(workbook, `Laporan_Laba_Rugi_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
+
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Laba Rugi</h1>
         <div className="ml-auto flex items-center gap-2">
+            <Button onClick={handleDownloadExcel} variant="outline" size="sm" disabled={isFetching}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Excel
+            </Button>
            <Popover>
             <PopoverTrigger asChild>
               <Button

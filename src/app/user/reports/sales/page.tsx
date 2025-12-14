@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DateRange } from "react-day-picker";
 import { format, subDays } from 'date-fns';
-import { Calendar as CalendarIcon, Eye } from 'lucide-react';
+import { Calendar as CalendarIcon, Eye, Download } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -23,6 +24,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import * as XLSX from 'xlsx';
+
 
 export default function SalesReportPage() {
   const router = useRouter();
@@ -39,11 +42,51 @@ export default function SalesReportPage() {
     fetchSalesReport();
   }, [dateRange, fetchSalesReport]);
 
+  const handleDownloadExcel = () => {
+    const dataToExport = sales.map(sale => ({
+      'Nomor Penjualan': sale.nomor_penjualan,
+      'Pelanggan': sale.nama_customer,
+      'Tanggal': format(new Date(sale.tanggal_penjualan), "dd MMM yyyy"),
+      'Total': sale.total_harga,
+      'Status': sale.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Add summary
+    const summaryData = [
+      [],
+      ["Ringkasan Laporan"],
+      ["Total Penjualan", summary.totalRevenue],
+      ["Jumlah Transaksi", summary.totalTransactions],
+      ["Rata-rata Transaksi", summary.averageTransactionValue]
+    ];
+    XLSX.utils.sheet_add_aoa(worksheet, summaryData, { origin: -1 });
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 20 }, // Nomor Penjualan
+      { wch: 25 }, // Pelanggan
+      { wch: 15 }, // Tanggal
+      { wch: 15 }, // Total
+      { wch: 15 }, // Status
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Penjualan");
+
+    XLSX.writeFile(workbook, `Laporan_Penjualan_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
+
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Penjualan</h1>
         <div className="ml-auto flex items-center gap-2">
+           <Button onClick={handleDownloadExcel} variant="outline" size="sm" disabled={isFetching || sales.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Download Excel
+            </Button>
            <Popover>
             <PopoverTrigger asChild>
               <Button

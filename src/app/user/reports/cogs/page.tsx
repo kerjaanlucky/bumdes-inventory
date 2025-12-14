@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import { DateRange } from "react-day-picker";
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Download } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import * as XLSX from 'xlsx';
 
 export default function CogsReportPage() {
   const {
@@ -36,11 +37,46 @@ export default function CogsReportPage() {
     fetchCogsReport();
   }, [dateRange, fetchCogsReport]);
 
+  const handleDownloadExcel = () => {
+    const dataToExport = cogsData.map(item => ({
+      'Tanggal': format(new Date(item.saleDate), "dd MMM yyyy"),
+      'Produk': item.productName,
+      'Qty': item.quantity,
+      'Harga Jual': item.sellingPrice,
+      'Total Jual': item.totalSellingPrice,
+      'Harga Modal': item.costPrice,
+      'Total Modal': item.totalCostPrice,
+      'Total Margin': item.totalMargin,
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Add totals
+    const totalRow = [
+      "", "Total", "", "", cogsSummary.totalRevenue, "", cogsSummary.totalCogs, cogsSummary.totalMargin
+    ];
+    XLSX.utils.sheet_add_aoa(worksheet, [totalRow], { origin: -1 });
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+    ];
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan HPP");
+    
+    XLSX.writeFile(workbook, `Laporan_HPP_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
+
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Laporan Harga Pokok Penjualan (HPP)</h1>
         <div className="ml-auto flex items-center gap-2">
+            <Button onClick={handleDownloadExcel} variant="outline" size="sm" disabled={isFetching || cogsData.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Download Excel
+            </Button>
            <Popover>
             <PopoverTrigger asChild>
               <Button
