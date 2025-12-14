@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { DateRange } from "react-day-picker";
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Download, PlayCircle, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, PlayCircle, Loader2, ChevronDown } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -27,7 +28,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown } from 'lucide-react';
 
 type GroupedExpenses = {
   [key: string]: {
@@ -52,19 +52,6 @@ export default function ExpensesReportPage() {
   
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    // Automatically open all categories when data is fetched
-    const initialOpenState = Object.keys(groupedExpenses).reduce((acc, key) => {
-      acc[key] = true;
-      return acc;
-    }, {} as Record<string, boolean>);
-    setOpenCategories(initialOpenState);
-  }, [expenses]);
-
-  const toggleCategory = (categoryId: string) => {
-    setOpenCategories(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
-  };
-
   const groupedExpenses = useMemo(() => {
     return expenses.reduce((acc, expense) => {
       const categoryName = expense.nama_kategori || 'Tanpa Kategori';
@@ -76,6 +63,20 @@ export default function ExpensesReportPage() {
       return acc;
     }, {} as GroupedExpenses);
   }, [expenses]);
+  
+  useEffect(() => {
+    // Automatically open all categories when data is fetched
+    const initialOpenState = Object.keys(groupedExpenses).reduce((acc, key) => {
+      acc[key] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
+    setOpenCategories(initialOpenState);
+  }, [groupedExpenses]);
+
+
+  const toggleCategory = (categoryId: string) => {
+    setOpenCategories(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
+  };
 
   const handleDownloadExcel = () => {
     const dataToExport = expenses.map(item => ({
@@ -192,34 +193,32 @@ export default function ExpensesReportPage() {
                 ))
               ) : Object.keys(groupedExpenses).length > 0 ? (
                 Object.entries(groupedExpenses).map(([categoryName, data]) => (
-                  <React.Fragment key={categoryName}>
-                     <Collapsible asChild open={openCategories[categoryName] ?? true} onOpenChange={() => toggleCategory(categoryName)}>
-                        <>
-                        <CollapsibleTrigger asChild>
-                            <TableRow className="bg-muted/50 hover:bg-muted font-semibold cursor-pointer">
-                                <TableCell colSpan={2}>
-                                    <div className="flex items-center gap-2">
-                                        <ChevronDown className={cn("h-4 w-4 transition-transform", (openCategories[categoryName] ?? true) && "rotate-0")} />
-                                        {categoryName}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">Rp{data.total.toLocaleString('id-ID')}</TableCell>
-                            </TableRow>
-                        </CollapsibleTrigger>
-                         <CollapsibleContent asChild>
-                            <>
-                            {data.items.map(item => (
-                                <TableRow key={item.id} className="text-sm">
-                                <TableCell>{format(new Date(item.tanggal), "dd MMM yyyy")}</TableCell>
-                                <TableCell>{item.deskripsi}</TableCell>
-                                <TableCell className="text-right">Rp{item.jumlah.toLocaleString('id-ID')}</TableCell>
-                                </TableRow>
-                            ))}
-                            </>
-                        </CollapsibleContent>
-                        </>
-                    </Collapsible>
-                  </React.Fragment>
+                  <Collapsible key={categoryName} asChild open={openCategories[categoryName] ?? true} onOpenChange={() => toggleCategory(categoryName)}>
+                    <>
+                      <CollapsibleTrigger asChild>
+                          <TableRow className="bg-muted/50 hover:bg-muted font-semibold cursor-pointer">
+                              <TableCell colSpan={2}>
+                                  <div className="flex items-center gap-2">
+                                      <ChevronDown className={cn("h-4 w-4 transition-transform", (openCategories[categoryName] ?? true) && "rotate-0")} />
+                                      {categoryName}
+                                  </div>
+                              </TableCell>
+                              <TableCell className="text-right">Rp{data.total.toLocaleString('id-ID')}</TableCell>
+                          </TableRow>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent asChild>
+                          <>{/* This empty fragment is the key to tricking `asChild` */}
+                              {data.items.map(item => (
+                                  <TableRow key={item.id} className="text-sm">
+                                  <TableCell>{format(new Date(item.tanggal), "dd MMM yyyy")}</TableCell>
+                                  <TableCell>{item.deskripsi}</TableCell>
+                                  <TableCell className="text-right">Rp{item.jumlah.toLocaleString('id-ID')}</TableCell>
+                                  </TableRow>
+                              ))}
+                          </>
+                      </CollapsibleContent>
+                    </>
+                  </Collapsible>
                 ))
               ) : (
                 <TableRow>
