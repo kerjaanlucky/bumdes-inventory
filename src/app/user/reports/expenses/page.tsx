@@ -184,22 +184,23 @@ export default function ExpensesReportPage() {
                 <TableHead className="text-right">Jumlah</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
               {isFetching ? (
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell colSpan={3}><Skeleton className="h-5 w-full" /></TableCell>
-                  </TableRow>
-                ))
+                <TableBody>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell colSpan={3}><Skeleton className="h-5 w-full" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               ) : Object.keys(groupedExpenses).length > 0 ? (
                 Object.entries(groupedExpenses).map(([categoryName, data]) => (
                   <Collapsible key={categoryName} asChild open={openCategories[categoryName] ?? true} onOpenChange={() => toggleCategory(categoryName)}>
-                    <>
+                    <TableBody>
                       <CollapsibleTrigger asChild>
                           <TableRow className="bg-muted/50 hover:bg-muted font-semibold cursor-pointer">
                               <TableCell colSpan={2}>
                                   <div className="flex items-center gap-2">
-                                      <ChevronDown className={cn("h-4 w-4 transition-transform", (openCategories[categoryName] ?? true) && "rotate-0")} />
+                                      <ChevronDown className={cn("h-4 w-4 transition-transform", (openCategories[categoryName] ?? true) && "-rotate-90")} />
                                       {categoryName}
                                   </div>
                               </TableCell>
@@ -207,7 +208,7 @@ export default function ExpensesReportPage() {
                           </TableRow>
                       </CollapsibleTrigger>
                       <CollapsibleContent asChild>
-                          <>{/* This empty fragment is the key to tricking `asChild` */}
+                          <>
                               {data.items.map(item => (
                                   <TableRow key={item.id} className="text-sm">
                                   <TableCell>{format(new Date(item.tanggal), "dd MMM yyyy")}</TableCell>
@@ -217,17 +218,18 @@ export default function ExpensesReportPage() {
                               ))}
                           </>
                       </CollapsibleContent>
-                    </>
+                    </TableBody>
                   </Collapsible>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
-                    Tidak ada data biaya untuk periode ini. Silakan generate laporan.
-                  </TableCell>
-                </TableRow>
+                <TableBody>
+                    <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center">
+                        Tidak ada data biaya untuk periode ini. Silakan generate laporan.
+                    </TableCell>
+                    </TableRow>
+                </TableBody>
               )}
-            </TableBody>
             {!isFetching && Object.keys(groupedExpenses).length > 0 && (
                 <TableFooter>
                     <TableRow className="font-bold text-base">
