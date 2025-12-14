@@ -31,18 +31,43 @@ export default function ProfitLossReportPage() {
   const { revenue, cogs, grossProfit, expenses, netProfit } = profitAndLoss;
 
   const handleDownloadExcel = () => {
+    // 1. Prepare data without boolean flags
     const data = [
       { Item: 'Pendapatan (Revenue)', Amount: revenue },
-      { Item: 'Harga Pokok Penjualan (HPP)', Amount: -cogs },
-      { Item: 'Laba Kotor', Amount: grossProfit, isBold: true },
-      { Item: 'Beban Operasional', Amount: -expenses },
-      { Item: 'Laba Bersih', Amount: netProfit, isBold: true, isTotal: true },
+      { Item: 'Harga Pokok Penjualan (HPP)', Amount: cogs },
+      { Item: 'Laba Kotor', Amount: grossProfit },
+      { Item: 'Beban Operasional', Amount: expenses },
+      { Item: 'Laba Bersih', Amount: netProfit },
     ];
-    
-    const worksheet = XLSX.utils.json_to_sheet(data, { skipHeader: true });
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    // 2. Apply styling and formatting cell by cell
+    data.forEach((row, index) => {
+      const rowIndex = index + 2; // +1 for header, +1 for 1-based index
+      const cellAddress = `B${rowIndex}`;
+      const cell = worksheet[cellAddress];
+
+      if (cell) {
+        // Apply number format
+        cell.z = `_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)`;
+        
+        // Style for negative impact items
+        if (row.Item.includes('HPP') || row.Item.includes('Beban')) {
+           cell.s = { ...cell.s, font: { ...cell.s?.font, color: { rgb: "FF9C0006" } } };
+           // Use parenthesis for negative format
+           cell.z = `_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"??_);_(@_)`;
+        }
+
+        // Style for bold items
+        if (row.Item.includes('Laba Kotor') || row.Item.includes('Laba Bersih')) {
+          cell.s = { ...cell.s, font: { ...cell.s?.font, bold: true } };
+          worksheet[`A${rowIndex}`].s = { font: { bold: true } };
+        }
+      }
+    });
 
     // Set column widths
-    worksheet['!cols'] = [{ wch: 30 }, { wch: 20 }];
+    worksheet['!cols'] = [{ wch: 30 }, { wch: 25 }];
     
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Laba Rugi");
