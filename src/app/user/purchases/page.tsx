@@ -143,7 +143,7 @@ export default function PurchasesPage() {
                     <TableRow key={purchase.id}>
                         <TableCell className="font-medium font-mono text-xs">{purchase.nomor_pembelian}</TableCell>
                         <TableCell>{purchase.nama_supplier}</TableCell>
-                        <TableCell>{format(new Date(purchase.tanggal_pembelian), "dd MMM yyyy")}</TableCell>
+                        <TableCell>{format(new Date(purchase.tanggal_pembelian), "dd MMM yyyy, HH:mm")}</TableCell>
                         <TableCell>{format(new Date(purchase.created_at), "dd MMM yyyy, HH:mm")}</TableCell>
                         <TableCell>Rp{purchase.total_harga.toLocaleString('id-ID')}</TableCell>
                         <TableCell>
