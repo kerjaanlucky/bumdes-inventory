@@ -22,18 +22,24 @@ import { useFirebaseStore } from './firebase-store';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { useCustomerStore } from './customer-store';
 
+type SortBy = 'tanggal_penjualan' | 'total_harga' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 type SaleState = {
   sales: Sale[];
   total: number;
   page: number;
   limit: number;
   searchTerm: string;
+  sortBy: SortBy;
+  sortDirection: SortDirection;
   isFetching: boolean;
   isSubmitting: boolean;
   isDeleting: boolean;
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSearchTerm: (searchTerm: string) => void;
+  setSort: (sortBy: SortBy, sortDirection: SortDirection) => void;
   fetchSales: () => Promise<void>;
   getSaleById: (saleId: string) => Promise<Sale | undefined>;
   addSale: (sale: Omit<Sale, 'id' | 'nomor_penjualan' | 'created_at' | 'status' | 'branchId' | 'history'> & { items: SaleItem[] }) => Promise<Sale | undefined>;
@@ -49,6 +55,8 @@ export const useSaleStore = create<SaleState>((set, get) => ({
   page: 1,
   limit: 10,
   searchTerm: '',
+  sortBy: 'tanggal_penjualan',
+  sortDirection: 'desc',
   isFetching: false,
   isSubmitting: false,
   isDeleting: false,
@@ -56,13 +64,14 @@ export const useSaleStore = create<SaleState>((set, get) => ({
   setPage: (page) => set({ page, sales: [] }),
   setLimit: (limit) => set({ limit, page: 1, sales: [] }),
   setSearchTerm: (searchTerm) => set({ searchTerm, page: 1, sales: [] }),
+  setSort: (sortBy, sortDirection) => set({ sortBy, sortDirection, page: 1 }),
 
   fetchSales: async () => {
     const { firestore } = useFirebaseStore.getState();
     const { branchId } = useAuthStore.getState();
     if (!firestore || !branchId) return;
 
-    const { page, limit, searchTerm } = get();
+    const { page, limit, searchTerm, sortBy, sortDirection } = get();
     set({ isFetching: true });
 
     try {
@@ -91,6 +100,19 @@ export const useSaleStore = create<SaleState>((set, get) => ({
           s.nama_customer?.toLowerCase().includes(lowercasedFilter)
         );
       }
+      
+      salesData.sort((a, b) => {
+        const valA = a[sortBy];
+        const valB = b[sortBy];
+
+        let comparison = 0;
+        if (valA > valB) {
+            comparison = 1;
+        } else if (valA < valB) {
+            comparison = -1;
+        }
+        return sortDirection === 'desc' ? comparison * -1 : comparison;
+      });
 
       const total = salesData.length;
       const paginatedSales = salesData.slice((page - 1) * limit, page * limit);

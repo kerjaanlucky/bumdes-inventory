@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Trash2, Search, Eye, FileText } from "lucide-react";
+import { PlusCircle, Trash2, Search, Eye, FileText, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -35,13 +35,15 @@ export default function SalesPage() {
       page, 
       limit, 
       searchTerm,
+      sortBy,
+      sortDirection,
       isFetching,
       isDeleting,
       fetchSales,
       setSearchTerm,
       setPage,
       setLimit,
-      deleteSale,
+      setSort,
     } = useSaleStore();
     
     const [debouncedSearch] = useDebounce(searchTerm, 300);
@@ -50,7 +52,7 @@ export default function SalesPage() {
 
     useEffect(() => {
       fetchSales();
-    }, [fetchSales, debouncedSearch, page, limit]);
+    }, [fetchSales, debouncedSearch, page, limit, sortBy, sortDirection]);
 
     const handleDeleteClick = (saleId: string) => {
       setSelectedSale(saleId);
@@ -111,6 +113,28 @@ export default function SalesPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+               <div className="flex items-center gap-2">
+                <Select
+                    value={sortBy}
+                    onValueChange={(value) => setSort(value as any, sortDirection)}
+                >
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Urutkan berdasarkan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="tanggal_penjualan">Tanggal</SelectItem>
+                        <SelectItem value="total_harga">Total</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setSort(sortBy, sortDirection === 'asc' ? 'desc' : 'asc')}
+                >
+                    {sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                </Button>
+            </div>
             </div>
             <Table>
                 <TableHeader>
