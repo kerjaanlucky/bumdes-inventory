@@ -1,10 +1,10 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DateRange } from "react-day-picker";
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Search } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
 
 export default function CogsReportPage() {
@@ -33,9 +34,28 @@ export default function CogsReportPage() {
     isFetching,
   } = useReportStore();
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   useEffect(() => {
     fetchCogsReport();
   }, [dateRange, fetchCogsReport]);
+
+  const filteredCogsData = React.useMemo(() => {
+    if (!searchQuery.trim()) return cogsData;
+    const lowerQuery = searchQuery.toLowerCase();
+    return cogsData.filter(item => 
+      item.productName.toLowerCase().includes(lowerQuery)
+    );
+  }, [cogsData, searchQuery]);
+
+  const filteredCogsSummary = React.useMemo(() => {
+    if (!searchQuery.trim()) return cogsSummary;
+    return filteredCogsData.reduce((acc, item) => ({
+      totalRevenue: acc.totalRevenue + item.totalSellingPrice,
+      totalCogs: acc.totalCogs + item.totalCostPrice,
+      totalMargin: acc.totalMargin + item.totalMargin,
+    }), { totalRevenue: 0, totalCogs: 0, totalMargin: 0 });
+  }, [filteredCogsData, searchQuery, cogsSummary]);
 
   const handleDownloadExcel = () => {
     const dataToExport = cogsData.map(item => ({
@@ -127,7 +147,7 @@ export default function CogsReportPage() {
             <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
           </CardHeader>
           <CardContent>
-            {isFetching ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">Rp{cogsSummary.totalRevenue.toLocaleString('id-ID')}</div>}
+            {isFetching ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">Rp{filteredCogsSummary.totalRevenue.toLocaleString('id-ID')}</div>}
           </CardContent>
         </Card>
         <Card>
@@ -135,7 +155,7 @@ export default function CogsReportPage() {
             <CardTitle className="text-sm font-medium">Total HPP</CardTitle>
           </CardHeader>
           <CardContent>
-            {isFetching ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">Rp{cogsSummary.totalCogs.toLocaleString('id-ID')}</div>}
+            {isFetching ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">Rp{filteredCogsSummary.totalCogs.toLocaleString('id-ID')}</div>}
           </CardContent>
         </Card>
         <Card>
@@ -143,9 +163,22 @@ export default function CogsReportPage() {
             <CardTitle className="text-sm font-medium">Total Laba Kotor</CardTitle>
           </CardHeader>
           <CardContent>
-            {isFetching ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">Rp{cogsSummary.totalMargin.toLocaleString('id-ID')}</div>}
+            {isFetching ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">Rp{filteredCogsSummary.totalMargin.toLocaleString('id-ID')}</div>}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1 md:max-w-[300px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Cari produk..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       <Card>
@@ -181,8 +214,8 @@ export default function CogsReportPage() {
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   </TableRow>
                 ))
-              ) : cogsData.length > 0 ? (
-                cogsData.map((item: CogsItem) => (
+              ) : filteredCogsData.length > 0 ? (
+                filteredCogsData.map((item: CogsItem) => (
                     <TableRow key={`${item.saleId}-${item.productName}`}>
                       <TableCell>{format(new Date(item.saleDate), "dd MMM yyyy")}</TableCell>
                       <TableCell>{item.productName}</TableCell>
@@ -197,17 +230,17 @@ export default function CogsReportPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center">
-                    Tidak ada data penjualan untuk periode ini.
+                    {cogsData.length > 0 ? "Tidak ada data produk yang sesuai dengan pencarian." : "Tidak ada data penjualan untuk periode ini."}
                   </TableCell>
                 </TableRow>
               )}
-               {!isFetching && cogsData.length > 0 && (
+               {!isFetching && filteredCogsData.length > 0 && (
                 <TableRow className="font-bold bg-muted/50">
                   <TableCell colSpan={4} className="text-right">Total</TableCell>
-                  <TableCell className="text-right">Rp{cogsSummary.totalRevenue.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-right">Rp{filteredCogsSummary.totalRevenue.toLocaleString('id-ID')}</TableCell>
                   <TableCell className="text-right" colSpan={1}></TableCell>
-                  <TableCell className="text-right">Rp{cogsSummary.totalCogs.toLocaleString('id-ID')}</TableCell>
-                  <TableCell className="text-right text-primary">Rp{cogsSummary.totalMargin.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-right">Rp{filteredCogsSummary.totalCogs.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-right text-primary">Rp{filteredCogsSummary.totalMargin.toLocaleString('id-ID')}</TableCell>
                 </TableRow>
               )}
             </TableBody>

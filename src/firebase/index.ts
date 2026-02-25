@@ -1,5 +1,25 @@
 'use client';
 
+if (typeof window === 'undefined' && typeof globalThis !== 'undefined') {
+  try {
+    if (globalThis.localStorage && typeof (globalThis.localStorage as any).getItem !== 'function') {
+      Object.defineProperty(globalThis, 'localStorage', {
+        value: {
+          getItem: () => null,
+          setItem: () => { },
+          removeItem: () => { },
+          clear: () => { },
+          key: () => null,
+          length: 0,
+        },
+        writable: true,
+      });
+    }
+  } catch (e) {
+    // Ignore errors if localStorage is not configurable
+  }
+}
+
 import { initializeApp, getApps, getApp, FirebaseApp, FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
