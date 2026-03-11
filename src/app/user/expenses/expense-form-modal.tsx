@@ -136,7 +136,7 @@ export function ExpenseFormModal({
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
                     <FormLabel>Tanggal Biaya</FormLabel>
-                    <Popover>
+                    <Popover modal={true}>
                         <PopoverTrigger asChild>
                         <FormControl>
                             <Button
