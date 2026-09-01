@@ -377,20 +377,6 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
 
     const itemsWithReceived = (purchase.items || []).filter(item => (item.jumlah_diterima || 0) > 0);
 
-    // Validate that stock can be rolled back without becoming negative
-    for (const item of itemsWithReceived) {
-      const product = await getProductById(item.produk_id);
-      if (product && product.stok < item.jumlah_diterima) {
-        toast({
-          variant: "destructive",
-          title: "Gagal Membatalkan",
-          description: `Stok produk "${product.nama_produk}" tidak mencukupi untuk ditarik kembali (Sisa stok saat ini: ${product.stok}, perlu ditarik: ${item.jumlah_diterima}). Kemungkinan barang sudah laku terjual.`
-        });
-        set({ isSubmitting: false });
-        return false;
-      }
-    }
-
     try {
       // Rollback stock for each received item
       for (const item of itemsWithReceived) {
