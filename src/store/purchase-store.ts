@@ -49,6 +49,7 @@ type PurchaseState = {
   updatePurchaseStatus: (purchaseId: string, status: PurchaseStatus, note?: string) => Promise<void>;
   receiveItems: (purchaseId: string, receivedItems: PurchaseItem[]) => Promise<void>;
   finalizePurchase: (purchaseId: string) => Promise<void>;
+  cancelPurchase: (purchaseId: string, reason?: string) => Promise<boolean>;
 };
 
 export const usePurchaseStore = create<PurchaseState>((set, get) => ({
@@ -353,5 +354,90 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
   
   finalizePurchase: async (purchaseId: string) => {
     await get().updatePurchaseStatus(purchaseId, 'DITERIMA_PENUH', 'Pesanan diselesaikan secara manual oleh pengguna.');
+  },
+
+  cancelPurchase: async (purchaseId: string, reason?: string) => {
+    set({ isSubmitting: true });
+    const { getProductById, editProduct } = useProductStore.getState();
+    const { addStockMovement } = useStockStore.getState();
+    const { userProfile, user } = useAuthStore.getState();
+
+    const purchase = await get().getPurchaseById(purchaseId);
+    if (!purchase) {
+      toast({ variant: "destructive", title: "Gagal", description: "Pembelian tidak ditemukan." });
+      set({ isSubmitting: false });
+      return false;
+    }
+
+    if (purchase.status === 'DIBATALKAN') {
+      toast({ variant: "destructive", title: "Gagal", description: "Pesanan pembelian ini sudah dibatalkan." });
+      set({ isSubmitting: false });
+      return false;
+    }
+
+    const itemsWithReceived = (purchase.items || []).filter(item => (item.jumlah_diterima || 0) > 0);
+
+    // Validate that stock can be rolled back without becoming negative
+    for (const item of itemsWithReceived) {
+      const product = await getProductById(item.produk_id);
+      if (product && product.stok < item.jumlah_diterima) {
+        toast({
+          variant: "destructive",
+          title: "Gagal Membatalkan",
+          description: `Stok produk "${product.nama_produk}" tidak mencukupi untuk ditarik kembali (Sisa stok saat ini: ${product.stok}, perlu ditarik: ${item.jumlah_diterima}). Kemungkinan barang sudah laku terjual.`
+        });
+        set({ isSubmitting: false });
+        return false;
+      }
+    }
+
+    try {
+      // Rollback stock for each received item
+      for (const item of itemsWithReceived) {
+        const product = await getProductById(item.produk_id);
+        if (product) {
+          const newStock = product.stok - item.jumlah_diterima;
+          const productWithUnit = product.nama_satuan ? product : { ...product, nama_satuan: item.nama_satuan };
+
+          await editProduct({ ...productWithUnit, stok: newStock }, true);
+          await addStockMovement({
+            tanggal: new Date().toISOString(),
+            produk_id: product.id,
+            nama_produk: product.nama_produk,
+            nama_satuan: productWithUnit.nama_satuan,
+            tipe: 'Pembatalan Pembelian',
+            jumlah: -item.jumlah_diterima,
+            stok_akhir: newStock,
+            referensi: purchase.nomor_pembelian,
+          });
+        }
+      }
+
+      const cancellationHistory = {
+        status: 'DIBATALKAN' as PurchaseStatus,
+        tanggal: new Date().toISOString(),
+        oleh: userProfile?.nama || user?.email || 'System',
+        catatan: reason || 'Pesanan dibatalkan oleh pengguna'
+      };
+
+      const updatedPurchaseData: Purchase = {
+        ...purchase,
+        status: 'DIBATALKAN',
+        history: [
+          ...(purchase.history || []),
+          cancellationHistory
+        ]
+      };
+
+      await get().editPurchase(updatedPurchaseData);
+      toast({ title: "Pembelian Dibatalkan", description: "Pesanan pembelian telah berhasil dibatalkan dan stok disesuaikan." });
+      return true;
+    } catch (error) {
+      console.error("Failed to cancel purchase:", error);
+      toast({ variant: "destructive", title: "Gagal Membatalkan", description: "Terjadi kesalahan saat membatalkan pembelian." });
+      return false;
+    } finally {
+      set({ isSubmitting: false });
+    }
   },
 }));

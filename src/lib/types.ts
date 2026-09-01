@@ -167,7 +167,7 @@ export type StockMovement = {
   produk_id: string;
   nama_produk: string;
   nama_satuan: string;
-  tipe: 'Pembelian Masuk' | 'Penjualan Keluar' | 'Penyesuaian' | 'Retur Penjualan';
+  tipe: 'Pembelian Masuk' | 'Penjualan Keluar' | 'Penyesuaian' | 'Retur Penjualan' | 'Pembatalan Pembelian';
   jumlah: number;
   stok_akhir: number;
   referensi: string;

@@ -8,24 +8,26 @@ import { usePurchaseStore } from '@/store/purchase-store';
 import { Purchase, PurchaseItem, PurchaseStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Edit, Truck, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Edit, Truck, CheckCircle, Ban } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ReceiveItemsModal } from '../receive-items-modal';
 import { SendOrderConfirmationModal } from '../send-order-modal';
+import { CancelPurchaseModal } from '../cancel-purchase-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function PurchaseDetailPage() {
     const router = useRouter();
     const params = useParams();
     const purchaseId = params.id as string;
-    const { getPurchaseById, isFetching, updatePurchaseStatus, receiveItems, finalizePurchase, isSubmitting } = usePurchaseStore();
+    const { getPurchaseById, isFetching, updatePurchaseStatus, receiveItems, finalizePurchase, cancelPurchase, isSubmitting } = usePurchaseStore();
     
     const [purchase, setPurchase] = useState<Purchase | null>(null);
     const [isReceiveModalOpen, setReceiveModalOpen] = useState(false);
     const [isSendOrderModalOpen, setSendOrderModalOpen] = useState(false);
+    const [isCancelModalOpen, setCancelModalOpen] = useState(false);
 
     const fetchAndSetPurchase = useCallback(async () => {
         const data = await getPurchaseById(purchaseId);
@@ -70,6 +72,14 @@ export default function PurchaseDetailPage() {
         await fetchAndSetPurchase(); // Re-fetch data
     }
 
+    const handleCancelConfirm = async (reason?: string) => {
+        const success = await cancelPurchase(purchaseId, reason);
+        if (success) {
+            setCancelModalOpen(false);
+            await fetchAndSetPurchase(); // Re-fetch data
+        }
+    }
+
     if (isFetching || !purchase) {
         return (
             <div className="flex h-full items-center justify-center">
@@ -100,12 +110,12 @@ export default function PurchaseDetailPage() {
                      {purchase.status === 'DRAFT' && (
                         <>
                             <Button variant="outline" size="sm" onClick={() => router.push(`/user/purchases/${purchase.id}/edit`)} disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                <Edit className="mr-2 h-4 w-4" /> Ubah
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                 <Edit className="mr-2 h-4 w-4" /> Ubah
                             </Button>
                             <Button size="sm" onClick={() => setSendOrderModalOpen(true)} disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                Kirim Pesanan
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                 Kirim Pesanan
                             </Button>
                         </>
                     )}
@@ -126,6 +136,12 @@ export default function PurchaseDetailPage() {
                                 <CheckCircle className="mr-2 h-4 w-4" /> Selesaikan Kuitansi
                             </Button>
                         </>
+                    )}
+                    {purchase.status !== 'DIBATALKAN' && (
+                        <Button variant="destructive" size="sm" onClick={() => setCancelModalOpen(true)} disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            <Ban className="mr-2 h-4 w-4" /> Batalkan Pesanan
+                        </Button>
                     )}
                 </div>
             </div>
@@ -250,6 +266,15 @@ export default function PurchaseDetailPage() {
                     onClose={() => setSendOrderModalOpen(false)}
                     onSubmit={handleSendOrderConfirm}
                     purchaseNumber={purchase.nomor_pembelian}
+                    isSubmitting={isSubmitting}
+                />
+            )}
+             {isCancelModalOpen && (
+                <CancelPurchaseModal
+                    isOpen={isCancelModalOpen}
+                    onClose={() => setCancelModalOpen(false)}
+                    onConfirm={handleCancelConfirm}
+                    purchase={purchase}
                     isSubmitting={isSubmitting}
                 />
             )}

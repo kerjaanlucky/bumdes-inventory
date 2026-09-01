@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Trash2, Search, Eye } from "lucide-react";
+import { PlusCircle, Search, Eye, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -21,7 +21,7 @@ import { useDebounce } from 'use-debounce';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ConfirmationDialog } from '@/components/common/confirmation-dialog';
+import { CancelPurchaseModal } from './cancel-purchase-modal';
 import { usePurchaseStore } from '@/store/purchase-store';
 import { Purchase, PurchaseStatus } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -36,32 +36,35 @@ export default function PurchasesPage() {
       limit, 
       searchTerm,
       isFetching,
-      isDeleting,
+      isSubmitting,
       fetchPurchases,
       setSearchTerm,
       setPage,
       setLimit,
-      deletePurchase,
+      cancelPurchase,
     } = usePurchaseStore();
     
     const [debouncedSearch] = useDebounce(searchTerm, 300);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedPurchase, setSelectedPurchase] = useState<string | null>(null);
+    const [cancelModalOpen, setCancelModalOpen] = useState(false);
+    const [selectedPurchaseToCancel, setSelectedPurchaseToCancel] = useState<Purchase | null>(null);
 
     useEffect(() => {
       fetchPurchases();
     }, [fetchPurchases, debouncedSearch, page, limit]);
 
-    const handleDeleteClick = (purchaseId: string) => {
-      setSelectedPurchase(purchaseId);
-      setDialogOpen(true);
+    const handleCancelClick = (purchase: Purchase) => {
+      setSelectedPurchaseToCancel(purchase);
+      setCancelModalOpen(true);
     };
 
-    const handleConfirmDelete = async () => {
-      if (selectedPurchase) {
-        await deletePurchase(selectedPurchase);
-        setDialogOpen(false);
-        setSelectedPurchase(null);
+    const handleConfirmCancel = async (reason?: string) => {
+      if (selectedPurchaseToCancel) {
+        const success = await cancelPurchase(selectedPurchaseToCancel.id, reason);
+        if (success) {
+          setCancelModalOpen(false);
+          setSelectedPurchaseToCancel(null);
+          await fetchPurchases();
+        }
       }
     };
     
@@ -165,13 +168,19 @@ export default function PurchasesPage() {
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(purchase.id)} disabled={purchase.status !== 'DRAFT'}>
-                                            <Trash2 className="h-4 w-4" />
-                                            <span className="sr-only">Hapus</span>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => handleCancelClick(purchase)} 
+                                          disabled={purchase.status === 'DIBATALKAN' || isSubmitting}
+                                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        >
+                                            <Ban className="h-4 w-4" />
+                                            <span className="sr-only">Batalkan Pembelian</span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Hapus Pembelian</p>
+                                        <p>{purchase.status === 'DIBATALKAN' ? 'Pesanan sudah dibatalkan' : 'Batalkan Pembelian'}</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </div>
@@ -227,13 +236,15 @@ export default function PurchasesPage() {
             </div>
         </CardContent>
       </Card>
-      <ConfirmationDialog
-        isOpen={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Apakah Anda yakin?"
-        description="Tindakan ini tidak bisa dibatalkan. Ini akan menghapus data pembelian secara permanen."
-        isSubmitting={isDeleting}
+      <CancelPurchaseModal
+        isOpen={cancelModalOpen}
+        onClose={() => {
+          setCancelModalOpen(false);
+          setSelectedPurchaseToCancel(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        purchase={selectedPurchaseToCancel}
+        isSubmitting={isSubmitting}
       />
     </div>
   )
