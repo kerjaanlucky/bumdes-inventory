@@ -37,7 +37,6 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmationDialog } from '@/components/common/confirmation-dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { SalesReturnModal } from '../sales-return-modal'
 
 export default function SaleDetailPage() {
@@ -311,10 +310,9 @@ export default function SaleDetailPage() {
                     {format(new Date(sale.tanggal_penjualan), 'dd MMMM yyyy')}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <ScrollArea className='max-h-[calc(100vh-450px)]'>
+                <CardContent className='max-h-[60vh] overflow-y-auto pr-1'>
                     <Table>
-                      <TableHeader>
+                      <TableHeader className='sticky top-0 z-10 bg-card'>
                         <TableRow>
                           <TableHead className='w-[50px]'>#</TableHead>
                           <TableHead>Kode Produk</TableHead>
@@ -374,7 +372,6 @@ export default function SaleDetailPage() {
                         })}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -386,8 +383,7 @@ export default function SaleDetailPage() {
                     Lacak semua perubahan status untuk penjualan ini.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className='text-sm'>
-                  <ScrollArea className='max-h-[calc(100vh-450px)]'>
+                <CardContent className='text-sm max-h-[60vh] overflow-y-auto pr-1'>
                     <ul className='space-y-4'>
                       {sale.history?.map((h, index) => (
                         <li
@@ -414,7 +410,6 @@ export default function SaleDetailPage() {
                         </li>
                       ))}
                     </ul>
-                  </ScrollArea>
                 </CardContent>
               </Card>
             </TabsContent>

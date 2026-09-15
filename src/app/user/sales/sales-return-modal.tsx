@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
@@ -144,8 +143,8 @@ export function SalesReturnModal({
       open={isOpen}
       onOpenChange={(open) => !open && !isSubmitting && onClose()}
     >
-      <DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
-        <DialogHeader>
+      <DialogContent className='max-w-3xl max-h-[85vh] flex flex-col overflow-hidden'>
+        <DialogHeader className='shrink-0'>
           <DialogTitle>Retur Per Item — {sale.nomor_penjualan}</DialogTitle>
           <DialogDescription>
             Pilih qty per barang yang dikembalikan pelanggan. Stok bertambah
@@ -155,7 +154,7 @@ export function SalesReturnModal({
         </DialogHeader>
 
         {(sale.total_retur || 0) > 0 && (
-          <div className='rounded-md border bg-muted/40 px-3 py-2 text-xs flex items-center justify-between'>
+          <div className='shrink-0 rounded-md border bg-muted/40 px-3 py-2 text-xs flex items-center justify-between'>
             <span className='text-muted-foreground'>
               Retur sebelumnya: Rp
               {(sale.total_retur || 0).toLocaleString('id-ID')}
@@ -167,11 +166,11 @@ export function SalesReturnModal({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleFormSubmit)}
-            className='space-y-4'
+            className='flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden'
           >
-            <ScrollArea className='max-h-[45vh] pr-4'>
+            <div className='min-h-0 flex-1 overflow-y-auto rounded-md border pr-1'>
               <Table>
-                <TableHeader>
+                <TableHeader className='sticky top-0 z-10 bg-background'>
                   <TableRow>
                     <TableHead>Produk</TableHead>
                     <TableHead className='text-right'>Terjual</TableHead>
@@ -235,14 +234,15 @@ export function SalesReturnModal({
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
 
             {form.formState.errors.lines?.root && (
-              <p className='text-sm font-medium text-destructive'>
+              <p className='shrink-0 text-sm font-medium text-destructive'>
                 {form.formState.errors.lines.root.message}
               </p>
             )}
 
+            <div className='shrink-0 space-y-4'>
             <FormField
               control={form.control}
               name='note'
@@ -287,6 +287,7 @@ export function SalesReturnModal({
                 Proses Retur
               </Button>
             </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>
