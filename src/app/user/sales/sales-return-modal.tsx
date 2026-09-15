@@ -36,6 +36,27 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 
+const parseQtyValue = (v: unknown) => {
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') {
+    const trimmed = v.trim()
+    if (trimmed === '') return 0
+    const normalized = trimmed.replace(',', '.')
+    const n = Number(normalized)
+    return Number.isNaN(n) ? v : n
+  }
+  return v
+}
+
+const toQtyNumber = (v: unknown): number => {
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') {
+    const n = Number(v.replace(',', '.'))
+    return Number.isNaN(n) ? 0 : n
+  }
+  return 0
+}
+
 const returnLineSchema = z.object({
   item_id: z.any(),
   produk_id: z.string(),
@@ -45,7 +66,10 @@ const returnLineSchema = z.object({
   jumlah_diretur_sebelumnya: z.number(),
   sisa: z.number(),
   harga_net_satuan: z.number(),
-  jumlah_retur_sekarang: z.coerce.number().min(0, 'Qty tidak boleh negatif'),
+  jumlah_retur_sekarang: z.preprocess(
+    parseQtyValue,
+    z.number().min(0, 'Qty tidak boleh negatif'),
+  ),
 })
 
 const returnSchema = z
@@ -53,14 +77,20 @@ const returnSchema = z
     lines: z.array(returnLineSchema),
     note: z.string().min(1, 'Alasan retur wajib diisi.'),
   })
-  .refine((v) => v.lines.some((l) => l.jumlah_retur_sekarang > 0), {
+  .refine((v) => v.lines.some((l) => toQtyNumber(l.jumlah_retur_sekarang) > 1e-9), {
     message: 'Minimal 1 barang dengan qty retur > 0.',
     path: ['lines'],
   })
-  .refine((v) => v.lines.every((l) => l.jumlah_retur_sekarang <= l.sisa), {
-    message: 'Qty retur tidak boleh melebihi sisa yang dapat diretur.',
-    path: ['lines'],
-  })
+  .refine(
+    (v) =>
+      v.lines.every(
+        (l) => toQtyNumber(l.jumlah_retur_sekarang) <= l.sisa + 1e-9,
+      ),
+    {
+      message: 'Qty retur tidak boleh melebihi sisa yang dapat diretur.',
+      path: ['lines'],
+    },
+  )
 
 export type SaleReturnFormValues = z.infer<typeof returnSchema>
 
@@ -118,23 +148,22 @@ export function SalesReturnModal({
   const watchedLines = form.watch('lines')
 
   const previewRefund = (watchedLines || []).reduce(
-    (sum, l) =>
-      sum + (l.jumlah_retur_sekarang || 0) * (l.harga_net_satuan || 0),
+    (sum, l) => sum + toQtyNumber(l.jumlah_retur_sekarang) * (l.harga_net_satuan || 0),
     0,
   )
   const previewQty = (watchedLines || []).reduce(
-    (sum, l) => sum + (l.jumlah_retur_sekarang || 0),
+    (sum, l) => sum + toQtyNumber(l.jumlah_retur_sekarang),
     0,
   )
 
   const handleFormSubmit = async (data: SaleReturnFormValues) => {
     const lines = data.lines
-      .filter((l) => l.jumlah_retur_sekarang > 0)
       .map((l) => ({
         item_id: l.item_id,
         produk_id: l.produk_id,
-        jumlah_retur: Math.floor(l.jumlah_retur_sekarang),
+        jumlah_retur: Math.round(toQtyNumber(l.jumlah_retur_sekarang) * 1000) / 1000,
       }))
+      .filter((l) => l.jumlah_retur > 1e-9)
     await onSubmit(lines, data.note.trim())
   }
 
@@ -213,15 +242,26 @@ export function SalesReturnModal({
                             <FormItem>
                               <FormControl>
                                 <Input
-                                  type='number'
-                                  min={0}
-                                  max={field.sisa}
-                                  step={1}
+                                  type='text'
+                                  inputMode='decimal'
+                                  placeholder='0'
                                   disabled={isSubmitting || field.sisa === 0}
                                   {...f}
-                                  onChange={(e) =>
-                                    f.onChange(Number(e.target.value))
-                                  }
+                                  value={f.value ?? ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value
+                                    if (raw.trim() === '') {
+                                      f.onChange(0)
+                                      return
+                                    }
+                                    const normalized = raw.replace(',', '.')
+                                    const n = Number(normalized)
+                                    f.onChange(
+                                      raw.trim() !== '' && Number.isNaN(n)
+                                        ? raw
+                                        : n,
+                                    )
+                                  }}
                                   className='text-right'
                                 />
                               </FormControl>

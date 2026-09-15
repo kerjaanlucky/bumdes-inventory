@@ -499,10 +499,12 @@ export const useSaleStore = create<SaleState>((set, get) => ({
         }
         const alreadyReturned = item.jumlah_diretur || 0
         const remaining = item.jumlah - alreadyReturned
+        const EPS = 1e-9
+        const qty = Math.round(Number(line.jumlah_retur) * 1000) / 1000
         if (
-          !Number.isInteger(line.jumlah_retur) ||
-          line.jumlah_retur <= 0 ||
-          line.jumlah_retur > remaining
+          !Number.isFinite(qty) ||
+          qty <= EPS ||
+          qty - remaining > EPS
         ) {
           toast({
             variant: 'destructive',
@@ -515,8 +517,8 @@ export const useSaleStore = create<SaleState>((set, get) => ({
           item.harga_jual_satuan * (1 - (item.diskon || 0) / 100)
         validated.push({
           item,
-          qty: line.jumlah_retur,
-          refund: netUnitPrice * line.jumlah_retur,
+          qty,
+          refund: netUnitPrice * qty,
         })
       }
 
@@ -552,11 +554,14 @@ export const useSaleStore = create<SaleState>((set, get) => ({
       const updatedItems: SaleItem[] = (sale.items || []).map((item) => {
         const hit = validated.find((v) => String(v.item.id) === String(item.id))
         if (!hit) return { ...item, jumlah_diretur: item.jumlah_diretur || 0 }
-        return { ...item, jumlah_diretur: (item.jumlah_diretur || 0) + hit.qty }
+        const nextReturned =
+          Math.round(((item.jumlah_diretur || 0) + hit.qty) * 1000) / 1000
+        return { ...item, jumlah_diretur: nextReturned }
       })
 
+      const EPS_DONE = 1e-9
       const isFullyReturned = updatedItems.every(
-        (i) => (i.jumlah_diretur || 0) >= i.jumlah,
+        (i) => (i.jumlah_diretur || 0) + EPS_DONE >= i.jumlah,
       )
       const newStatus: SaleStatus = isFullyReturned ? 'DIRETUR' : 'LUNAS'
       const historyStatus: SaleStatus = isFullyReturned ? 'DIRETUR' : 'LUNAS'
