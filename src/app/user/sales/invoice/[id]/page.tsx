@@ -14,8 +14,10 @@ import { SuratJalanModal } from './surat-jalan-modal'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { useCustomerStore } from '@/store/customer-store'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type DocumentType = 'invoice' | 'suratJalan'
+type InvoiceView = 'final' | 'original'
 
 export default function InvoicePage() {
   const params = useParams()
@@ -31,6 +33,7 @@ export default function InvoicePage() {
   const [branch, setBranch] = useState<Branch | null>(null)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [documentType, setDocumentType] = useState<DocumentType>('invoice')
+  const [invoiceView, setInvoiceView] = useState<InvoiceView>('final')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [vehicleNumber, setVehicleNumber] = useState('')
   const [isPrinting, setIsPrinting] = useState(false)
@@ -71,6 +74,13 @@ export default function InvoicePage() {
   const handleDownloadPdf = async (type: DocumentType) => {
     if (!printAreaRef.current) return
     setIsDownloading(true)
+    const prevView = invoiceView
+    // PDF faktur selalu memakai tampilan yang sedang aktif (Akhir/Awal).
+    // Untuk surat jalan, paksa qty asli agar dokumen jalan tidak terpotong retur.
+    if (type === 'suratJalan' && invoiceView !== 'original') {
+      setInvoiceView('original')
+      await new Promise((resolve) => setTimeout(resolve, 80))
+    }
     setDocumentType(type) // Set document type before rendering for PDF
 
     // Allow state to update and re-render
@@ -103,8 +113,13 @@ export default function InvoicePage() {
     const y = 0
 
     pdf.addImage(imgData, 'JPEG', x, y, widthInPdf, heightInPdf)
-    pdf.save(`${type}-${sale?.nomor_penjualan}.pdf`)
+    const viewSuffix =
+      type === 'invoice' ? (invoiceView === 'final' && hasReturn ? '-akhir' : '-awal') : ''
+    pdf.save(`${type}${viewSuffix}-${sale?.nomor_penjualan}.pdf`)
 
+    if (type === 'suratJalan' && invoiceView !== prevView) {
+      setInvoiceView(prevView)
+    }
     setIsDownloading(false)
   }
 
@@ -128,37 +143,85 @@ export default function InvoicePage() {
     )
   }
 
-  const subtotal = sale.items.reduce((acc, item) => acc + item.subtotal, 0)
-  const totalItemDiscount = sale.items.reduce(
-    (acc, item) => acc + item.subtotal * (item.diskon / 100),
-    0,
-  )
   const invoiceDiscount = sale.diskon_invoice || 0
-  const totalDiscount = totalItemDiscount + invoiceDiscount
-
-  const dppBeforeTax = subtotal - totalItemDiscount - invoiceDiscount
-
-  let dpp = dppBeforeTax
-  let taxAmount = 0
-
-  if (sale.taxType === 'inclusive') {
-    taxAmount = dppBeforeTax - dppBeforeTax / (1 + (sale.pajak || 0) / 100)
-    dpp = dppBeforeTax - taxAmount
-  } else {
-    // exclusive
-    taxAmount = dppBeforeTax * ((sale.pajak || 0) / 100)
-  }
 
   const ongkosKirim = sale.ongkos_kirim || 0
   const totalRetur = sale.total_retur || 0
   const netTotal = sale.total_harga - totalRetur
+  const hasReturn = totalRetur > 1e-9
+  const EPS_QTY = 1e-9
+  const netQtyOf = (jumlah: number, diretur?: number) =>
+    Math.max(0, Math.round((jumlah - (diretur || 0)) * 1000) / 1000)
+  const netSubtotalOf = (jumlah: number, diretur: number | undefined, harga: number) =>
+    Math.round(netQtyOf(jumlah, diretur) * harga * 100) / 100
+  const netDiscountOf = (netSubtotal: number, diskon: number) =>
+    Math.round(netSubtotal * (diskon / 100) * 100) / 100
+  const finalItems = (sale.items || [])
+    .map((item) => {
+      const netQty = netQtyOf(item.jumlah, item.jumlah_diretur)
+      const netSubtotal = netSubtotalOf(item.jumlah, item.jumlah_diretur, item.harga_jual_satuan)
+      return { item, netQty, netSubtotal, netDiscount: netDiscountOf(netSubtotal, item.diskon || 0) }
+    })
+    .filter((row) => row.netQty > EPS_QTY)
+  const shownItems =
+    invoiceView === 'final' && hasReturn
+      ? finalItems.map((row, index) => ({
+          key: String(row.item.id ?? index),
+          kode_produk: row.item.kode_produk,
+          nama_produk: row.item.nama_produk,
+          nama_satuan: row.item.nama_satuan,
+          harga_jual_satuan: row.item.harga_jual_satuan,
+          diskon: row.item.diskon,
+          jumlah: row.netQty,
+          subtotal: row.netSubtotal,
+          discountAmount: row.netDiscount,
+        }))
+      : (sale.items || []).map((item, index) => ({
+          key: String(item.id ?? index),
+          kode_produk: item.kode_produk,
+          nama_produk: item.nama_produk,
+          nama_satuan: item.nama_satuan,
+          harga_jual_satuan: item.harga_jual_satuan,
+          diskon: item.diskon,
+          jumlah: item.jumlah,
+          subtotal: item.subtotal,
+          discountAmount: item.subtotal * ((item.diskon || 0) / 100),
+        }))
+  const viewSubtotal = shownItems.reduce((acc, row) => acc + row.subtotal, 0)
+  const viewItemDiscount = shownItems.reduce((acc, row) => acc + row.discountAmount, 0)
+  const viewInvoiceDiscount =
+    invoiceView === 'final' && hasReturn ? 0 : invoiceDiscount
+  const viewDppBeforeTax = viewSubtotal - viewItemDiscount - viewInvoiceDiscount
+  let viewDpp = viewDppBeforeTax
+  let viewTaxAmount = 0
+  if (sale.taxType === 'inclusive') {
+    viewTaxAmount =
+      viewDppBeforeTax - viewDppBeforeTax / (1 + (sale.pajak || 0) / 100)
+    viewDpp = viewDppBeforeTax - viewTaxAmount
+  } else {
+    viewTaxAmount = viewDppBeforeTax * ((sale.pajak || 0) / 100)
+  }
+  const viewGrandTotal = viewDpp + viewTaxAmount + ongkosKirim
 
   return (
     <>
       <div className='bg-background min-h-screen'>
         <div className='max-w-4xl mx-auto p-4 sm:p-8 print:p-0'>
-          <div className='flex justify-between items-center mb-6 print:hidden'>
-            <h1 className='text-2xl font-bold'>Dokumen Penjualan</h1>
+          <div className='flex flex-wrap justify-between items-center gap-3 mb-6 print:hidden'>
+            <div className='flex items-center gap-3'>
+              <h1 className='text-2xl font-bold'>Dokumen Penjualan</h1>
+              {documentType === 'invoice' && hasReturn && (
+                <Tabs
+                  value={invoiceView}
+                  onValueChange={(v) => setInvoiceView(v as InvoiceView)}
+                >
+                  <TabsList>
+                    <TabsTrigger value='final'>Faktur Akhir</TabsTrigger>
+                    <TabsTrigger value='original'>Faktur Awal</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              )}
+            </div>
             <div className='flex gap-2'>
               <Button
                 onClick={() => handleDownloadPdf('invoice')}
@@ -208,9 +271,18 @@ export default function InvoicePage() {
               <div className='text-right'>
                 <h1 className='text-xl sm:text-2xl font-bold uppercase'>
                   {documentType === 'invoice'
-                    ? 'Faktur Penjualan'
+                    ? invoiceView === 'final' && hasReturn
+                      ? 'Faktur Penjualan (Akhir)'
+                      : 'Faktur Penjualan'
                     : 'Surat Jalan'}
                 </h1>
+                {documentType === 'invoice' && hasReturn && (
+                  <p className='text-[11px] text-gray-500'>
+                    {invoiceView === 'final'
+                      ? 'Qty sudah dikurangi retur, item 0 disembunyikan'
+                      : 'Versi awal sebelum retur (pembanding)'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -292,41 +364,40 @@ export default function InvoicePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sale.items.map((item, index) => (
-                    <tr key={item.id} className='border-b border-gray-200'>
-                      {documentType === 'invoice' ? (
-                        <>
-                          <td className='p-2'>{index + 1}</td>
-                          <td className='p-2'>{item.kode_produk}</td>
-                          <td className='p-2'>{item.nama_produk}</td>
-                          <td className='p-2 text-center'>
-                            {item.nama_satuan}
-                          </td>
-                          <td className='p-2 text-right'>
-                            Rp {item.harga_jual_satuan.toLocaleString('id-ID')}
-                          </td>
-                          <td className='p-2 text-center'>{item.jumlah}</td>
-                          <td className='p-2 text-right'>
-                            Rp{' '}
-                            {(
-                              item.subtotal *
-                              (item.diskon / 100)
-                            ).toLocaleString('id-ID')}
-                          </td>
-                          <td className='p-2 text-right'>
-                            Rp {item.subtotal.toLocaleString('id-ID')}
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className='p-2'>{item.jumlah}</td>
-                          <td className='p-2'>{item.nama_satuan}</td>
-                          <td className='p-2'>{item.nama_produk}</td>
-                          <td className='p-2'></td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
+                  {(documentType === 'invoice' ? shownItems : sale.items).map(
+                    (row: any, index: number) => (
+                      <tr key={row.key ?? row.id ?? index} className='border-b border-gray-200'>
+                        {documentType === 'invoice' ? (
+                          <>
+                            <td className='p-2'>{index + 1}</td>
+                            <td className='p-2'>{row.kode_produk}</td>
+                            <td className='p-2'>{row.nama_produk}</td>
+                            <td className='p-2 text-center'>
+                              {row.nama_satuan}
+                            </td>
+                            <td className='p-2 text-right'>
+                              Rp {row.harga_jual_satuan.toLocaleString('id-ID')}
+                            </td>
+                            <td className='p-2 text-center'>{row.jumlah}</td>
+                            <td className='p-2 text-right'>
+                              Rp{' '}
+                              {(row.discountAmount ?? 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className='p-2 text-right'>
+                              Rp {row.subtotal.toLocaleString('id-ID')}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className='p-2'>{row.jumlah}</td>
+                            <td className='p-2'>{row.nama_satuan}</td>
+                            <td className='p-2'>{row.nama_produk}</td>
+                            <td className='p-2'></td>
+                          </>
+                        )}
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>
@@ -345,19 +416,19 @@ export default function InvoicePage() {
                   <div className='flex justify-between'>
                     <span>Sub Total:</span>
                     <span className='text-right'>
-                      Rp {subtotal.toLocaleString('id-ID')}
+                      Rp {viewSubtotal.toLocaleString('id-ID')}
                     </span>
                   </div>
                   <div className='flex justify-between'>
                     <span>Diskon:</span>
                     <span className='text-right'>
-                      (Rp {totalDiscount.toLocaleString('id-ID')})
+                      (Rp {(viewItemDiscount + viewInvoiceDiscount).toLocaleString('id-ID')})
                     </span>
                   </div>
                   <div className='flex justify-between'>
                     <span>Pajak (PPN {sale.pajak}%):</span>
                     <span className='text-right'>
-                      Rp {taxAmount.toLocaleString('id-ID')}
+                      Rp {viewTaxAmount.toLocaleString('id-ID')}
                     </span>
                   </div>
                   <div className='flex justify-between'>
@@ -369,10 +440,10 @@ export default function InvoicePage() {
                   <div className='flex justify-between font-bold text-base border-t border-gray-400 pt-1 mt-1'>
                     <span>Grand Total:</span>
                     <span className='text-right'>
-                      Rp {sale.total_harga.toLocaleString('id-ID')}
+                      Rp {viewGrandTotal.toLocaleString('id-ID')}
                     </span>
                   </div>
-                  {totalRetur > 0 && (
+                  {invoiceView === 'original' && hasReturn && (
                     <>
                       <div className='flex justify-between text-red-600'>
                         <span>Total Retur:</span>

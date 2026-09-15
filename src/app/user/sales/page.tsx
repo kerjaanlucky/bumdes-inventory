@@ -36,14 +36,7 @@ import {
 } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { useDebounce } from 'use-debounce'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination'
+import { CompactPagination } from '@/components/common/compact-pagination'
 import {
   Select,
   SelectContent,
@@ -312,11 +305,11 @@ export default function SalesPage() {
                   ))}
             </TableBody>
           </Table>
-          <div className='flex items-center justify-between mt-4'>
+          <div className='flex flex-col gap-3 mt-4 lg:flex-row lg:items-center lg:justify-between'>
             <div className='text-sm text-muted-foreground'>
               Menampilkan {sales.length} dari {total} penjualan.
             </div>
-            <div className='flex items-center gap-4'>
+            <div className='flex flex-wrap items-center gap-4'>
               <div className='flex items-center gap-2'>
                 <p className='text-sm font-medium'>Baris per halaman</p>
                 <Select
@@ -337,46 +330,11 @@ export default function SalesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href='#'
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setPage(page - 1)
-                      }}
-                      aria-disabled={page <= 1}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (p) => (
-                      <PaginationItem key={p}>
-                        <PaginationLink
-                          href='#'
-                          onClick={(e) => {
-                            e.preventDefault()
-                            setPage(p)
-                          }}
-                          isActive={p === page}
-                        >
-                          {p}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      href='#'
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setPage(page + 1)
-                      }}
-                      aria-disabled={page >= totalPages}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <CompactPagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             </div>
           </div>
         </CardContent>
